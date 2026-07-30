@@ -3,8 +3,6 @@
 An open, reproducible model of the greenhouse gas emissions caused by Canada's liquefied natural
 gas industry, covering every LNG asset in the country: operating, under construction and proposed.
 
-Produced by the Toronto Climate Observatory, July 2026.
-
 ---
 
 ## What this produces
