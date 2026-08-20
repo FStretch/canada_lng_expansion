@@ -74,6 +74,7 @@ REQUIRED_PARAMS = (
     "canada_2030_overshoot_gap",
     "lng_export_licence_max_term",
     "lng_energy_content",
+    "liquefaction_electrification_assumed",
 )
 
 
@@ -205,16 +206,11 @@ def load_inputs(register_path: str | Path, inputs_path: str | Path) -> dict:
     for stage in ALL_STAGES:
         if stage not in factors.index:
             raise MissingInputError(f"Emission Factors sheet is missing stage '{stage}'.")
-        if stage != "liquefaction" and pd.isna(factors.loc[stage, "central"]):
+        if pd.isna(factors.loc[stage, "central"]):
             raise MissingInputError(
                 f"Emission Factors: stage '{stage}' has a blank central value on "
                 f"sheet 'Emission Factors'."
             )
-    if not pd.isna(factors.loc["liquefaction", "central"]):
-        raise MissingInputError(
-            "Emission Factors: liquefaction 'central' must be empty. "
-            "Use liquefaction_gas_turbine / liquefaction_electric from Parameters."
-        )
 
     params, meta_rows = {}, []
     for _, row in params_df.iterrows():
@@ -242,6 +238,33 @@ def load_inputs(register_path: str | Path, inputs_path: str | Path) -> dict:
         raise MissingInputError(f"Scenarios sheet is missing intensity scenarios: {missing}")
 
     chains = parse_chains(chains_df)
+
+    # Every asset with a capacity and a non-inactive tier must have chain + calc_group.
+    for _, row in assets_raw.iterrows():
+        pid = row["project_id"]
+        tier = "" if pd.isna(row["tier"]) else str(row["tier"]).strip().lower()
+        if tier == "inactive" or pd.isna(row["capacity_mtpa"]):
+            continue
+        cg_raw = row["calc_group"]
+        if pd.isna(cg_raw) or str(cg_raw).strip() == "":
+            raise MissingInputError(
+                f"Project '{pid}' has capacity and tier={tier!r} but no calc_group."
+            )
+        calc_group = str(cg_raw).strip().lower()
+        if calc_group not in VALID_CALC_GROUPS and calc_group != "watch":
+            raise MissingInputError(
+                f"Project '{pid}' has capacity and unknown calc_group {cg_raw!r}."
+            )
+        raw_chain = row["chain"]
+        if pd.isna(raw_chain) or str(raw_chain).strip() == "":
+            raise MissingInputError(
+                f"Project '{pid}' has capacity and tier={tier!r} but no chain."
+            )
+        chain = str(raw_chain).strip().lower()
+        if chain not in VALID_CHAINS and chain != "none":
+            raise MissingInputError(
+                f"Project '{pid}' has capacity and unknown chain {raw_chain!r}."
+            )
 
     # inactive / watch calc_groups are out of the calculation entirely.
     rows = []
@@ -334,6 +357,24 @@ def load_inputs(register_path: str | Path, inputs_path: str | Path) -> dict:
         raise MissingInputError(
             f"Parameter 'liquefaction_drive_default' on sheet 'Parameters' is "
             f"{default_drive!r}; expected one of {list(DRIVE_PARAM)}."
+        )
+    elec_assumed = str(
+        get_param(params, "liquefaction_electrification_assumed")
+    ).strip().lower()
+    if elec_assumed != "none":
+        raise MissingInputError(
+            "Parameter 'liquefaction_electrification_assumed' must be 'none'. "
+            f"Got {elec_assumed!r}."
+        )
+    electric_left = []
+    for _, r in assets.iterrows():
+        drive_s = None if pd.isna(r["liquefaction_drive"]) else str(r["liquefaction_drive"]).strip()
+        if drive_s in {"electric_committed", "electric_planned"}:
+            electric_left.append(r["project_id"])
+    if electric_left:
+        raise MissingInputError(
+            "Electric drive is not assumed. These in-scope assets still carry "
+            f"electric_committed or electric_planned: {electric_left}."
         )
 
     return {

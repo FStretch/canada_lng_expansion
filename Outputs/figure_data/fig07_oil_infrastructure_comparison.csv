@@ -1,6 +1,6 @@
 item,lifecycle_gtco2e,method,unvalidated,capacity_note,value_kind,scenario
-"Canadian LNG, all assets",6.196706743259999,model lifecycle total (excludes legacy nulls),False,export headline capacity separate; emissions all chains,lifecycle total (GtCO₂e),measurement_central
-"Canadian LNG, proposed only",3.8896892864999986,"model lifecycle total, calc_group=proposed",False,,lifecycle total (GtCO₂e),measurement_central
+"Canadian LNG, all assets",10.193695332259999,model lifecycle total (excludes legacy nulls),False,export headline capacity separate; emissions all chains,lifecycle total (GtCO₂e),measurement_central
+"Canadian LNG, proposed only",7.8564003994999965,"model lifecycle total, calc_group=proposed",False,,lifecycle total (GtCO₂e),measurement_central
 "TMX full system (890,000 bpd)",6.665922,bpd × tmx_oil_lifecycle_per_barrel × 365 × lifecycle_years_default,False,tmx_total_system_bpd=890000.0,lifecycle total (GtCO₂e),measurement_central
 "TMX expansion only (590,000 bpd)",4.418982,same oil method; tmx_expansion_bpd,False,tmx_expansion_bpd=590000.0,lifecycle total (GtCO₂e),measurement_central
 Proposed Alberta–BC bitumen pipeline (≥1 Mbpd),7.4898,"same oil method; alberta_bc_bitumen_pipeline_bpd — NEW, UNVALIDATED",True,alberta_bc_bitumen_pipeline_bpd=1000000.0; MPO submission 2 July 2026; Bruderheim–Delta BC,lifecycle total (GtCO₂e),measurement_central

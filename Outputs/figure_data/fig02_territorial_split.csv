@@ -1,4 +1,4 @@
 category,code,annual_mtco2e_yr,note,share_pct,value_kind,scenario
-Canada territorial,CAN,25.454976294,Counted in Canada's inventory,15.987378141282992,40-year average,measurement_central
-International bunkers,BUNK,11.564739187499999,Attributed to no country under UNFCCC accounting,7.263407215957877,40-year average,measurement_central
-Foreign territorial,FOR,122.19948899999997,Counted in destination countries,76.74921464275913,40-year average,measurement_central
+Canada territorial,CAN,47.970302293999985,Counted in Canada's inventory,18.505494833422336,40-year average,measurement_central
+International bunkers,BUNK,14.7600961875,Attributed to no country under UNFCCC accounting,5.693999634702367,40-year average,measurement_central
+Foreign territorial,FOR,196.49153924999993,Counted in destination countries,75.8005055318753,40-year average,measurement_central

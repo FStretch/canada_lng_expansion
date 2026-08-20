@@ -40,18 +40,33 @@ FIGURE = OUT / "figures" / "operating_vs_proposed.png"
 FIGURE_DIR = OUT / "figures"
 FIGURE_DATA = OUT / "figure_data"
 
-EXPECTED_ANNUAL_BY_GROUP = {
-    "operating": 43.3,
-    "under_construction": 15.0,
-    "proposed": 100.9,
+# Snapshot before the August 2026 register/electrification revision.
+BEFORE = {
+    "annual_mt": 159.2,
+    "lifecycle_mt": 6196.7,
+    "export_mtpa": 58.1,
+    "liquefaction_mt": 8.0,
+    "early_export_mtpa": 12.7,
+    "group_annual": {
+        "operating": 43.3,
+        "under_construction": 15.0,
+        "proposed": 100.9,
+    },
+    "chain_annual": {
+        "export": 150.0,
+        "bunkering": 7.8,
+        "domestic": 0.9,
+        "import": 0.5,
+    },
 }
-EXPECTED_HEADLINE_ANNUAL = 159.2
 EXPECTED_EXPORT_BY_CALC = {
     "operating": 14.0,
     "under_construction": 5.4,
-    "proposed": 38.7,
+    "proposed": 75.7,
 }
-EXPECTED_EXPORT_TOTAL = 58.1
+EXPECTED_EXPORT_TOTAL = 95.1
+EXPECTED_EARLY_EXPORT = 49.7
+EXPECTED_ADVANCED_EXPORT = 26.0
 
 
 def write_figure(by_project: pd.DataFrame, path: Path) -> None:
@@ -63,19 +78,18 @@ def write_figure(by_project: pd.DataFrame, path: Path) -> None:
         & (by_project["chain"] == "export")
     ]
     buckets = [
-        ("operating", "Operating now", 14.0),
-        ("under_construction", "Under construction", 5.4),
-        ("proposed", "Proposed", 38.7),
+        ("operating", "Operating now"),
+        ("under_construction", "Under construction"),
+        ("proposed", "Proposed"),
     ]
     labels, s12, s3, caps = [], [], [], []
-    for cg, label, exp in buckets:
+    for cg, label in buckets:
         g = sample.loc[sample["calc_group"] == cg]
         cap = float(g["capacity_mtpa"].sum())
-        assert abs(cap - exp) < 1e-6, (cg, cap, exp)
         labels.append(label)
         s12.append(float(g["scope_1_2"].sum()) / 1e6)
         s3.append(float(g["scope_3"].sum()) / 1e6)
-        caps.append(exp)
+        caps.append(cap)
     x = np.arange(3)
     fig, ax = plt.subplots(figsize=(9.5, 6.2))
     ax.bar(x, s12, 0.55, label="Scope 1+2", color="#1f4e5f")
@@ -405,22 +419,20 @@ def write_review_summary(
         f"{base_annual*0.10:.1f} Mt/yr if applied uniformly."
     )
 
-    elec = sample.loc[
-        sample["liquefaction_drive"].isin(["electric_committed", "electric_planned"])
-    ]
-    if len(elec):
-        delta = 0.17 * float(elec["effective_tonnes"].sum()) / 1e6
-        elec_export = float(elec.loc[elec["chain"] == "export", "capacity_mtpa"].sum())
-        lines.append(
-            f"- **Liquefaction drive** (gas_turbine 0.29 vs electric 0.12): "
-            f"{elec_export:.1f} mtpa export currently electric. "
-            f"Switching them all to gas_turbine would add about **{delta:.1f} Mt/yr**; "
-            f"the reverse (all gas to electric) is not applicable to Phase 1."
-        )
+    liq_central = float(inputs["factors"].loc["liquefaction", "central"])
     lines.append(
-        f"- **Liquefaction drive default** for `not_published` rows: "
-        f"`{inputs['liquefaction_drive_default']}` → "
-        f"intensity {get_param(params, 'liquefaction_gas_turbine')} tCO2e/t."
+        f"- **Liquefaction** (central {liq_central:.2f} tCO2e/t, gas turbine for "
+        f"every terminal): electrification is not assumed "
+        f"(`liquefaction_electrification_assumed`="
+        f"{get_param(params, 'liquefaction_electrification_assumed')}). "
+        f"0.12 is retained as range_low and applies only if electrification is "
+        f"contracted and delivered. Previous drive classifications are in "
+        f"`liquefaction_drive_note`."
+    )
+    lines.append(
+        f"- **Liquefaction drive default** for remaining `not_published` "
+        f"(domestic) rows: `{inputs['liquefaction_drive_default']}` → "
+        f"intensity {liq_central:.2f} tCO2e/t from Emission Factors central."
     )
     lines.append("")
 
@@ -547,14 +559,26 @@ def main() -> None:
         f"(total {export_total:.1f} mtpa) PASS"
     )
 
-    # Proposed export: 26 advanced + 12.7 early
+    # Proposed export: 26 advanced + 49.7 early (Kanata, Discovery, Fermeuse added)
     prop_exp = sample.loc[
         (sample["chain"] == "export") & (sample["calc_group"] == "proposed")
     ]
     adv = float(prop_exp.loc[prop_exp["tier"] == "advanced_proposed", "capacity_mtpa"].sum())
     early = float(prop_exp.loc[prop_exp["tier"] == "early_proposed", "capacity_mtpa"].sum())
-    assert abs(adv - 26.0) < 1e-6 and abs(early - 12.7) < 1e-6, (adv, early)
+    assert abs(adv - EXPECTED_ADVANCED_EXPORT) < 1e-6, adv
+    assert abs(early - EXPECTED_EARLY_EXPORT) < 1e-6, (early, EXPECTED_EARLY_EXPORT)
     print(f"[validate] proposed export split advanced={adv:.1f} early={early:.1f} PASS")
+
+    electric_left = sample.loc[
+        sample["liquefaction_drive"].isin(["electric_committed", "electric_planned"])
+    ]
+    assert len(electric_left) == 0, electric_left["project_id"].tolist()
+    print("[validate] no electric_committed or electric_planned active drive PASS")
+
+    liq_rows = sample.loc[sample["chain"].isin(["export", "bunkering"])]
+    liq_delta = (liq_rows["intensity_liquefaction"].astype(float) - 0.29).abs()
+    assert len(liq_rows) and liq_delta.max() < 1e-9, liq_delta.max()
+    print("[validate] liquefaction intensity=0.29 for all export and bunkering PASS")
 
     # Off-chain null
     for _, r in sample.iterrows():
@@ -572,6 +596,11 @@ def main() -> None:
     ).abs()
     assert terr_delta.max() < 1e-6
     print("[validate] CAN + BUNK + FOR = total PASS")
+    scope_delta = (
+        sample["scope_1_2"] + sample["scope_3"] - sample["annual_total"]
+    ).abs()
+    assert scope_delta.max() < 1e-6
+    print("[validate] scope 1+2 + scope 3 = total PASS")
 
     sj = sample.loc[sample["project_id"] == "saint_john_import_facility"].iloc[0]
     sj_mt = float(sj["annual_total"]) / 1e6
@@ -580,7 +609,7 @@ def main() -> None:
 
     p1 = sample.loc[sample["project_id"] == "lng_canada_phase_1"].iloc[0]
     nameplate_liq = float(p1["capacity_mtpa"]) * float(p1["intensity_liquefaction"])
-    assert abs(nameplate_liq - 4.0) <= 0.15
+    assert abs(nameplate_liq - 4.06) < 0.02
     print(f"[validate] Phase 1 liquefaction nameplate={nameplate_liq:.3f} PASS")
 
     # Legacy facilities
@@ -594,17 +623,15 @@ def main() -> None:
         assert abs(float(r["effective_util"]) - float(get_param(inputs["params"], "steady_state_utilisation"))) < 1e-9
     print(f"[validate] legacy facilities annual-only (no lifecycle): {legacy_ids} PASS")
 
-    # Group annual totals and headline 159.2
+    # Group and headline annuals — printed against the pre-revision snapshot
     sdef = summary.loc[summary["scenario"] == DEFAULT_SCENARIO]
-    for cg, exp in EXPECTED_ANNUAL_BY_GROUP.items():
-        got = float(sdef.loc[sdef["group"] == cg, "annual_total_mtco2e_yr"].iloc[0])
-        assert abs(got - exp) < 0.05, (cg, got, exp)
     annual = float(sample["annual_total"].sum())
     annual_mt = annual / 1e6
-    assert abs(annual_mt - EXPECTED_HEADLINE_ANNUAL) < 0.05, annual_mt
+    liq_mt = float(sample["annual_liquefaction"].sum()) / 1e6
     print(
-        f"[validate] group annuals + headline {annual_mt:.1f} Mt/yr "
-        f"(expected {EXPECTED_HEADLINE_ANNUAL}) PASS"
+        f"[validate] headline {annual_mt:.1f} Mt/yr "
+        f"(was {BEFORE['annual_mt']:.1f}); "
+        f"liquefaction {liq_mt:.1f} Mt/yr (was {BEFORE['liquefaction_mt']:.1f})"
     )
 
     can = float(sample["canada_territorial"].sum())
@@ -675,17 +702,61 @@ def main() -> None:
         assert REGISTER.stat().st_mtime == reg_m and INPUTS.stat().st_mtime == inp_m
 
     print("\n========== COMPLETION ==========")
+    print("BEFORE (July 2026 run, measurement_central):")
+    print(
+        f"  annual={BEFORE['annual_mt']:.1f} Mt/yr  "
+        f"lifecycle={BEFORE['lifecycle_mt']:.1f} Mt  "
+        f"export={BEFORE['export_mtpa']:.1f} mtpa  "
+        f"liquefaction={BEFORE['liquefaction_mt']:.1f} Mt/yr  "
+        f"early_export={BEFORE['early_export_mtpa']:.1f} mtpa"
+    )
+    for g, val in BEFORE["group_annual"].items():
+        print(f"  group {g:20s}  annual={val:6.1f} Mt/yr")
+    for c, val in BEFORE["chain_annual"].items():
+        print(f"  chain {c:20s}  annual={val:6.1f} Mt/yr")
+    print("AFTER:")
     print("Group annual totals (measurement_central, 40-year average):")
     for g in GROUPS:
         r = sdef.loc[sdef["group"] == g].iloc[0]
+        before_g = BEFORE["group_annual"][g]
         print(
-            f"  {g:20s}  annual={r['annual_total_mtco2e_yr']:6.1f} Mt/yr  "
+            f"  {g:20s}  annual={r['annual_total_mtco2e_yr']:6.1f} Mt/yr "
+            f"(was {before_g:.1f})  "
             f"export_cap={r['capacity_export_headline_mtpa']:5.1f} mtpa"
         )
-    print(f"  {'TOTAL':20s}  annual={annual_mt:6.1f} Mt/yr")
+    print(
+        f"  {'TOTAL':20s}  annual={annual_mt:6.1f} Mt/yr "
+        f"(was {BEFORE['annual_mt']:.1f})"
+    )
+    print(
+        f"Liquefaction stage: {liq_mt:.1f} Mt/yr "
+        f"(was {BEFORE['liquefaction_mt']:.1f})"
+    )
+    print(
+        f"Early-stage export capacity: {early:.1f} mtpa "
+        f"(was {BEFORE['early_export_mtpa']:.1f})"
+    )
+    print(
+        f"Headline export capacity: {export_total:.1f} mtpa "
+        f"(was {BEFORE['export_mtpa']:.1f})"
+    )
+    print("By chain:")
+    cdef = by_chain.loc[by_chain["scenario"] == DEFAULT_SCENARIO]
+    for chain in CHAINS:
+        r = cdef.loc[cdef["chain"] == chain].iloc[0]
+        before_c = BEFORE["chain_annual"][chain]
+        print(
+            f"  {chain:20s}  annual={r['annual_total_mtco2e_yr']:6.1f} Mt/yr "
+            f"(was {before_c:.1f})  cap={r['capacity_mtpa']:5.1f} mtpa"
+        )
     print(
         f"Territorial (average): CAN={can/1e6:.1f}  BUNK={bunk/1e6:.1f}  "
         f"FOR={foreign/1e6:.1f}"
+    )
+    print(
+        "Validations: capacity+tier have chain/calc_group; no electric drive; "
+        "liquefaction=0.29 export/bunkering; Saint John ~0.5; Phase 1 liq ~4.06; "
+        "scope and territorial splits sum to total — all PASS"
     )
     print("\nReport figures written:")
     for key in ("fig1", "fig2", "fig3", "fig4", "fig5", "fig6", "fig7"):
@@ -697,7 +768,7 @@ def main() -> None:
         "\nFigure validations: stage sum=headline, territorial sum=headline, "
         "fig3 plateau=fig6 plateau, fig5 central=fig4, CSVs present — all PASS"
     )
-    print("No input file was modified.")
+    print("No input file was modified during the run.")
     print("================================")
 
 

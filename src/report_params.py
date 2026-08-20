@@ -15,7 +15,8 @@ REPORT_PARAM_DEFAULTS: dict[str, dict] = {
         "source": (
             "Report assumption for trajectory figures when Asset Register "
             "first_export_year is blank (tilbury_phase_2, marinvest_baie_comeau, "
-            "summit_lake_pg_lng). Not used in the 40-year average calculation."
+            "summit_lake_pg_lng, fermeuse_energy_flng, discovery_t1t4, kanata_lng). "
+            "Not used in the 40-year average calculation."
         ),
     },
     "tmx_expansion_bpd": {

@@ -1,7 +1,7 @@
 stage,territorial_destination,annual_mtco2e_yr,share_pct,value_kind,scenario
-regasification,"CAN,FOR",1.770025032,1.111690664304043,40-year average,measurement_central
-pipeline_transport,CAN,4.635725204999999,2.9115364695460677,40-year average,measurement_central
-shipping,BUNK,5.2558919999999985,3.3010414900111447,40-year average,measurement_central
-liquefaction,CAN,7.9701810945,5.005791305423882,40-year average,measurement_central
-upstream_production,CAN,11.5893130125,7.278841173865169,40-year average,measurement_central
-combustion,"BUNK,CAN,FOR",127.99806813749997,80.39109889684968,40-year average,measurement_central
+regasification,"CAN,FOR",2.8351440319999996,1.0937130000689295,40-year average,measurement_central
+pipeline_transport,CAN,7.298522704999998,2.815549782889036,40-year average,measurement_central
+shipping,BUNK,8.451248999999997,3.260236797069905,40-year average,measurement_central
+upstream_production,CAN,18.246306762499994,7.038874457222591,40-year average,measurement_central
+liquefaction,CAN,21.16571584449999,8.165094370378204,40-year average,measurement_central
+combustion,"BUNK,CAN,FOR",201.22499938749996,77.62653159237135,40-year average,measurement_central

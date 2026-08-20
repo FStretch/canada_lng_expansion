@@ -140,8 +140,23 @@ def _stage_intensity(stage: str, row, scenario: str, inputs: dict) -> tuple[floa
         return float(inputs["upstream_by_scenario"][scenario]), f"scenario:{scenario}"
     if stage == "liquefaction":
         drive_key, drive_src = _resolve_drive(row, inputs)
-        pname = DRIVE_PARAM[drive_key]
-        return float(get_param(params, pname)), f"parameter:{pname} via {drive_src}"
+        if drive_key in {"electric_committed", "electric_planned"}:
+            raise MissingInputError(
+                f"Project '{row['project_id']}' still carries liquefaction_drive="
+                f"{drive_key!r}. Electric drive is not assumed; set the register "
+                f"drive to gas_turbine and keep the previous classification in "
+                f"liquefaction_drive_note."
+            )
+        val = factors.loc["liquefaction", "central"]
+        if pd.isna(val):
+            raise MissingInputError(
+                "Emission Factors: stage 'liquefaction' has a blank central value on "
+                "sheet 'Emission Factors'."
+            )
+        return (
+            float(val),
+            f"Emission Factors:central:liquefaction (drive={drive_key} via {drive_src})",
+        )
     val = factors.loc[stage, "central"]
     if pd.isna(val):
         raise MissingInputError(

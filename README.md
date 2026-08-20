@@ -11,18 +11,18 @@ At full buildout across all Canadian LNG assets:
 
 | | |
 |---|---|
-| Annual emissions | **159.2 MtCO2e/yr** |
-| Lifetime emissions | **6,196.7 MtCO2e** |
-| Export capacity | 58.1 mtpa across six projects |
-| Scope 1 and 2 | 24.2 Mt/yr, 15.2% |
-| Scope 3 | 135.0 Mt/yr, 84.8% |
+| Annual emissions | **259.2 MtCO2e/yr** |
+| Lifetime emissions | **10,193.7 MtCO2e** |
+| Export capacity | 95.1 mtpa across ten projects |
+| Scope 1 and 2 | 46.7 Mt/yr, 18.0% |
+| Scope 3 | 212.5 Mt/yr, 82.0% |
 
-Split by where the emissions are counted: **16.0% Canada, 7.3% international marine bunkers,
-76.7% foreign**.
+Split by where the emissions are counted: **18.5% Canada, 5.7% international marine bunkers,
+75.8% foreign**.
 
 Annual figures are averaged across each facility's operating life, which includes years of reduced
 output during start-up. Peak annual emissions once all facilities reach steady state are higher, at
-approximately 178 MtCO2e.
+approximately 295 MtCO2e.
 
 ---
 
@@ -54,8 +54,10 @@ substituting a default.
 
 Fifteen assets in scope, drawn from Global Energy Monitor's Global Gas Infrastructure Tracker
 (LNG Terminals, September 2025), Natural Resources Canada's project list, and Canada Energy
-Regulator export licence records. Three further projects are held in the register but cannot be
-modelled because no capacity is published.
+Regulator export licence records. Kanata LNG (June 2026) is added from proponent sources and is
+not in GEM. Discovery LNG is in GEM but was moved from inactive to early_proposed pending
+verification. Port of Hamilton has no published capacity and is excluded from totals rather than
+estimated.
 
 Three rules govern the register:
 
@@ -108,7 +110,7 @@ are not correlated.
 |---|---|---|
 | Upstream production | 0.25 | Canada Energy Regulator British Columbia oil and gas emissions, corrected for measured methane |
 | Pipeline transport | 0.10 | Literature band, validated against the BC assessment of Coastal GasLink |
-| Liquefaction | 0.29 or 0.12 | Set per project from the recorded drive type: gas turbine or electric |
+| Liquefaction | 0.29 | Gas turbine drive, applied to every terminal for its whole operating life. 0.12 is retained as the low bound and applies only if electrification is contracted and delivered |
 | Shipping | 0.12 | Howarth (2024), validated against IMO carrier data |
 | Regasification | 0.04 | RMI Oil Climate Index |
 | Combustion | 2.75 | IPCC 2006 Guidelines, default factor for natural gas |
@@ -117,6 +119,17 @@ are not correlated.
 liquefaction all happen here and draw on Canadian regulatory and inventory data. Shipping,
 regasification and combustion occur elsewhere and use international sources. That boundary matches
 the scope 1 and 2 versus scope 3 split.
+
+**Electric drive is not assumed for any terminal.** Of the projects claiming electrification, only
+Cedar and Woodfibre have interconnection works under construction; the remainder rest on memoranda
+of understanding, aspirations conditional on transmission that has not been built, or statements
+with no firm date. Ksi Lisims holds an MOU with BC Hydro for up to 600 MW conditional on the North
+Coast Transmission Line expansion, which is not built. LNG Canada Phase 2 states an intention to
+transition to electric motors as more renewable power becomes available, with no date and no
+contracted supply. A commitment contingent on infrastructure that does not exist is not a basis for
+lowering the emissions factor. Previous drive classifications are retained in
+`liquefaction_drive_note`. Where electrification is later contracted and built, this assumption
+should be revisited.
 
 **Upstream is derived rather than adopted.** The CER reports British Columbia oil and gas
 production, processing and transmission emissions of 14.6 MtCO2e for 2022, against roughly 63
@@ -206,6 +219,15 @@ journalists, with no project description filed. Summit Lake's 2.7 mtpa is an upp
 assessment the proponent asked to suspend. Both are identified by tier and can be removed from any
 total.
 
+**Discovery LNG is the least verified asset in the register.** It was moved from inactive to
+early_proposed pending verification. Capacity is Global Energy Monitor's 20 mtpa nameplate. No
+current filing or proponent activity was located in a review of news and regulatory sources in
+August 2026, and this classification should be revisited.
+
+**Fermeuse's 5.0 mtpa is derived, not published.** The proponent has not stated a liquefaction
+capacity. The figure is the lowest defensible derivation from the stated 9.7 Tcf Jeanne d'Arc
+reserve over a 40-year life.
+
 **Tilbury Phase 2's classification is a judgement.** FortisBC describes the expansion as serving
 Lower Mainland resilience and marine fuelling; NRCan lists it as an export project. This analysis
 places it on the bunkering chain and records the disagreement rather than resolving it.
@@ -213,9 +235,9 @@ places it on the bunkering chain and records the disagreement rather than resolv
 **Capacity is never summed across chains.** Export and bunkering capacity is liquefaction; import
 capacity is regasification. They measure opposite operations.
 
-**Annual figures come in two forms.** The headline of 159.2 MtCO2e a year is averaged across each
+**Annual figures come in two forms.** The headline of 259.2 MtCO2e a year is averaged across each
 facility's operating life. Time-series figures show actual annual values, which peak higher at
-approximately 178 MtCO2e. Both are stated wherever used.
+approximately 295 MtCO2e. Both are stated wherever used.
 
 ---
 
