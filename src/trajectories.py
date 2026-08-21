@@ -12,7 +12,7 @@ from typing import Iterable
 import pandas as pd
 
 from src.inputs import DEFAULT_SCENARIO, get_param
-from src.model import _fid_ok, _is_legacy, _lifespan, _stage_intensity
+from src.model import _fid_ok, _is_legacy, _lifespan, _stage_intensity, previously_classified_electric
 
 TRAJECTORY_YEARS = tuple(range(2025, 2051))
 CUMULATIVE_CASES = (
@@ -69,16 +69,38 @@ def _start_year(row, assumed_if_missing: int) -> tuple[int, bool]:
     return int(start), False
 
 
+def _liquefaction_intensity_for_mode(row, inputs: dict, mode: str | None) -> float | None:
+    """None means use the modelled (gas turbine) factor."""
+    if mode in (None, "gas"):
+        return None
+    elec = float(get_param(inputs["params"], "liquefaction_electric"))
+    gas = float(get_param(inputs["params"], "liquefaction_gas_turbine"))
+    if mode == "all_electric":
+        return elec
+    if mode == "claimed_electric":
+        return (
+            elec
+            if previously_classified_electric(row.get("liquefaction_drive_note"))
+            else gas
+        )
+    raise ValueError(f"Unknown liquefaction mode {mode!r}")
+
+
 def _chain_intensity(
     row,
     scenario: str,
     inputs: dict,
     *,
     canada_only: bool,
+    liquefaction_mode: str | None = None,
 ) -> float:
     total = 0.0
+    override = _liquefaction_intensity_for_mode(row, inputs, liquefaction_mode)
     for stage, where in inputs["chains"][row["chain"]]:
         if canada_only and where != "CAN":
+            continue
+        if stage == "liquefaction" and override is not None:
+            total += override
             continue
         intensity, _ = _stage_intensity(stage, row, scenario, inputs)
         total += intensity
@@ -109,6 +131,7 @@ def project_annual_mt(
     assumed_start: int,
     *,
     canada_only: bool = False,
+    liquefaction_mode: str | None = None,
 ) -> float | None:
     """MtCO2e in a calendar year for one asset, or None if excluded (no capacity)."""
     if pd.isna(row["capacity_mtpa"]):
@@ -122,7 +145,13 @@ def project_annual_mt(
     if util == 0.0:
         return 0.0
     mtpa_to_t = float(get_param(params, "mtpa_to_tonnes"))
-    intensity = _chain_intensity(row, scenario, inputs, canada_only=canada_only)
+    intensity = _chain_intensity(
+        row,
+        scenario,
+        inputs,
+        canada_only=canada_only,
+        liquefaction_mode=liquefaction_mode,
+    )
     return float(row["capacity_mtpa"]) * mtpa_to_t * util * intensity / 1e6
 
 
@@ -134,6 +163,7 @@ def annual_series(
     canada_only: bool = False,
     assumed_start: int | None = None,
     years: tuple[int, ...] = TRAJECTORY_YEARS,
+    liquefaction_mode: str | None = None,
 ) -> pd.DataFrame:
     """One row per year: annual_mtco2e_yr for the selected calc_groups."""
     from src.report_params import resolve_report_params
@@ -150,7 +180,13 @@ def annual_series(
             if groups is not None and row["calc_group"] not in groups:
                 continue
             val = project_annual_mt(
-                row, year, inputs, scenario, assumed_start, canada_only=canada_only
+                row,
+                year,
+                inputs,
+                scenario,
+                assumed_start,
+                canada_only=canada_only,
+                liquefaction_mode=liquefaction_mode,
             )
             if val is None:
                 continue

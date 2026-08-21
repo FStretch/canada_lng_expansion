@@ -1,0 +1,4 @@
+case,label,canada_territorial_mtco2e_yr,share_of_national_inventory,note,delta_vs_gas_mtco2e_yr,value_kind,scenario
+gas_turbine_current,Gas turbine (current),50.27326229399998,0.07243985921325645,Headline. Liquefaction 0.29 tCO2e/t for every terminal.,0.0,40-year average,measurement_central
+claimed_electric_delivered,If claimed electric drive is delivered,44.18811654399999,0.06367163767146973,"0.12 only for assets previously classified electric_committed or electric_planned: cedar_lng, ksi_lisims_lng, lng_canada_phase_2, marinvest_baie_comeau, summit_lake_pg_lng, woodfibre_lng.",-6.085145749999988,40-year average,measurement_central
+all_terminals_electric,If every terminal ran electric,37.254049945499986,0.05368018724135445,Liquefaction 0.12 tCO2e/t on every chain that includes it.,-13.019212348499991,40-year average,measurement_central

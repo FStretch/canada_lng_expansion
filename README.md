@@ -11,18 +11,18 @@ At full buildout across all Canadian LNG assets:
 
 | | |
 |---|---|
-| Annual emissions | **259.2 MtCO2e/yr** |
-| Lifetime emissions | **10,193.7 MtCO2e** |
-| Export capacity | 95.1 mtpa across ten projects |
-| Scope 1 and 2 | 46.7 Mt/yr, 18.0% |
-| Scope 3 | 212.5 Mt/yr, 82.0% |
+| Annual emissions | **272.0 MtCO2e/yr** |
+| Lifetime emissions | **10,704.7 MtCO2e** |
+| Export capacity | 100.1 mtpa across ten projects |
+| Scope 1 and 2 | 49.0 Mt/yr, 18.0% |
+| Scope 3 | 223.0 Mt/yr, 82.0% |
 
-Split by where the emissions are counted: **18.5% Canada, 5.7% international marine bunkers,
-75.8% foreign**.
+Split by where the emissions are counted: **18.5% Canada, 5.6% international marine bunkers,
+75.9% foreign**.
 
 Annual figures are averaged across each facility's operating life, which includes years of reduced
 output during start-up. Peak annual emissions once all facilities reach steady state are higher, at
-approximately 295 MtCO2e.
+approximately 310 MtCO2e.
 
 ---
 
@@ -35,11 +35,17 @@ Inputs/
 src/
   inputs.py                         loads and validates both workbooks, exposes typed frames
   model.py                          the lifecycle calculation and aggregation
+  trajectories.py                   calendar-year series (does not change the 40-year average)
+  figures_report.py                 report figures and their CSV series
+  slide_tables.py                   deck-facing Excel tables
+  report_params.py                  figure-only defaults if a parameter is not on the Inputs sheet
 build_results.py                    orchestrates a run and writes the outputs
 Outputs/
   Canada_LNG_Emissions_Results.xlsx results by project, chain, stage, group and scenario
+  SLIDE_TABLES.xlsx                 deck-facing tables (one sheet per table; send this file)
   RESULTS_SUMMARY.md                a review summary of the current run
   figures/                          the figures used in the report and deck
+  figure_data/                      CSV series behind each figure
 ```
 
 The two input workbooks are the only source of truth. The model reads them and never writes to
@@ -52,12 +58,12 @@ substituting a default.
 
 ### The asset register
 
-Fifteen assets in scope, drawn from Global Energy Monitor's Global Gas Infrastructure Tracker
+Nineteen assets in scope, drawn from Global Energy Monitor's Global Gas Infrastructure Tracker
 (LNG Terminals, September 2025), Natural Resources Canada's project list, and Canada Energy
 Regulator export licence records. Kanata LNG (June 2026) is added from proponent sources and is
 not in GEM. Discovery LNG is in GEM but was moved from inactive to early_proposed pending
 verification. Port of Hamilton has no published capacity and is excluded from totals rather than
-estimated.
+estimated. Tilbury Marine Jetty has no lifecycle chain and is excluded, not zeroed.
 
 Three rules govern the register:
 
@@ -129,7 +135,9 @@ transition to electric motors as more renewable power becomes available, with no
 contracted supply. A commitment contingent on infrastructure that does not exist is not a basis for
 lowering the emissions factor. Previous drive classifications are retained in
 `liquefaction_drive_note`. Where electrification is later contracted and built, this assumption
-should be revisited.
+should be revisited. An appendix comparator (`Outputs/figures/fig08_electrification_canada_territorial.png`)
+shows Canada-territorial LNG if liquefaction ran at 0.12 instead of 0.29, both for the assets that
+previously claimed electric drive and for every terminal.
 
 **Upstream is derived rather than adopted.** The CER reports British Columbia oil and gas
 production, processing and transmission emissions of 14.6 MtCO2e for 2022, against roughly 63
@@ -214,10 +222,10 @@ of which are eventually abandoned.
 carbon dioxide and methane split separately. The 30 per cent figure is tested across 20 to 40 per
 cent, but it is an assumption rather than a derivation.
 
-**Two projects rest on weak capacity figures.** Baie-Comeau's 10 mtpa is a figure the company gave
-journalists, with no project description filed. Summit Lake's 2.7 mtpa is an upper bound from an
-assessment the proponent asked to suspend. Both are identified by tier and can be removed from any
-total.
+**Two projects rest on weak capacity figures.** Kino Aski LNG's 15 mtpa (formerly Marinvest,
+Baie-Comeau) is from a 17 August 2026 press release; no regulatory process has begun and the
+feedgas pipeline route is undefined. Summit Lake's 2.7 mtpa is an upper bound from an assessment
+the proponent asked to suspend. Both are identified by tier and can be removed from any total.
 
 **Discovery LNG is the least verified asset in the register.** It was moved from inactive to
 early_proposed pending verification. Capacity is Global Energy Monitor's 20 mtpa nameplate. No
@@ -235,9 +243,9 @@ places it on the bunkering chain and records the disagreement rather than resolv
 **Capacity is never summed across chains.** Export and bunkering capacity is liquefaction; import
 capacity is regasification. They measure opposite operations.
 
-**Annual figures come in two forms.** The headline of 259.2 MtCO2e a year is averaged across each
+**Annual figures come in two forms.** The headline of 272.0 MtCO2e a year is averaged across each
 facility's operating life. Time-series figures show actual annual values, which peak higher at
-approximately 295 MtCO2e. Both are stated wherever used.
+approximately 310 MtCO2e. Both are stated wherever used.
 
 ---
 
@@ -247,9 +255,9 @@ approximately 295 MtCO2e. Both are stated wherever used.
 python build_results.py
 ```
 
-Reads both workbooks from `Inputs/`, runs all five scenarios, and writes the results workbook, the
-summary and the figures to `Outputs/`. The inputs are opened read-only and the run asserts they are
-unmodified on completion.
+Reads both workbooks from `Inputs/`, runs all five scenarios, and writes the results workbook,
+`SLIDE_TABLES.xlsx`, the summary and the figures to `Outputs/`. The inputs are opened read-only
+and the run asserts they are unmodified on completion.
 
 To change an assumption, edit the input workbooks rather than the code. The model has no
 hardcoded emission factors, capacities or parameters.

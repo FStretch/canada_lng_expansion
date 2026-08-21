@@ -1,4 +1,8 @@
-"""Seven report figures (PNG @ 200 dpi) plus CSV series under Outputs/figure_data/."""
+"""Eight report figures (PNG @ 200 dpi) plus CSV series under Outputs/figure_data/.
+
+Figures 1–7 are the main set. Figure 8 is the appendix electrification
+comparator for Canada-territorial emissions.
+"""
 
 from __future__ import annotations
 
@@ -10,7 +14,7 @@ import pandas as pd
 from matplotlib.lines import Line2D
 
 from src.inputs import DEFAULT_SCENARIO, get_param
-from src.model import GROUPS
+from src.model import GROUPS, electrification_counterfactual
 from src.report_params import resolve_report_params
 from src.trajectories import (
     annual_series,
@@ -649,6 +653,213 @@ def figure_7_oil_comparison(
 
 
 # ---------------------------------------------------------------------------
+# Figure 8 — appendix: gas vs electric, Canada territorial
+# ---------------------------------------------------------------------------
+
+def figure_8_electrification_appendix(
+    inputs: dict,
+    by_project: pd.DataFrame,
+    fig_dir: Path,
+    data_dir: Path,
+) -> dict:
+    cf = electrification_counterfactual(inputs, by_project)
+    head = cf["summary"].loc[cf["summary"]["slice"] == "headline"].iloc[0]
+    gas = float(head["canada_territorial_gas_mtco2e_yr"])
+    claimed = float(head["canada_territorial_claimed_electric_mtco2e_yr"])
+    alle = float(head["canada_territorial_all_electric_mtco2e_yr"])
+    gas_i = cf["gas_intensity"]
+    elec_i = cf["electric_intensity"]
+
+    group_rows = []
+    for g in GROUPS:
+        r = cf["summary"].loc[cf["summary"]["slice"] == g].iloc[0]
+        group_rows.append({
+            "calc_group": g,
+            "canada_territorial_gas_mtco2e_yr": float(r["canada_territorial_gas_mtco2e_yr"]),
+            "canada_territorial_claimed_electric_mtco2e_yr": float(
+                r["canada_territorial_claimed_electric_mtco2e_yr"]
+            ),
+            "canada_territorial_all_electric_mtco2e_yr": float(
+                r["canada_territorial_all_electric_mtco2e_yr"]
+            ),
+        })
+    groups_df = pd.DataFrame(group_rows)
+
+    pathway = canada_pathway_series(inputs["params"])
+    gas_s = annual_series(
+        inputs, DEFAULT_SCENARIO, calc_groups=GROUPS, canada_only=True, liquefaction_mode="gas"
+    ).set_index("year")["annual_mtco2e_yr"]
+    claimed_s = annual_series(
+        inputs,
+        DEFAULT_SCENARIO,
+        calc_groups=GROUPS,
+        canada_only=True,
+        liquefaction_mode="claimed_electric",
+    ).set_index("year")["annual_mtco2e_yr"]
+    elec_s = annual_series(
+        inputs,
+        DEFAULT_SCENARIO,
+        calc_groups=GROUPS,
+        canada_only=True,
+        liquefaction_mode="all_electric",
+    ).set_index("year")["annual_mtco2e_yr"]
+    traj = pathway.merge(gas_s.rename("can_gas_mtco2e_yr"), left_on="year", right_index=True)
+    traj = traj.merge(
+        claimed_s.rename("can_claimed_electric_mtco2e_yr"), left_on="year", right_index=True
+    )
+    traj = traj.merge(
+        elec_s.rename("can_all_electric_mtco2e_yr"), left_on="year", right_index=True
+    )
+    traj["scenario"] = DEFAULT_SCENARIO
+    traj["value_kind"] = "calendar-year annual, Canada territorial only"
+    _write_csv(traj, data_dir / "fig08_electrification_can_trajectories.csv")
+
+    avg_rows = pd.DataFrame([
+        {
+            "case": "gas_turbine_current",
+            "label": "Gas turbine (current)",
+            "canada_territorial_mtco2e_yr": gas,
+            "share_of_national_inventory": float(head["share_of_national_inventory_gas"]),
+            "note": f"Headline. Liquefaction {gas_i:.2f} tCO2e/t for every terminal.",
+        },
+        {
+            "case": "claimed_electric_delivered",
+            "label": "If claimed electric drive is delivered",
+            "canada_territorial_mtco2e_yr": claimed,
+            "share_of_national_inventory": claimed / cf["national"],
+            "note": (
+                "0.12 only for assets previously classified electric_committed or "
+                f"electric_planned: {', '.join(cf['claimed_project_ids'])}."
+            ),
+        },
+        {
+            "case": "all_terminals_electric",
+            "label": "If every terminal ran electric",
+            "canada_territorial_mtco2e_yr": alle,
+            "share_of_national_inventory": float(
+                head["share_of_national_inventory_all_electric"]
+            ),
+            "note": f"Liquefaction {elec_i:.2f} tCO2e/t on every chain that includes it.",
+        },
+    ])
+    avg_rows["delta_vs_gas_mtco2e_yr"] = avg_rows["canada_territorial_mtco2e_yr"] - gas
+    avg_rows["value_kind"] = "40-year average"
+    avg_rows["scenario"] = DEFAULT_SCENARIO
+    _write_csv(avg_rows, data_dir / "fig08_electrification_can_average.csv")
+    _write_csv(groups_df, data_dir / "fig08_electrification_can_by_group.csv")
+
+    _setup_style()
+    fig, (ax1, ax2) = plt.subplots(
+        1, 2, figsize=(13.2, 6.2), gridspec_kw={"width_ratios": [1.05, 1.25]}
+    )
+    cases = [
+        ("Gas turbine\n(current)", gas, C["vermillion"]),
+        ("Claimed electric\ndelivered", claimed, C["orange"]),
+        ("All terminals\nelectric", alle, C["blue"]),
+    ]
+    x = np.arange(len(cases))
+    ax1.bar(x, [c[1] for c in cases], color=[c[2] for c in cases], width=0.62)
+    ax1.set_xticks(x, [c[0] for c in cases])
+    ax1.set_ylabel("Canada-territorial LNG (MtCO₂e/yr)")
+    ax1.set_title("40-year average")
+    ymax = max(c[1] for c in cases)
+    ax1.set_ylim(0, ymax * 1.22)
+    for i, (label, val, _col) in enumerate(cases):
+        delta = val - gas
+        extra = "" if i == 0 else f"\n({delta:+.1f})"
+        ax1.text(i, val + ymax * 0.03, f"{val:.1f}{extra}", ha="center", va="bottom", fontsize=9)
+    ax1.axhline(gas, color=C["grey"], linewidth=0.6, linestyle=":")
+
+    ax2.plot(
+        traj["year"],
+        traj["canada_pathway_mtco2e_yr"],
+        color=C["black"],
+        linestyle=LINE_STYLES["solid"],
+        linewidth=1.6,
+        label="Canada legislated pathway",
+    )
+    ax2.plot(
+        traj["year"],
+        traj["can_gas_mtco2e_yr"],
+        color=C["vermillion"],
+        linestyle=LINE_STYLES["solid"],
+        linewidth=2.0,
+        label="CAN LNG, gas turbine",
+    )
+    ax2.plot(
+        traj["year"],
+        traj["can_claimed_electric_mtco2e_yr"],
+        color=C["orange"],
+        linestyle=LINE_STYLES["dashed"],
+        linewidth=2.0,
+        label="CAN LNG, claimed electric",
+    )
+    ax2.plot(
+        traj["year"],
+        traj["can_all_electric_mtco2e_yr"],
+        color=C["blue"],
+        linestyle=LINE_STYLES["dashdot"],
+        linewidth=2.0,
+        label="CAN LNG, all electric",
+    )
+    ax2.set_xlim(2025, 2050)
+    ax2.set_ylim(bottom=0)
+    ax2.set_xlabel("Year")
+    ax2.set_ylabel("Annual emissions (MtCO₂e/yr)")
+    ax2.set_title("Calendar-year territorial LNG")
+    ax2.legend(frameon=False, loc="upper right", fontsize=8)
+
+    fig.suptitle(
+        "Appendix · Canada-territorial LNG if liquefaction ran electric versus gas",
+        fontsize=13,
+        y=0.98,
+    )
+    fig.text(
+        0.5,
+        0.01,
+        (
+            f"Appendix figure · Scenario: {DEFAULT_SCENARIO}. Liquefaction is tagged CAN, "
+            f"so the {gas_i:.2f}→{elec_i:.2f} tCO2e/t switch lands entirely in Canada. "
+            f"Headline case is gas turbine for every terminal. Claimed-electric restores "
+            f"0.12 only where the register previously recorded electric_committed or "
+            f"electric_planned ({len(cf['claimed_project_ids'])} assets). "
+            "Electrification is not assumed in the main results."
+        ),
+        ha="center",
+        va="bottom",
+        fontsize=8,
+        color=C["grey"],
+        wrap=True,
+    )
+    fig.subplots_adjust(bottom=0.16, top=0.86, wspace=0.28)
+    out = fig_dir / "fig08_electrification_canada_territorial.png"
+    _save(fig, out)
+
+    plateau_gas = float(gas_s.max())
+    plateau_elec = float(elec_s.max())
+    assert alle < gas - 0.05
+    assert claimed <= gas + 1e-9
+    assert claimed >= alle - 1e-9
+    print("[validate] fig8 electric CAN < gas CAN PASS")
+
+    return {
+        "path": out,
+        "csv": data_dir / "fig08_electrification_can_average.csv",
+        "key": {
+            "can_gas": round(gas, 1),
+            "can_claimed_electric": round(claimed, 1),
+            "can_all_electric": round(alle, 1),
+            "delta_all_electric": round(alle - gas, 1),
+            "plateau_gas": round(plateau_gas, 1),
+            "plateau_all_electric": round(plateau_elec, 1),
+            "claimed_assets": len(cf["claimed_project_ids"]),
+        },
+        "counterfactual": cf,
+        "traj": traj,
+    }
+
+
+# ---------------------------------------------------------------------------
 # Orchestrator
 # ---------------------------------------------------------------------------
 
@@ -685,6 +896,9 @@ def build_all_report_figures(
     )
     results["fig6"] = figure_6_pathway_vs_total(inputs, fig_dir, data_dir)
     results["fig7"] = figure_7_oil_comparison(by_project, inputs, fig_dir, data_dir)
+    results["fig8"] = figure_8_electrification_appendix(
+        inputs, by_project, fig_dir, data_dir
+    )
 
     # Validations
     assert abs(results["fig1"]["stage_sum"] - headline) < 0.05, (
@@ -716,6 +930,9 @@ def build_all_report_figures(
         "fig05_pathway_three_upstream.csv",
         "fig06_pathway_vs_total_lng.csv",
         "fig07_oil_infrastructure_comparison.csv",
+        "fig08_electrification_can_average.csv",
+        "fig08_electrification_can_by_group.csv",
+        "fig08_electrification_can_trajectories.csv",
     ]
     for name in expected_csv:
         assert (data_dir / name).is_file(), name

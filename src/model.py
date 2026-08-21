@@ -166,6 +166,101 @@ def _stage_intensity(stage: str, row, scenario: str, inputs: dict) -> tuple[floa
     return float(val), f"Emission Factors:central:{stage}"
 
 
+def previously_classified_electric(note) -> bool:
+    """True when liquefaction_drive_note records a prior electric classification."""
+    if note is None or (isinstance(note, float) and pd.isna(note)):
+        return False
+    return "previously classified as electric_" in str(note).lower()
+
+
+def electrification_counterfactual(
+    inputs: dict,
+    by_project: pd.DataFrame,
+    scenario: str = DEFAULT_SCENARIO,
+) -> dict:
+    """Canada-territorial LNG if liquefaction ran electric (0.12) versus gas (0.29).
+
+    Does not change the headline case. Liquefaction is CAN-tagged on every chain
+    that includes it, so the intensity delta lands entirely in Canada territorial.
+    """
+    params = inputs["params"]
+    gas_i = float(get_param(params, "liquefaction_gas_turbine"))
+    elec_i = float(get_param(params, "liquefaction_electric"))
+    delta_i = gas_i - elec_i
+    national = float(get_param(params, "canada_national_emissions"))
+    t_low = float(get_param(params, "canada_2030_target_low"))
+    t_high = float(get_param(params, "canada_2030_target_high"))
+
+    sample = by_project.loc[
+        (~by_project["excluded_from_totals"]) & (by_project["scenario"] == scenario)
+    ].copy()
+    notes = inputs["assets"][["project_id", "liquefaction_drive_note"]].drop_duplicates(
+        "project_id"
+    )
+    sample = sample.merge(notes, on="project_id", how="left")
+    sample["claimed_electric"] = sample["liquefaction_drive_note"].map(
+        previously_classified_electric
+    )
+    has_liq = sample["annual_liquefaction"].notna()
+    sample["liq_delta_tco2e_yr"] = 0.0
+    sample.loc[has_liq, "liq_delta_tco2e_yr"] = (
+        sample.loc[has_liq, "effective_tonnes"] * delta_i
+    )
+    sample["liq_delta_claimed_tco2e_yr"] = sample["liq_delta_tco2e_yr"].where(
+        sample["claimed_electric"], 0.0
+    )
+    sample["can_gas_tco2e_yr"] = sample["canada_territorial"]
+    sample["can_all_electric_tco2e_yr"] = (
+        sample["canada_territorial"] - sample["liq_delta_tco2e_yr"]
+    )
+    sample["can_claimed_electric_tco2e_yr"] = (
+        sample["canada_territorial"] - sample["liq_delta_claimed_tco2e_yr"]
+    )
+
+    def _pack(g: pd.DataFrame, key: str) -> dict:
+        gas = float(g["can_gas_tco2e_yr"].sum()) / 1e6
+        claimed = float(g["can_claimed_electric_tco2e_yr"].sum()) / 1e6
+        alle = float(g["can_all_electric_tco2e_yr"].sum()) / 1e6
+        claimed_mtpa = float(
+            g.loc[g["claimed_electric"] & (g["chain"] == "export"), "capacity_mtpa"].sum()
+        )
+        liq_gas = float(g["annual_liquefaction"].sum()) / 1e6
+        return {
+            "slice": key,
+            "canada_territorial_gas_mtco2e_yr": gas,
+            "canada_territorial_claimed_electric_mtco2e_yr": claimed,
+            "canada_territorial_all_electric_mtco2e_yr": alle,
+            "delta_claimed_vs_gas_mtco2e_yr": claimed - gas,
+            "delta_all_electric_vs_gas_mtco2e_yr": alle - gas,
+            "liquefaction_gas_mtco2e_yr": liq_gas,
+            "claimed_electric_export_mtpa": claimed_mtpa,
+            "share_of_national_inventory_gas": gas / national,
+            "share_of_national_inventory_all_electric": alle / national,
+            "share_of_2030_target_low_gas": gas / t_low,
+            "share_of_2030_target_low_all_electric": alle / t_low,
+            "share_of_2030_target_high_gas": gas / t_high,
+            "share_of_2030_target_high_all_electric": alle / t_high,
+        }
+
+    rows = [_pack(sample, "headline")]
+    for group in GROUPS:
+        rows.append(_pack(sample.loc[sample["group"] == group], group))
+    summary = pd.DataFrame(rows)
+    claimed_ids = sorted(
+        sample.loc[sample["claimed_electric"], "project_id"].unique().tolist()
+    )
+    return {
+        "summary": summary,
+        "by_project": sample,
+        "gas_intensity": gas_i,
+        "electric_intensity": elec_i,
+        "claimed_project_ids": claimed_ids,
+        "national": national,
+        "target_low": t_low,
+        "target_high": t_high,
+    }
+
+
 def compute_by_project(inputs: dict) -> pd.DataFrame:
     params = inputs["params"]
     chains = inputs["chains"]

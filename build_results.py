@@ -18,6 +18,7 @@ from src.inputs import (
     load_inputs,
 )
 from src.figures_report import build_all_report_figures
+from src.slide_tables import build_slide_tables, write_slide_tables_xlsx
 from src.model import (
     CHAINS,
     GROUPS,
@@ -25,6 +26,7 @@ from src.model import (
     assumptions_used,
     by_stage,
     compute_by_project,
+    electrification_counterfactual,
     summarise,
     summarise_by_chain,
     territorial_table,
@@ -35,6 +37,7 @@ REGISTER = ROOT / "Inputs" / "Canada_LNG_Asset_Register.xlsx"
 INPUTS = ROOT / "Inputs" / "Canada_LNG_Data_Inputs.xlsx"
 OUT = ROOT / "Outputs"
 RESULTS = OUT / "Canada_LNG_Emissions_Results.xlsx"
+SLIDE_TABLES = OUT / "SLIDE_TABLES.xlsx"
 SUMMARY_MD = OUT / "RESULTS_SUMMARY.md"
 FIGURE = OUT / "figures" / "operating_vs_proposed.png"
 FIGURE_DIR = OUT / "figures"
@@ -62,10 +65,10 @@ BEFORE = {
 EXPECTED_EXPORT_BY_CALC = {
     "operating": 14.0,
     "under_construction": 5.4,
-    "proposed": 75.7,
+    "proposed": 80.7,
 }
-EXPECTED_EXPORT_TOTAL = 95.1
-EXPECTED_EARLY_EXPORT = 49.7
+EXPECTED_EXPORT_TOTAL = 100.1
+EXPECTED_EARLY_EXPORT = 54.7
 EXPECTED_ADVANCED_EXPORT = 26.0
 
 
@@ -149,6 +152,11 @@ def write_review_summary(
         f"Run at {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}. "
         "Numbers to one decimal. Inputs read-only. "
         f"`calc_group` from `{inputs['calc_group_source']}`."
+    )
+    lines.append("")
+    lines.append(
+        "Deck-facing tables (one sheet per table, 1-decimal): "
+        "`Outputs/SLIDE_TABLES.xlsx`. Send that workbook to the PPT chat."
     )
     lines.append("")
 
@@ -436,8 +444,65 @@ def write_review_summary(
     )
     lines.append("")
 
-    # 9 Anything wrong
-    lines.append("## 9. Anything that looks wrong")
+    # 9 Appendix comparator
+    cf = electrification_counterfactual(inputs, by_project)
+    head = cf["summary"].loc[cf["summary"]["slice"] == "headline"].iloc[0]
+    lines.append("## 9. Appendix · electrification counterfactual (Canada territorial)")
+    lines.append("")
+    lines.append(
+        "Headline case is gas turbine for every terminal. The rows below ask what "
+        "Canada-territorial LNG would be if liquefaction ran at the electric factor "
+        f"({cf['electric_intensity']:.2f} instead of {cf['gas_intensity']:.2f} tCO2e/t). "
+        "Liquefaction is tagged CAN, so the whole delta is territorial. "
+        "This does not change the headline totals."
+    )
+    lines.append("")
+    lines.append(
+        f"| case | CAN Mt/yr | vs gas | share of {cf['national']:.0f} Mt inventory | share of 2030 target low |"
+    )
+    lines.append("|---|---|---|---|---|")
+    gas = float(head["canada_territorial_gas_mtco2e_yr"])
+    claimed = float(head["canada_territorial_claimed_electric_mtco2e_yr"])
+    alle = float(head["canada_territorial_all_electric_mtco2e_yr"])
+    lines.append(
+        f"| Gas turbine (current) | {gas:.1f} | — | "
+        f"{float(head['share_of_national_inventory_gas'])*100:.1f}% | "
+        f"{float(head['share_of_2030_target_low_gas'])*100:.1f}% |"
+    )
+    lines.append(
+        f"| Claimed electric delivered | {claimed:.1f} | {claimed-gas:+.1f} | "
+        f"{claimed/cf['national']*100:.1f}% | "
+        f"{claimed/cf['target_low']*100:.1f}% |"
+    )
+    lines.append(
+        f"| All terminals electric | {alle:.1f} | {alle-gas:+.1f} | "
+        f"{float(head['share_of_national_inventory_all_electric'])*100:.1f}% | "
+        f"{float(head['share_of_2030_target_low_all_electric'])*100:.1f}% |"
+    )
+    lines.append("")
+    lines.append(
+        "Claimed-electric assets (previous `electric_committed` / `electric_planned`): "
+        + ", ".join(cf["claimed_project_ids"])
+        + "."
+    )
+    lines.append("")
+    lines.append("| calc_group | gas | claimed electric | all electric |")
+    lines.append("|---|---|---|---|")
+    for g in GROUPS:
+        r = cf["summary"].loc[cf["summary"]["slice"] == g].iloc[0]
+        lines.append(
+            f"| {g} | {r['canada_territorial_gas_mtco2e_yr']:.1f} | "
+            f"{r['canada_territorial_claimed_electric_mtco2e_yr']:.1f} | "
+            f"{r['canada_territorial_all_electric_mtco2e_yr']:.1f} |"
+        )
+    lines.append("")
+    lines.append(
+        "Figure: `Outputs/figures/fig08_electrification_canada_territorial.png`."
+    )
+    lines.append("")
+
+    # 10 Anything wrong
+    lines.append("## 10. Anything that looks wrong")
     lines.append("")
     if inputs["findings"]:
         for f in inputs["findings"]:
@@ -559,7 +624,7 @@ def main() -> None:
         f"(total {export_total:.1f} mtpa) PASS"
     )
 
-    # Proposed export: 26 advanced + 49.7 early (Kanata, Discovery, Fermeuse added)
+    # Proposed export: 26 advanced + 54.7 early (Kino Aski 15 mtpa)
     prop_exp = sample.loc[
         (sample["chain"] == "export") & (sample["calc_group"] == "proposed")
     ]
@@ -659,6 +724,11 @@ def main() -> None:
             ("foreign_territorial_mtco2e_yr", foreign / 1e6),
             ("legacy_projects", ", ".join(legacy_ids)),
             ("inputs_guard", "Inputs opened read-only (rb); writes only under Outputs/."),
+            (
+                "slide_tables",
+                "Outputs/SLIDE_TABLES.xlsx — send this file to the PPT chat "
+                "(one table per sheet, 1-decimal, project names).",
+            ),
             ("findings", "; ".join(inputs["findings"]) if inputs["findings"] else "none"),
         ],
         columns=["field", "value"],
@@ -691,12 +761,16 @@ def main() -> None:
         territorial.to_excel(writer, sheet_name="Territorial", index=False)
         assumptions.to_excel(writer, sheet_name="Assumptions", index=False)
         by_chain.to_excel(writer, sheet_name="By Chain", index=False)
+        elec_cf = electrification_counterfactual(inputs, by_project)
+        elec_cf["summary"].to_excel(writer, sheet_name="Electrification CAN", index=False)
 
     write_figure(by_project, FIGURE)
     write_review_summary(SUMMARY_MD, inputs, by_project, summary, by_chain, stages)
     fig_results = build_all_report_figures(
         inputs, by_project, stages, FIGURE_DIR, FIGURE_DATA
     )
+    slide_tables = build_slide_tables(inputs, by_project, summary, by_chain, stages)
+    write_slide_tables_xlsx(slide_tables, SLIDE_TABLES, FIGURE_DATA)
 
     if reg_m is not None and inp_m is not None:
         assert REGISTER.stat().st_mtime == reg_m and INPUTS.stat().st_mtime == inp_m
@@ -759,7 +833,7 @@ def main() -> None:
         "scope and territorial splits sum to total — all PASS"
     )
     print("\nReport figures written:")
-    for key in ("fig1", "fig2", "fig3", "fig4", "fig5", "fig6", "fig7"):
+    for key in ("fig1", "fig2", "fig3", "fig4", "fig5", "fig6", "fig7", "fig8"):
         r = fig_results[key]
         print(f"  {r['path'].name}")
         print(f"    csv: {r['csv'].name}")
@@ -768,6 +842,7 @@ def main() -> None:
         "\nFigure validations: stage sum=headline, territorial sum=headline, "
         "fig3 plateau=fig6 plateau, fig5 central=fig4, CSVs present — all PASS"
     )
+    print(f"\nSlide tables (send this to the PPT chat): {SLIDE_TABLES.name}")
     print("No input file was modified during the run.")
     print("================================")
 
