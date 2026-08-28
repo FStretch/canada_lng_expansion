@@ -454,7 +454,19 @@ def build_slide_tables(
                     "Central, ECCC 2% calendar year",
                     round(float(published["total_cad_billion"]) / 1000, 2),
                     "trillion 2025 CAD",
-                    "Named: central_price_family=eccc, central_aggregation=calendar_year",
+                    "Full CO2e × SC-CO2; overstates methane (see bound below)",
+                ),
+                (
+                    "Methane share of CO2e total",
+                    round(100 * float(ld["methane_share_of_co2e"]), 1),
+                    "%",
+                    "Upstream 0.25 minus inventory CO2 0.154, as share of chain total",
+                ),
+                (
+                    "Methane overstatement bound",
+                    round(100 * float(ld["methane_overstatement_pct"]), 1),
+                    "% of damage bill",
+                    "CH4-CO2e priced as CO2 vs SC-CH4; this overstates methane",
                 ),
                 (
                     "ECCC 1.5% calendar year",

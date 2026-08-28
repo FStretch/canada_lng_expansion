@@ -6,9 +6,9 @@ CO2e). This module does not change those calculations.
 The published central case is named in Inputs/loss_damage/parameters.csv
 (`central_price_family`, `central_aggregation`, `eccc_central_discount_rate_pct`).
 Default: ECCC official SC-CO2 at 2%, applied per calendar year of emissions
-(year t tonnes × year t SC, summed in 2025 CAD). ECCC 1.5% and 2.5% are the
-central case's sensitivity range. A second NPV of those year-values to 2025
-is a sensitivity only; the official schedule already embeds discounting.
+to the full GWP100 CO2e total (year t tonnes × year t SC, summed in 2025 CAD).
+This overstates methane (CH4-derived CO2e is charged at SC-CO2 rather than
+SC-CH4); that bound is reported. There is no native per-gas split.
 
 Burke et al. (2026) is an upper-bracket sensitivity across discount rates
 and Figure 2e horizons. Burke default is g = 0; Hatton's +2% is not used
@@ -17,9 +17,10 @@ as a Burke default. The SC already discounts the damage stream.
     SC_t = SC_2020_CAD2025 * (1 + g) ** (t - 2020)
     L&D  = sum_t SC_t * E_t
 
-ECCC path: official SC-CO2 and SC-CH4 schedules (C$2021) inflated to C$2025.
-Upstream is split into CO2 mass and CH4 mass (ECCC FAQ 4.2) for the split
-rows; GWP100-CO2e × SC-CO2 is kept as a comparison.
+ECCC path: official SC-CO2 schedule (C$2021) inflated to C$2025, applied to
+the full GWP100 CO2e total. This overstates the methane contribution: CH4-
+derived CO2e is charged at SC-CO2 rather than at SC-CH4. That bound is
+reported; there is no native per-gas split.
 """
 
 from __future__ import annotations
@@ -221,30 +222,38 @@ def cad_vintage_to_cad2025(cad: float, vintage_year: int, params: dict) -> float
     return cad * (d1 / d0)
 
 
-def chain_gas_intensities(row, scenario: str, inputs: dict) -> tuple[float, float, float, float]:
-    """tCO2e, tCO2, tCH4 per tonne LNG for this asset's chain.
+def methane_co2e_fraction_from_upstream(row, scenario: str, inputs: dict) -> float:
+    """CH4-derived share of this asset's CO2e from the upstream factor construction.
 
-    Upstream CO2 is the inventory CO2 portion; any excess of the scenario
-    upstream factor over that portion is methane CO2e, converted at GWP100.
-    Other stages are treated as CO2 (pipeline methane and shipping slip stay
-    inside the CO2e total as CO2). Import chains have no upstream.
+    Inventory upstream × (1 − upstream_ch4_share) is treated as CO2 (0.154 t/t
+    at default parameters: 0.22 × 0.7). Any excess of the scenario upstream
+    factor over that portion is CH4-derived CO2e. Pipeline and shipping
+    methane stay inside the CO2e total as CO2 and are not identified here.
+
+    This fraction is used only to bound the overstatement from pricing that
+    CH4-derived CO2e at SC-CO2 rather than at SC-CH4. It is not a native
+    per-gas split and is not used to construct published damages.
     """
+    chain = row["chain"]
+    if chain not in inputs["chains"]:
+        return 0.0
+    stages = inputs["chains"][chain]
+    if not any(stage == "upstream_production" for stage, _ in stages):
+        return 0.0
     params = inputs["params"]
-    gwp = float(get_param(params, "gwp100_ch4"))
     share = float(get_param(params, "upstream_ch4_share"))
     inv = float(inputs["upstream_by_scenario"]["inventory_as_reported"])
     co2_up = inv * (1.0 - share)
-    tco2e = tco2 = tch4 = 0.0
-    for stage, _where in inputs["chains"][row["chain"]]:
+    tco2e = 0.0
+    up = 0.0
+    for stage, _ in stages:
         intensity, _ = _stage_intensity(stage, row, scenario, inputs)
         tco2e += intensity
         if stage == "upstream_production":
-            ch4_co2e = max(intensity - co2_up, 0.0)
-            tco2 += min(intensity, co2_up)
-            tch4 += ch4_co2e / gwp
-        else:
-            tco2 += intensity
-    return tco2e, tco2, tch4, gwp
+            up = intensity
+    if tco2e <= 0:
+        return 0.0
+    return max(up - co2_up, 0.0) / tco2e
 
 
 def usd2020_to_cad2025(usd_2020: float, params: dict) -> float:
@@ -362,13 +371,19 @@ def compute_loss_damage(
         raise MissingInputError("ECCC schedules need 2020 at 2% for the CH4/CO2 ratio.") from exc
     ch4_co2_ratio_2020 = eccc_ch4_2020 / eccc_co2_2020
 
-    split_cache: dict[tuple, tuple[float, float, float, float]] = {}
+    gwp = float(get_param(inputs["params"], "gwp100_ch4"))
+    inv_up = float(inputs["upstream_by_scenario"]["inventory_as_reported"])
+    ch4_share_param = float(get_param(inputs["params"], "upstream_ch4_share"))
+    inventory_co2_upstream = inv_up * (1.0 - ch4_share_param)
+    frac_cache: dict[tuple, float] = {}
 
-    def _split_for(asset_row, scen: str):
+    def _methane_frac(asset_row, scen: str) -> float:
         key = (asset_row["project_id"], scen)
-        if key not in split_cache:
-            split_cache[key] = chain_gas_intensities(asset_row, scen, inputs)
-        return split_cache[key]
+        if key not in frac_cache:
+            frac_cache[key] = methane_co2e_fraction_from_upstream(
+                asset_row, scen, inputs
+            )
+        return frac_cache[key]
 
     if panel is None:
         panel = build_emissions_panel(
@@ -383,32 +398,23 @@ def compute_loss_damage(
     assets_by_id = {r["project_id"]: r for _, r in inputs["assets"].iterrows()}
 
     year_rows = []
+    methane_overstatement_cad = 0.0
+    methane_co2e_tonnes_central = 0.0
+    co2e_tonnes_central = 0.0
     for _, prec in panel.iterrows():
         row = assets_by_id[prec["project_id"]]
         scenario = prec["scenario"]
         year = int(prec["year"])
         mt = float(prec["emissions_mtco2e"])
-        tco2e_i, tco2_i, tch4_i, _gwp = _split_for(row, scenario)
         tonnes_co2e = mt * 1e6
-        if tco2e_i <= 0:
-            tonnes_co2 = tonnes_co2e
-            tonnes_ch4 = 0.0
-        else:
-            tonnes_co2 = tonnes_co2e * (tco2_i / tco2e_i)
-            tonnes_ch4 = tonnes_co2e * (tch4_i / tco2e_i)
-        try:
-            ratio_yr = float(eccc_ch4_idx.loc[(2.0, year)]) / float(
-                eccc_idx.loc[(2.0, year)]
-            )
-        except KeyError as exc:
-            raise MissingInputError(
-                f"ECCC CH4/CO2 ratio missing for 2% year {year}."
-            ) from exc
+        methane_frac = _methane_frac(row, scenario)
+        # Published damages price the full GWP100 CO2e total at SC-CO2.
+        # That overstates methane: CH4-derived CO2e is charged at SC-CO2
+        # rather than at SC-CH4. Do not treat this as conservative.
         for rate in BURKE_RATES:
             for g in GROWTH_RATES:
                 sc = burke_sc_cad2025(year, rate, g, burke_cad[rate], p)
-                hatton_gwp = sc * tonnes_co2e
-                hatton = sc * tonnes_co2 + (sc * ratio_yr) * tonnes_ch4
+                hatton = sc * tonnes_co2e
                 npv = hatton / ((1.0 + rate / 100.0) ** (year - analysis))
                 year_rows.append({
                     "price_family": "burke",
@@ -419,27 +425,21 @@ def compute_loss_damage(
                     "chain": row["chain"],
                     "year": year,
                     "emissions_mtco2e": mt,
-                    "emissions_mtco2": tonnes_co2 / 1e6,
-                    "emissions_mtch4": tonnes_ch4 / 1e6,
                     "discount_rate_pct": rate,
                     "growth_rate": g,
                     "sc_cad2025_per_t": sc,
                     "hatton_sum_cad": hatton,
-                    "hatton_gwp_cad": hatton_gwp,
                     "npv_analysis_year_cad": npv,
                 })
         for rate in ECCC_RATES:
             try:
                 sc21 = float(eccc_idx.loc[(rate, year)])
-                sc21_ch4 = float(eccc_ch4_idx.loc[(rate, year)])
             except KeyError as exc:
                 raise MissingInputError(
-                    f"ECCC schedule has no SC-CO2/SC-CH4 for rate {rate}% year {year}."
+                    f"ECCC schedule has no SC-CO2 for rate {rate}% year {year}."
                 ) from exc
             sc = cad2021_to_cad2025(sc21, p)
-            sc_ch4 = cad2021_to_cad2025(sc21_ch4, p)
-            undisc_gwp = sc * tonnes_co2e
-            undisc = sc * tonnes_co2 + sc_ch4 * tonnes_ch4
+            undisc = sc * tonnes_co2e
             npv = undisc / ((1.0 + rate / 100.0) ** (year - analysis))
             year_rows.append({
                 "price_family": "eccc",
@@ -450,15 +450,30 @@ def compute_loss_damage(
                 "chain": row["chain"],
                 "year": year,
                 "emissions_mtco2e": mt,
-                "emissions_mtco2": tonnes_co2 / 1e6,
-                "emissions_mtch4": tonnes_ch4 / 1e6,
                 "discount_rate_pct": rate,
                 "growth_rate": None,
                 "sc_cad2025_per_t": sc,
                 "hatton_sum_cad": undisc,
-                "hatton_gwp_cad": undisc_gwp,
                 "npv_analysis_year_cad": npv,
             })
+            if scenario == DEFAULT_SCENARIO and rate == eccc_r:
+                try:
+                    ratio_yr = float(eccc_ch4_idx.loc[(rate, year)]) / float(
+                        eccc_idx.loc[(rate, year)]
+                    )
+                except KeyError as exc:
+                    raise MissingInputError(
+                        f"ECCC CH4/CO2 ratio missing for {rate}% year {year}."
+                    ) from exc
+                methane_t = tonnes_co2e * methane_frac
+                # Priced as CO2: methane_t × SC-CO2.
+                # Priced as CH4: (methane_t / GWP100) × SC-CH4
+                #              = methane_t × SC-CO2 × (ratio / GWP100).
+                methane_overstatement_cad += (
+                    methane_t * sc * (1.0 - ratio_yr / gwp)
+                )
+                methane_co2e_tonnes_central += methane_t
+                co2e_tonnes_central += tonnes_co2e
 
 
     by_year = pd.DataFrame(year_rows)
@@ -469,13 +484,12 @@ def compute_loss_damage(
         em = (
             df.drop_duplicates(keys + ["project_id", "year"])
             .groupby(keys, dropna=False, sort=False)[
-                ["emissions_mtco2e", "emissions_mtco2", "emissions_mtch4"]
+                ["emissions_mtco2e"]
             ]
             .sum()
         )
         money = df.groupby(keys, dropna=False, sort=False).agg(
             hatton_sum_cad=("hatton_sum_cad", "sum"),
-            hatton_gwp_cad=("hatton_gwp_cad", "sum"),
             npv_analysis_year_cad=("npv_analysis_year_cad", "sum"),
         )
         return money.join(em).reset_index()
@@ -558,34 +572,16 @@ def compute_loss_damage(
         .drop_duplicates(["project_id", "year"])
     )
     tonnes_by_group = phys_years.groupby("calc_group")["emissions_mtco2e"].sum()
-    tonnes_co2_by_group = phys_years.groupby("calc_group")["emissions_mtco2"].sum()
-    tonnes_ch4_by_group = phys_years.groupby("calc_group")["emissions_mtch4"].sum()
     tonnes_all = float(tonnes_by_group.sum())
     tonnes_proposed = float(tonnes_by_group.get("proposed", 0.0))
-    tonnes_co2_all = float(tonnes_co2_by_group.sum())
-    tonnes_ch4_all = float(tonnes_ch4_by_group.sum())
-    tonnes_co2_proposed = float(tonnes_co2_by_group.get("proposed", 0.0))
-    tonnes_ch4_proposed = float(tonnes_ch4_by_group.get("proposed", 0.0))
-
-    def _gas_damages(sc_cad: float, t_co2: float, t_ch4: float) -> float:
-        return t_co2 * 1e6 * sc_cad + t_ch4 * 1e6 * sc_cad * ch4_co2_ratio_2020
 
     horizon_rows = []
     for _, hr in horizons.iterrows():
         sc_cad = usd2020_to_cad2025(float(hr["sc_co2_usd2020_per_t"]), p)
-        total = _gas_damages(sc_cad, tonnes_co2_all, tonnes_ch4_all)
-        proposed = _gas_damages(sc_cad, tonnes_co2_proposed, tonnes_ch4_proposed)
-        operating = _gas_damages(
-            sc_cad,
-            float(tonnes_co2_by_group.get("operating", 0.0)),
-            float(tonnes_ch4_by_group.get("operating", 0.0)),
-        )
-        uc = _gas_damages(
-            sc_cad,
-            float(tonnes_co2_by_group.get("under_construction", 0.0)),
-            float(tonnes_ch4_by_group.get("under_construction", 0.0)),
-        )
-        proposed_gwp = tonnes_proposed * 1e6 * sc_cad
+        total = tonnes_all * 1e6 * sc_cad
+        proposed = tonnes_proposed * 1e6 * sc_cad
+        operating = float(tonnes_by_group.get("operating", 0.0)) * 1e6 * sc_cad
+        uc = float(tonnes_by_group.get("under_construction", 0.0)) * 1e6 * sc_cad
         canada_borne_prop = proposed * canada_share
         ratio = None if v_proposed == 0 else proposed / v_proposed
         nat = None if canada_borne_prop == 0 else v_proposed / canada_borne_prop
@@ -601,7 +597,7 @@ def compute_loss_damage(
             "is_central": False,
             "total_cad_billion": total / 1e9,
             "proposed_cad_billion": proposed / 1e9,
-            "proposed_gwp_cad_billion": proposed_gwp / 1e9,
+            "proposed_gwp_cad_billion": proposed / 1e9,
             "operating_cad_billion": operating / 1e9,
             "under_construction_cad_billion": uc / 1e9,
             "canada_share_fd": canada_share,
@@ -676,6 +672,24 @@ def compute_loss_damage(
         })
     headline = pd.DataFrame(headline_rows)
     published = headline.loc[headline["case"] == "published_central"].iloc[0]
+    methane_share = (
+        methane_co2e_tonnes_central / co2e_tonnes_central
+        if co2e_tonnes_central else 0.0
+    )
+    published_cad = float(published["total_cad"])
+    methane_overstatement_pct = (
+        methane_overstatement_cad / published_cad if published_cad else 0.0
+    )
+
+    def _eccc_ratio(year: int) -> float:
+        return float(eccc_ch4_idx.loc[(eccc_r, year)]) / float(
+            eccc_idx.loc[(eccc_r, year)]
+        )
+
+    ch4_co2_ratio_2025 = _eccc_ratio(analysis)
+    ch4_co2_ratio_2080 = _eccc_ratio(int(eccc["year"].max()))
+    central_up = float(inputs["upstream_by_scenario"][DEFAULT_SCENARIO])
+    methane_co2e_per_t_lng = max(central_up - inventory_co2_upstream, 0.0)
 
     # Sensitivity grid: Burke rate × g, measurement_central, Hatton sum, all groups
     sens = by_group.loc[
@@ -812,9 +826,16 @@ def compute_loss_damage(
         "canada_row": can_row,
         "fig4": fig4,
         "tonnes_proposed_mtco2e": tonnes_proposed,
-        "tonnes_proposed_mtco2": tonnes_co2_proposed,
-        "tonnes_proposed_mtch4": tonnes_ch4_proposed,
+        "methane_share_of_co2e": methane_share,
+        "methane_co2e_mt": methane_co2e_tonnes_central / 1e6,
+        "methane_co2e_per_t_lng": methane_co2e_per_t_lng,
+        "inventory_co2_upstream": inventory_co2_upstream,
+        "methane_overstatement_cad": methane_overstatement_cad,
+        "methane_overstatement_pct": methane_overstatement_pct,
         "ch4_co2_ratio_2020": ch4_co2_ratio_2020,
+        "ch4_co2_ratio_2025": ch4_co2_ratio_2025,
+        "ch4_co2_ratio_2080": ch4_co2_ratio_2080,
+        "gwp100_ch4": gwp,
         "central_price_family": central_price_family,
         "central_aggregation": central_aggregation,
         "central_r": eccc_r,
@@ -889,21 +910,35 @@ def format_ld_markdown(ld: dict) -> list[str]:
         "Burke et al. (2026) is an **upper-bracket sensitivity** across discount "
         "rates and Figure 2e horizons (default g = 0; Hatton +2% is not used). "
         "Damages are **global**. They are not a legal bill. "
-        "Upstream is split into CO2 mass and CH4 mass; methane is priced at "
-        "ECCC SC-CH4 (and, on the Burke path, Burke SC-CO2 times the ECCC "
-        "SC-CH4/SC-CO2 ratio). Pipeline and shipping methane remain inside "
-        "the CO2e total as CO2. Construction, sea-level rise, extremes, and "
-        "mortality outside GDP are omitted."
+        "ECCC SC-CO2 is applied to the full GWP100 CO2e total. That "
+        "**overstates** the methane contribution (CH4-derived CO2e is charged "
+        "at SC-CO2 rather than at SC-CH4) and is not conservative in that "
+        "direction. Construction, sea-level rise, extremes, and mortality "
+        "outside GDP are omitted."
     )
     lines.append("")
-    ch4_mt = ld["tonnes_proposed_mtch4"]
-    co2_mt = ld["tonnes_proposed_mtco2"]
-    co2e_mt = ld["tonnes_proposed_mtco2e"]
+    share_ch4 = 100 * ld["methane_share_of_co2e"]
+    over_pct = 100 * ld["methane_overstatement_pct"]
+    total_mt = (
+        ld["methane_co2e_mt"] / ld["methane_share_of_co2e"]
+        if ld["methane_share_of_co2e"] else 0.0
+    )
+    up_central = ld["inventory_co2_upstream"] + ld["methane_co2e_per_t_lng"]
     lines.append(
-        f"Proposed remaining gases: {co2e_mt:,.0f} MtCO2e = {co2_mt:,.0f} MtCO2 + "
-        f"{ch4_mt:,.1f} MtCH4 "
-        f"(ECCC 2020 2% SC-CH4/SC-CO2 = {ld['ch4_co2_ratio_2020']:.2f}, "
-        f"GWP100 = 29.8)."
+        f"Methane share of the CO2e total is **{share_ch4:.1f}%** "
+        f"({ld['methane_co2e_mt']:,.0f} of {total_mt:,.0f} MtCO2e). "
+        f"That is the excess of the central upstream factor ({up_central:.2f}) "
+        f"over inventory CO2 ({ld['inventory_co2_upstream']:.3f}), i.e. "
+        f"{ld['methane_co2e_per_t_lng']:.3f} tCO2e per t LNG, as a share of "
+        f"the chain total. Pipeline and shipping methane stay inside CO2e as "
+        f"CO2 and are not in this share. GWP100 = {ld['gwp100_ch4']:.1f}; "
+        f"ECCC SC-CH4/SC-CO2 is {ld['ch4_co2_ratio_2025']:.1f} in 2025 and "
+        f"{ld['ch4_co2_ratio_2080']:.1f} by 2080. Pricing that methane CO2e "
+        f"as CO2 therefore charges it at roughly "
+        f"{ld['gwp100_ch4']/ld['ch4_co2_ratio_2025']:.1f}× the ECCC CH4 price "
+        f"in 2025. The resulting overstatement is **{over_pct:.1f}%** of the "
+        f"central damage bill. This treatment overstates methane and is not "
+        f"conservative in that direction."
     )
     lines.append("")
     lines.append(

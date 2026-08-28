@@ -573,11 +573,13 @@ def write_review_summary(
     )
     lines.append(
         "- Loss and damage central case is ECCC SC-CO2 at 2%, applied per "
-        "calendar year (`central_price_family=eccc`). Burke is an upper-bracket "
-        "sensitivity (g = 0). Damages after 2100, sea-level rise, extremes "
-        "and mortality outside GDP are omitted. Upstream methane is priced "
-        "with the ECCC SC-CH4/SC-CO2 ratio, not GWP100. The Conference Board "
-        "denominator is Table 1 GDP in 2020 CAD, inflated to 2025 CAD."
+        "calendar year to the full GWP100 CO2e total "
+        "(`central_price_family=eccc`). That overstates methane (CH4-derived "
+        "CO2e is charged at SC-CO2 rather than SC-CH4). Burke is an "
+        "upper-bracket sensitivity (g = 0). Damages after 2100, sea-level "
+        "rise, extremes and mortality outside GDP are omitted. The "
+        "Conference Board denominator is Table 1 GDP in 2020 CAD, inflated "
+        "to 2025 CAD."
     )
     lines.append("")
 
@@ -615,7 +617,11 @@ def _validate_loss_damage(sample: pd.DataFrame, ld: dict, panel: pd.DataFrame) -
     assert hb["externality_ratio_proposed"] > 10
     assert hb["national_value_over_borne"] > 1
     assert abs(hb["externalisation_share"] - (1 - share)) < 1e-12
-    assert float(hb["proposed_cad_billion"]) < float(hb["proposed_gwp_cad_billion"])
+    assert abs(
+        float(hb["proposed_cad_billion"]) - float(hb["proposed_gwp_cad_billion"])
+    ) < 1e-6
+    assert 0.01 < ld["methane_share_of_co2e"] < 0.08, ld["methane_share_of_co2e"]
+    assert 0.0 < ld["methane_overstatement_pct"] < 0.10, ld["methane_overstatement_pct"]
     assert ld["gva"] > ld["gva_proposed_as_published"]
     assert not ld["fig4"]["canada_in_recipient_panel"]
     assert abs(ld["fig4"]["usa_owing_usd"] / 1e12 - 10.18) < 0.15
