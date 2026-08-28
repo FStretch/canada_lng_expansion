@@ -19,6 +19,10 @@ from src.inputs import (
 )
 from src.figures_report import build_all_report_figures
 from src.slide_tables import build_slide_tables, write_slide_tables_xlsx
+from src.placeholder_sensitivity import (
+    format_placeholder_markdown,
+    run_placeholder_start_sensitivity,
+)
 from src.loss_damage import compute_loss_damage, format_ld_markdown, write_ld_figure
 from src.trajectories import (
     PANEL_START_YEAR,
@@ -138,6 +142,7 @@ def write_review_summary(
     stages: pd.DataFrame,
     panel: pd.DataFrame,
     ld: dict | None = None,
+    placeholder_sens: dict | None = None,
 ) -> None:
     sample = by_project.loc[
         (~by_project["excluded_from_totals"]) & (by_project["scenario"] == DEFAULT_SCENARIO)
@@ -477,6 +482,15 @@ def write_review_summary(
         f"contracted and delivered. Previous drive classifications are in "
         f"`liquefaction_drive_note`."
     )
+    if placeholder_sens is not None:
+        lines.append(
+            f"- **Placeholder start year** (`assumed_first_export_year_if_missing`="
+            f"{placeholder_sens['named_start']}): "
+            f"{placeholder_sens['placeholder_mt']:.1f} MtCO2e "
+            f"({placeholder_sens['placeholder_pct']:.1f}% of lifetime) from six "
+            "assets with a blank `first_export_year`. The 2069 tail is entirely "
+            "this fill. Sensitivity at 2033 and 2035 is tabulated below."
+        )
     lines.append(
         f"- **Liquefaction drive default** for remaining `not_published` "
         f"(domestic) rows: `{inputs['liquefaction_drive_default']}` → "
@@ -603,6 +617,8 @@ def write_review_summary(
 
     if ld is not None:
         lines.extend(format_ld_markdown(ld))
+    if placeholder_sens is not None:
+        lines.extend(format_placeholder_markdown(placeholder_sens))
 
     path.write_text("\n".join(lines), encoding="utf-8")
     print(f"Wrote review summary: {path}")
@@ -924,6 +940,14 @@ def main() -> None:
         f"({panel_n_emitting(panel, peak_year, DEFAULT_SCENARIO)} assets); "
         f"life_average_annual_mt {annual_mt:.1f}"
     )
+    placeholder_sens = run_placeholder_start_sensitivity(
+        inputs, INPUTS_DIR, panel, ld
+    )
+    print(
+        f"[validate] placeholder-start assets "
+        f"{placeholder_sens['placeholder_mt']:.1f} Mt "
+        f"({placeholder_sens['placeholder_pct']:.1f}% of lifetime) PASS"
+    )
     budgets = carbon_budget_shares(panel_life_mt, inputs["params"])
     b15 = budgets.loc[budgets["parameter"] == "remaining_15c_budget"].iloc[0]
     print(
@@ -977,6 +1001,12 @@ def main() -> None:
             ("life_average_basis", "life-average utilisation over each asset window"),
             ("lifetime_total_mtco2e", panel_life_mt),
             ("lifetime_basis", "sum of calendar panel; excludes legacy"),
+            (
+                "assumed_first_export_year_if_missing",
+                int(get_param(inputs["params"], "assumed_first_export_year_if_missing")),
+            ),
+            ("placeholder_lifetime_mtco2e", placeholder_sens["placeholder_mt"]),
+            ("placeholder_share_of_lifetime_pct", placeholder_sens["placeholder_pct"]),
             (
                 "carbon_budget_units_note",
                 "Lifetime is GWP100 CO2e; GCB 2025 budgets are CO2. "
@@ -1046,7 +1076,15 @@ def main() -> None:
 
     write_figure(by_project, FIGURE)
     write_review_summary(
-        SUMMARY_MD, inputs, by_project, summary, by_chain, stages, panel, ld=ld
+        SUMMARY_MD,
+        inputs,
+        by_project,
+        summary,
+        by_chain,
+        stages,
+        panel,
+        ld=ld,
+        placeholder_sens=placeholder_sens,
     )
     fig_results = build_all_report_figures(
         inputs, by_project, stages, FIGURE_DIR, FIGURE_DATA, panel=panel
@@ -1071,6 +1109,12 @@ def main() -> None:
     ld["burke_grid"].to_csv(FIGURE_DATA / "ld_burke_grid.csv", index=False)
     ld["eccc_grid"].to_csv(FIGURE_DATA / "ld_eccc_grid.csv", index=False)
     ld["price_by_year"].to_csv(FIGURE_DATA / "ld_price_by_year.csv", index=False)
+    placeholder_sens["cases"].to_csv(
+        FIGURE_DATA / "placeholder_start_sensitivity.csv", index=False
+    )
+    placeholder_sens["by_asset"].to_csv(
+        FIGURE_DATA / "placeholder_start_by_asset.csv", index=False
+    )
     panel.to_csv(FIGURE_DATA / "emissions_panel.csv", index=False)
     slide_tables = build_slide_tables(
         inputs, by_project, summary, by_chain, stages, panel, ld=ld

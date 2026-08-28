@@ -32,7 +32,6 @@ import pandas as pd
 
 from src.inputs import DEFAULT_SCENARIO, INTENSITY_SCENARIOS, MissingInputError, get_param
 from src.model import GROUPS, _stage_intensity
-from src.report_params import resolve_report_params
 from src.trajectories import build_emissions_panel, calendar_bounds, project_annual_mt
 
 BURKE_RATES = (1.5, 2.0, 3.0, 5.0)
@@ -304,6 +303,7 @@ def compute_loss_damage(
     inputs: dict,
     inputs_dir: Path,
     panel: pd.DataFrame | None = None,
+    assumed_start: int | None = None,
 ) -> dict:
     ld = load_ld_params(inputs_dir)
     p = ld["params"]
@@ -313,8 +313,10 @@ def compute_loss_damage(
     eccc = load_eccc_schedule(inputs_dir, p)
     eccc_ch4 = load_eccc_ch4(inputs_dir, p)
     fig4 = load_fig4_canada(inputs_dir, p)
-    report, _ = resolve_report_params(inputs["params"])
-    assumed_start = int(report["assumed_first_export_year_if_missing"])
+    if assumed_start is None:
+        assumed_start = int(
+            get_param(inputs["params"], "assumed_first_export_year_if_missing")
+        )
     year0, year1 = calendar_bounds(inputs, assumed_start)
     horizon = int(float(_required(p, "damages_horizon_year")))
     analysis = int(float(_required(p, "analysis_year")))

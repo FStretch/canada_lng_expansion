@@ -78,6 +78,7 @@ REQUIRED_PARAMS = (
     "lng_export_licence_max_term",
     "lng_energy_content",
     "liquefaction_electrification_assumed",
+    "assumed_first_export_year_if_missing",
 )
 
 

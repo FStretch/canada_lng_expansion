@@ -198,11 +198,8 @@ def build_emissions_panel(
     Legacy assets (outlived design life) are omitted. Years with zero
     output are omitted. Lifetime totals are the sum of this frame.
     """
-    from src.report_params import resolve_report_params
-
-    report, _ = resolve_report_params(inputs["params"])
     if assumed_start is None:
-        assumed_start = int(report["assumed_first_export_year_if_missing"])
+        assumed_start = int(get_param(inputs["params"], "assumed_first_export_year_if_missing"))
     scen_list = tuple(scenarios) if scenarios is not None else INTENSITY_SCENARIOS
     year0, year1 = calendar_bounds(inputs, assumed_start)
     years = range(year0, year1 + 1)
@@ -339,11 +336,8 @@ def annual_series(
     liquefaction_mode: str | None = None,
 ) -> pd.DataFrame:
     """One row per year: annual_mtco2e_yr for the selected calc_groups."""
-    from src.report_params import resolve_report_params
-
-    report, _ = resolve_report_params(inputs["params"])
     if assumed_start is None:
-        assumed_start = int(report["assumed_first_export_year_if_missing"])
+        assumed_start = int(get_param(inputs["params"], "assumed_first_export_year_if_missing"))
     groups = set(calc_groups) if calc_groups is not None else None
 
     rows = []

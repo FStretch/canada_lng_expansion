@@ -548,6 +548,19 @@ def figure_7_oil_comparison(
 
     params = inputs["params"]
     report, audit = resolve_report_params(params)
+    audit = [
+        {
+            "parameter": "assumed_first_export_year_if_missing",
+            "value": int(get_param(params, "assumed_first_export_year_if_missing")),
+            "unit": "year",
+            "source": (
+                "Parameters sheet. Fills blank Asset Register first_export_year "
+                "for six in-scope assets. The published panel tail is this placeholder."
+            ),
+            "origin": "Parameters sheet",
+            "unvalidated": False,
+        }
+    ] + audit
     tmx_full_bpd = float(get_param(params, "tmx_total_system_bpd"))
     tmx_exp_bpd = float(report["tmx_expansion_bpd"])
     ab_bc_bpd = float(report["alberta_bc_bitumen_pipeline_bpd"])

@@ -1,24 +1,15 @@
 """Report-only parameters not yet on the Data Inputs Parameters sheet.
 
-Inputs remain read-only. Values here are used for figures when the workbook
-does not already define the same parameter name. Prefer workbook values when
-present. Every key used is written to Outputs/figure_data/ for audit.
+The placeholder first-export year now lives on the Parameters sheet
+(`assumed_first_export_year_if_missing`). Remaining keys here are figure
+comparators (TMX expansion, Alberta–BC bitumen). Prefer workbook values
+when present. Every key used is written to Outputs/figure_data/ for audit.
 """
 
 from __future__ import annotations
 
 # Defaults for figure construction. Sources are recorded alongside values.
 REPORT_PARAM_DEFAULTS: dict[str, dict] = {
-    "assumed_first_export_year_if_missing": {
-        "value": 2030,
-        "unit": "year",
-        "source": (
-            "Report assumption for trajectory figures when Asset Register "
-            "first_export_year is blank (tilbury_phase_2, marinvest_baie_comeau, "
-            "summit_lake_pg_lng, fermeuse_energy_flng, discovery_t1t4, kanata_lng). "
-            "Not used in the 40-year average calculation."
-        ),
-    },
     "tmx_expansion_bpd": {
         "value": 590_000,
         "unit": "bpd",

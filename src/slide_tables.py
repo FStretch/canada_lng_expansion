@@ -578,6 +578,8 @@ FIGURE_SHEET_NAMES = {
     "ld_burke_grid.csv": "ld_burke_grid",
     "ld_eccc_grid.csv": "ld_eccc_grid",
     "ld_price_by_year.csv": "ld_price_by_year",
+    "placeholder_start_sensitivity.csv": "placeholder_start_sens",
+    "placeholder_start_by_asset.csv": "placeholder_start_assets",
 }
 
 
