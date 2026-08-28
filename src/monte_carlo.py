@@ -517,7 +517,7 @@ def run_monte_carlo(
     }
 
 
-def format_mc_markdown(mc: dict) -> list[str]:
+def format_mc_markdown(mc: dict, published: dict | None = None) -> list[str]:
     lines = []
     lines.append("## Monte Carlo (physics sampled, ECCC 2% applied after)")
     lines.append("")
@@ -561,4 +561,40 @@ def format_mc_markdown(mc: dict) -> list[str]:
             f"{r.central_damage_cad_billion:.0f} |"
         )
     lines.append("")
+    if published is not None:
+        def _full(metric: str) -> pd.Series:
+            return summ.loc[
+                (summ["build_out"] == "full") & (summ["metric"] == metric)
+            ].iloc[0]
+
+        life = _full("lifetime_mtco2e")
+        peak = _full("peak_mtco2e_yr")
+        dmg = _full("central_damage_cad_billion")
+        lines.append("Central case versus Monte Carlo median (full build-out):")
+        lines.append("")
+        lines.append("| quantity | central case | Monte Carlo median [p5, p95] |")
+        lines.append("|---|---|---|")
+        lines.append(
+            f"| Lifetime (Mt) | {published['lifetime_mt']:.1f} | "
+            f"{life['median']:.1f} [{life['p05']:.1f}, {life['p95']:.1f}] |"
+        )
+        lines.append(
+            f"| Peak-year (Mt) | {published['peak_mt']:.1f} in {int(published['peak_year'])} | "
+            f"{peak['median']:.1f} [{peak['p05']:.1f}, {peak['p95']:.1f}] |"
+        )
+        lines.append(
+            f"| ECCC 2% damage (CAD bn) | {published['damage_cad_bn']:.0f} | "
+            f"{dmg['median']:.0f} [{dmg['p05']:.0f}, {dmg['p95']:.0f}] |"
+        )
+        lines.append("")
+        lines.append(
+            "They differ because the stage triangles are right-skewed "
+            "(shipping 0.05 / 0.12 / 0.31 especially): the Monte Carlo median is "
+            "not the point estimate from central factor values."
+        )
+        lines.append("")
+        lines.append(
+            "Which of the two should be the paper's headline number is not chosen here."
+        )
+        lines.append("")
     return lines

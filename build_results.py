@@ -630,7 +630,16 @@ def write_review_summary(
     if placeholder_sens is not None:
         lines.extend(format_placeholder_markdown(placeholder_sens))
     if mc is not None:
-        lines.extend(format_mc_markdown(mc))
+        published_vs_mc = None
+        if ld is not None:
+            h = ld["headline"].set_index("case")
+            published_vs_mc = {
+                "lifetime_mt": lifecycle,
+                "peak_year": peak_year,
+                "peak_mt": peak_mt,
+                "damage_cad_bn": float(h.loc["published_central", "total_cad_billion"]),
+            }
+        lines.extend(format_mc_markdown(mc, published=published_vs_mc))
     if lca is not None:
         lines.extend(format_lca_markdown(lca["tables"]))
 
@@ -1179,7 +1188,7 @@ def main() -> None:
     mc["draws"].to_csv(FIGURE_DATA / "mc_draws.csv", index=False)
     panel.to_csv(FIGURE_DATA / "emissions_panel.csv", index=False)
     slide_tables = build_slide_tables(
-        inputs, by_project, summary, by_chain, stages, panel, ld=ld
+        inputs, by_project, summary, by_chain, stages, panel, ld=ld, mc=mc
     )
     write_slide_tables_xlsx(slide_tables, SLIDE_TABLES, FIGURE_DATA)
 

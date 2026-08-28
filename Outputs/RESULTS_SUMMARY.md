@@ -1,6 +1,6 @@
 # Canada LNG lifecycle emissions — review summary
 
-Default scenario: `measurement_central`. Run at 2026-08-28 13:49 UTC. Numbers to one decimal. Inputs read-only. `calc_group` from `Asset Register:calc_group`.
+Default scenario: `measurement_central`. Run at 2026-08-28 15:48 UTC. Numbers to one decimal. Inputs read-only. `calc_group` from `Asset Register:calc_group`.
 
 Deck-facing tables (one sheet per table, 1-decimal): `Outputs/SLIDE_TABLES.xlsx`. Send that workbook to the PPT chat.
 
@@ -217,7 +217,7 @@ Placeholder-start assets account for **5646.9 MtCO2e** (59.1% of the 9558.2 Mt l
 
 ## Monte Carlo (physics sampled, ECCC 2% applied after)
 
-10,000 draws, seed `20260828`. Physics 0.19s; pricing 0.02s. Kernel vs published panel max abs 5.7e-14 Mt. Liquefaction held at 0.29. Howarth 0.55 is a named point, not a draw.
+10,000 draws, seed `20260828`. Physics 0.18s; pricing 0.03s. Kernel vs published panel max abs 5.7e-14 Mt. Liquefaction held at 0.29. Howarth 0.55 is a named point, not a draw.
 
 | build-out | lifetime median [p5, p95] Mt | peak-year median [p5, p95] Mt | ECCC 2% damage median [p5, p95] CAD bn |
 |---|---|---|---|
@@ -232,6 +232,18 @@ Howarth 0.55 (other stages central, not inside the interval):
 | committed | 2072.2 | 2030 / 64.8 | 848 |
 | committed_plus_advanced | 4390.6 | 2037 / 158.5 | 1861 |
 | full | 10365.8 | 2037 / 335.2 | 4628 |
+
+Central case versus Monte Carlo median (full build-out):
+
+| quantity | central case | Monte Carlo median [p5, p95] |
+|---|---|---|
+| Lifetime (Mt) | 9558.2 | 9721.1 [8509.6, 11026.1] |
+| Peak-year (Mt) | 309.1 in 2037 | 314.6 [297.6, 332.3] |
+| ECCC 2% damage (CAD bn) | 4267 | 4340 [3715, 5034] |
+
+They differ because the stage triangles are right-skewed (shipping 0.05 / 0.12 / 0.31 especially): the Monte Carlo median is not the point estimate from central factor values.
+
+Which of the two should be the paper's headline number is not chosen here.
 
 ## Lifecycle intensity comparison
 

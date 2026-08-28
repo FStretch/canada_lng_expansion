@@ -42,6 +42,7 @@ def build_slide_tables(
     stages: pd.DataFrame,
     panel: pd.DataFrame,
     ld: dict | None = None,
+    mc: dict | None = None,
 ) -> dict[str, pd.DataFrame]:
     sample = by_project.loc[
         (~by_project["excluded_from_totals"]) & (by_project["scenario"] == DEFAULT_SCENARIO)
@@ -91,6 +92,7 @@ def build_slide_tables(
             ("18_Carbon_budget", "Lifetime CO2e vs GCB 2025 remaining CO2 budgets", "% of GtCO2"),
             ("19_LCA_comparison", "This model vs published LNG LCAs on aligned boundaries", "tCO2e/t"),
             ("19_LCA_excluded", "Named sources that are not LNG LCAs", "—"),
+            ("20_Central_vs_MC", "Central-case point estimate vs Monte Carlo median (full build-out)", "Mt and CAD bn"),
         ],
         columns=["sheet", "contents", "units"],
     )
@@ -109,7 +111,7 @@ def build_slide_tables(
                 "MtCO2e/yr",
                 "Life-average util over each asset window; not a calendar year",
             ),
-            ("Lifecycle emissions", _r1(lifecycle), "MtCO2e", "Sum of calendar panel; excludes legacy"),
+            ("Lifecycle emissions", _r1(lifecycle), "MtCO2e", "Central case: calendar-panel sum; excludes legacy. Not the Monte Carlo median."),
             ("Export capacity", _r1(export_cap), "mtpa", "Export chain only; liquefaction nameplate"),
             ("Canada territorial", _r1(can), "MtCO2e/yr", "Stages tagged CAN (life-average)"),
             ("International bunkers", _r1(bunk), "MtCO2e/yr", "UNFCCC bunkers, no country (life-average)"),
@@ -337,6 +339,51 @@ def build_slide_tables(
     ]
     tables["19_LCA_excluded"] = lca["excluded"]
 
+    if mc is not None and ld is not None:
+        summ = mc["summary"]
+
+        def _mc_row(metric: str) -> pd.Series:
+            return summ.loc[
+                (summ["build_out"] == "full") & (summ["metric"] == metric)
+            ].iloc[0]
+
+        h = ld["headline"].set_index("case")
+        damage = float(h.loc["published_central", "total_cad_billion"])
+        life = _mc_row("lifetime_mtco2e")
+        peak = _mc_row("peak_mtco2e_yr")
+        dmg = _mc_row("central_damage_cad_billion")
+        tables["20_Central_vs_MC"] = pd.DataFrame(
+            [
+                {
+                    "quantity": "Lifetime",
+                    "central_case": _r1(lifecycle),
+                    "mc_median": _r1(life["median"]),
+                    "mc_p05": _r1(life["p05"]),
+                    "mc_p95": _r1(life["p95"]),
+                    "unit": "MtCO2e",
+                    "note": "Central case is the point estimate from central factors.",
+                },
+                {
+                    "quantity": "Peak-year emissions",
+                    "central_case": _r1(peak_mt),
+                    "mc_median": _r1(peak["median"]),
+                    "mc_p05": _r1(peak["p05"]),
+                    "mc_p95": _r1(peak["p95"]),
+                    "unit": "MtCO2e/yr",
+                    "note": f"Central peak year {peak_year}.",
+                },
+                {
+                    "quantity": "ECCC 2% damage",
+                    "central_case": round(damage, 0),
+                    "mc_median": round(float(dmg["median"]), 0),
+                    "mc_p05": round(float(dmg["p05"]), 0),
+                    "mc_p95": round(float(dmg["p95"]), 0),
+                    "unit": "CAD bn 2025",
+                    "note": "Calendar-year ECCC 2%.",
+                },
+            ]
+        )
+
     gas = float(head["canada_territorial_gas_mtco2e_yr"])
     claimed = float(head["canada_territorial_claimed_electric_mtco2e_yr"])
     alle = float(head["canada_territorial_all_electric_mtco2e_yr"])
@@ -511,6 +558,13 @@ def build_slide_tables(
             (
                 "send_this_file",
                 "Outputs/SLIDE_TABLES.xlsx — one table per sheet, for the PPT Claude chat.",
+            ),
+            (
+                "central_vs_mc",
+                "Central case (sheet 01, 20) is the point estimate from central factor values. "
+                "Monte Carlo median (sheet 20) is higher because the stage triangles are "
+                "right-skewed (shipping 0.05/0.12/0.31). They are different quantities. "
+                "Which is the paper headline is not chosen here.",
             ),
         ],
         columns=["item", "value"],
