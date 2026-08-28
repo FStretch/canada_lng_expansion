@@ -11,8 +11,9 @@ At full buildout across all Canadian LNG assets:
 
 | | |
 |---|---|
-| Annual emissions | **272.0 MtCO2e/yr** |
-| Lifetime emissions | **10,704.7 MtCO2e** |
+| Annual emissions | **272.0 MtCO2e/yr** (life-average) |
+| Peak calendar-year | **309.1 MtCO2e** in 2037 |
+| Lifetime emissions | **10,689.4 MtCO2e** (calendar panel 2025–2069) |
 | Export capacity | 100.1 mtpa across ten projects |
 | Scope 1 and 2 | 49.0 Mt/yr, 18.0% |
 | Scope 3 | 223.0 Mt/yr, 82.0% |
@@ -20,9 +21,11 @@ At full buildout across all Canadian LNG assets:
 Split by where the emissions are counted: **18.5% Canada, 5.6% international marine bunkers,
 75.9% foreign**.
 
-Annual figures are averaged across each facility's operating life, which includes years of reduced
-output during start-up. Peak annual emissions once all facilities reach steady state are higher, at
-approximately 310 MtCO2e.
+The published lifetime total is the sum of a per-asset, per-calendar-year panel from 2025
+through each asset's last emitting year (currently 2069). It is not duration × life-average.
+The 272.0 MtCO2e/yr figure is still a life-average of utilisation over each facility's operating
+window, including start-up years. Peak calendar-year emissions on the panel are 309.1 MtCO2e
+in 2037. Do not treat 272.0 as a year on the panel.
 
 ---
 
@@ -32,10 +35,13 @@ approximately 310 MtCO2e.
 Inputs/
   Canada_LNG_Asset_Register.xlsx    facts about physical assets, one row per terminal or unit
   Canada_LNG_Data_Inputs.xlsx       emission factors, parameters, scenarios and chain definitions
+  loss_damage/                      SC-CO2 schedules, currency conversion, L&D parameters
+  loss_damage_r1/                   Burke et al. (2026) pulse damages (2020 USD / t)
 src/
   inputs.py                         loads and validates both workbooks, exposes typed frames
   model.py                          the lifecycle calculation and aggregation
-  trajectories.py                   calendar-year series (does not change the 40-year average)
+  trajectories.py                   calendar panel (published lifetime) and 2025–2050 figures
+  loss_damage.py                    global L&D from year-of-emission × SC-CO2 (Burke + ECCC)
   figures_report.py                 report figures and their CSV series
   slide_tables.py                   deck-facing Excel tables
   report_params.py                  figure-only defaults if a parameter is not on the Inputs sheet
@@ -167,6 +173,20 @@ The FID delay sits inside the lifespan window rather than extending it, so a del
 fewer operating years. It is the least evidenced parameter in the model and is worth approximately
 13 MtCO2e a year.
 
+### Loss and damage
+
+A separate module (`src/loss_damage.py`) multiplies the same full-lifecycle, year-of-emission
+CO2e series by a social cost of carbon. It does not change the emissions totals.
+
+The central case uses Burke et al. (2026) Figure 2e through-2300 SC-CO2 at a 2% discount
+and g = 0, converted to 2025 CAD. Through-2100 is reported for comparability with Hatton
+(2026). Canada's 0.17% share of a 1990 pulse (future window) is applied to global damages.
+The Conference Board whole-chain GDP figure (Table 1: C$11.153bn/yr in 2020 CAD at
+56 mtpa), scaled on proposed export nameplate and inflated to 2025 CAD, is the
+denominator. Headlines are the externality ratio
+and the 99.8% externalisation share, not a national cost-benefit test. Upstream methane is
+priced with ECCC's SC-CH4/SC-CO2 ratio rather than GWP100 × SC-CO2 (ECCC FAQ 4.2).
+
 Lifespan comes from each project's CER export licence term where one exists. Where a proponent
 states a different operating life, that is used instead: Summit Lake PG LNG states 30 years.
 
@@ -243,9 +263,10 @@ places it on the bunkering chain and records the disagreement rather than resolv
 **Capacity is never summed across chains.** Export and bunkering capacity is liquefaction; import
 capacity is regasification. They measure opposite operations.
 
-**Annual figures come in two forms.** The headline of 272.0 MtCO2e a year is averaged across each
-facility's operating life. Time-series figures show actual annual values, which peak higher at
-approximately 310 MtCO2e. Both are stated wherever used.
+**Annual figures come in two forms.** The headline of 272.0 MtCO2e a year is a life-average
+across each facility's operating window. The published lifetime (10,689.4 MtCO2e) is the sum of
+the calendar panel from 2025 through 2069. Panel peak is 309.1 MtCO2e in 2037. Both are stated
+wherever used. Duration × life-average is no longer published.
 
 ---
 

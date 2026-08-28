@@ -19,6 +19,14 @@ from src.inputs import (
 )
 from src.figures_report import build_all_report_figures
 from src.slide_tables import build_slide_tables, write_slide_tables_xlsx
+from src.loss_damage import compute_loss_damage, format_ld_markdown, write_ld_figure
+from src.trajectories import (
+    PANEL_START_YEAR,
+    build_emissions_panel,
+    panel_by_project,
+    panel_lifetime_mt,
+    panel_peak,
+)
 from src.model import (
     CHAINS,
     GROUPS,
@@ -35,6 +43,7 @@ from src.model import (
 ROOT = Path(__file__).resolve().parent
 REGISTER = ROOT / "Inputs" / "Canada_LNG_Asset_Register.xlsx"
 INPUTS = ROOT / "Inputs" / "Canada_LNG_Data_Inputs.xlsx"
+INPUTS_DIR = ROOT / "Inputs"
 OUT = ROOT / "Outputs"
 RESULTS = OUT / "Canada_LNG_Emissions_Results.xlsx"
 SLIDE_TABLES = OUT / "SLIDE_TABLES.xlsx"
@@ -123,6 +132,8 @@ def write_review_summary(
     summary: pd.DataFrame,
     by_chain: pd.DataFrame,
     stages: pd.DataFrame,
+    panel: pd.DataFrame,
+    ld: dict | None = None,
 ) -> None:
     sample = by_project.loc[
         (~by_project["excluded_from_totals"]) & (by_project["scenario"] == DEFAULT_SCENARIO)
@@ -134,9 +145,12 @@ def write_review_summary(
     gap = float(get_param(params, "canada_2030_overshoot_gap"))
 
     annual = float(sample["annual_total"].sum()) / 1e6
-    lifecycle = float(sample["lifecycle_total"].sum(min_count=1)) / 1e6
-    if pd.isna(lifecycle):
-        lifecycle = 0.0
+    lifecycle = panel_lifetime_mt(panel, DEFAULT_SCENARIO)
+    peak_year, peak_mt = panel_peak(panel, DEFAULT_SCENARIO)
+    panel_year0 = int(panel.loc[panel["scenario"] == DEFAULT_SCENARIO, "year"].min())
+    panel_year1 = int(panel.loc[panel["scenario"] == DEFAULT_SCENARIO, "year"].max())
+    project_life = panel_by_project(panel)
+    project_life_def = project_life.loc[project_life["scenario"] == DEFAULT_SCENARIO]
     s12 = float(sample["scope_1_2"].sum()) / 1e6
     s3 = float(sample["scope_3"].sum()) / 1e6
     can = float(sample["canada_territorial"].sum()) / 1e6
@@ -163,8 +177,18 @@ def write_review_summary(
     # 1 Headline
     lines.append("## 1. Headline")
     lines.append("")
-    lines.append(f"- **Annual total:** {annual:.1f} MtCO2e/yr")
-    lines.append(f"- **Lifecycle total:** {lifecycle:.1f} MtCO2e (excludes legacy facilities)")
+    lines.append(
+        f"- **Annual total (life-average):** {annual:.1f} MtCO2e/yr "
+        "(mean utilisation over each asset's operating window; not a calendar year)"
+    )
+    lines.append(
+        f"- **Peak calendar-year (panel):** {peak_mt:.1f} MtCO2e in {peak_year}"
+    )
+    lines.append(
+        f"- **Lifetime total (calendar panel {panel_year0}–{panel_year1}):** "
+        f"{lifecycle:.1f} MtCO2e (excludes legacy facilities; remaining years from "
+        f"{PANEL_START_YEAR}, not duration × life-average)"
+    )
     lines.append(
         f"- **Headline capacity (export chain only):** {export_cap:.1f} mtpa "
         "(liquefaction; not summed with import regasification or other chains)"
@@ -203,9 +227,10 @@ def write_review_summary(
         r = r.iloc[0]
         if r["annual_total_mtco2e_yr"] == 0 and r["capacity_export_headline_mtpa"] == 0:
             continue
+        glife = panel_lifetime_mt(panel, DEFAULT_SCENARIO, calc_group=g)
         lines.append(
             f"| {g} | {r['capacity_export_headline_mtpa']:.1f} | "
-            f"{r['annual_total_mtco2e_yr']:.1f} | {r['lifecycle_total_mtco2e']:.1f} | "
+            f"{r['annual_total_mtco2e_yr']:.1f} | {glife:.1f} | "
             f"{r['canada_territorial_mtco2e_yr']:.1f} / "
             f"{r['international_bunkers_mtco2e_yr']:.1f} / "
             f"{r['foreign_territorial_mtco2e_yr']:.1f} |"
@@ -266,9 +291,10 @@ def write_review_summary(
     cdef = by_chain.loc[by_chain["scenario"] == DEFAULT_SCENARIO]
     for chain in CHAINS:
         r = cdef.loc[cdef["chain"] == chain].iloc[0]
+        clife = panel_lifetime_mt(panel, DEFAULT_SCENARIO, chain=chain)
         lines.append(
             f"| {chain} | {chain_stages[chain]} | {r['capacity_mtpa']:.1f} | "
-            f"{r['annual_total_mtco2e_yr']:.1f} | {r['lifecycle_total_mtco2e']:.1f} | "
+            f"{r['annual_total_mtco2e_yr']:.1f} | {clife:.1f} | "
             f"{r['canada_territorial_mtco2e_yr']:.1f} / "
             f"{r['international_bunkers_mtco2e_yr']:.1f} / "
             f"{r['foreign_territorial_mtco2e_yr']:.1f} |"
@@ -285,11 +311,11 @@ def write_review_summary(
     lines.append("|---|---|---|---|---|---|---|---|---|---|---|---|")
     for _, r in sample.sort_values(["calc_group", "chain", "project_id"]).iterrows():
         drive = r["liquefaction_drive"] if pd.notna(r["liquefaction_drive"]) else "—"
-        life_tot = (
-            "—"
-            if r["is_legacy"] or pd.isna(r["lifecycle_total"])
-            else f"{r['lifecycle_total']/1e6:.1f}"
-        )
+        pl = project_life_def.loc[project_life_def["project_id"] == r["project_id"]]
+        if r["is_legacy"] or not len(pl):
+            life_tot = "—"
+        else:
+            life_tot = f"{float(pl.iloc[0]['lifetime_mtco2e']):.1f}"
         note = (
             "legacy: outlived nominal design life; steady-state util; annual only"
             if r["is_legacy"]
@@ -330,9 +356,7 @@ def write_review_summary(
             (~by_project["excluded_from_totals"]) & (by_project["scenario"] == scen)
         ]
         up = inputs["upstream_by_scenario"][scen]
-        life = float(s["lifecycle_total"].sum(min_count=1)) / 1e6
-        if pd.isna(life):
-            life = 0.0
+        life = panel_lifetime_mt(panel, scen)
         lines.append(
             f"| {scen} | {up:.2f} | {float(s['annual_total'].sum())/1e6:.1f} | "
             f"{life:.1f} | "
@@ -547,10 +571,85 @@ def write_review_summary(
         "(`chain_note`); NRCan lists it as export — classification is a stated judgement, "
         "not re-derived in code."
     )
+    lines.append(
+        "- Loss and damage applies SC-CO2 to GWP100 CO2e (methane is not "
+        "valued with SC-CH4). Damages after 2100, sea-level rise, extremes "
+        "and mortality outside GDP are omitted. Headline is the externality "
+        "ratio and Canada's 0.17% Burke-channel share, not a national "
+        "cost-benefit inversion. Upstream methane is priced with the ECCC "
+        "SC-CH4/SC-CO2 ratio, not GWP100. The Conference Board denominator "
+        "is Table 1 GDP in 2020 CAD, inflated to 2025 CAD."
+    )
     lines.append("")
+
+    if ld is not None:
+        lines.extend(format_ld_markdown(ld))
 
     path.write_text("\n".join(lines), encoding="utf-8")
     print(f"Wrote review summary: {path}")
+
+
+def _validate_loss_damage(sample: pd.DataFrame, ld: dict, panel: pd.DataFrame) -> None:
+    """L&D remaining tonnes must equal the published panel; proposed > operating."""
+    h = ld["headline"].set_index("case")
+    burke = h.loc["burke_central_hatton"]
+    eccc = h.loc["eccc_central_npv_2025"]
+    assert burke["proposed_cad_billion"] > burke["operating_cad_billion"] > 0
+    assert burke["total_cad_billion"] > eccc["total_cad_billion"] > 0
+    share = ld["canada_share"]
+    assert 0.0015 < share < 0.0020, share
+    h = ld["h_central"]
+    assert h["externality_ratio_proposed"] > 10
+    assert h["national_value_over_borne"] > 1
+    assert abs(h["externalisation_share"] - (1 - share)) < 1e-12
+    assert float(h["proposed_cad_billion"]) < float(h["proposed_gwp_cad_billion"])
+    assert ld["gva"] > ld["gva_proposed_as_published"]
+    assert not ld["fig4"]["canada_in_recipient_panel"]
+    assert abs(ld["fig4"]["usa_owing_usd"] / 1e12 - 10.18) < 0.15
+    assert ld["central_r"] == 2.0
+    assert ld["central_g"] == 0.0
+    assert ld["gva_proposed_30yr"] < ld["gva"]
+    grid = ld["burke_grid"]
+    lo = float(
+        grid.loc[
+            (grid["discount_rate_pct"] == 5.0) & (grid["growth_rate"] == 0.0),
+            "total_cad_billion",
+        ].iloc[0]
+    )
+    hi = float(
+        grid.loc[
+            (grid["discount_rate_pct"] == 1.5) & (grid["growth_rate"] == 0.02),
+            "total_cad_billion",
+        ].iloc[0]
+    )
+    assert hi > lo, (hi, lo)
+
+    rem = (
+        ld["by_year"]
+        .loc[ld["by_year"]["price_family"] == "burke"]
+        .drop_duplicates(["project_id", "year"])
+        .groupby("project_id")["emissions_mtco2e"]
+        .sum()
+    )
+    pub = (
+        panel.loc[panel["scenario"] == DEFAULT_SCENARIO]
+        .groupby("project_id")["emissions_mtco2e"]
+        .sum()
+    )
+    merged = pub.rename("panel_mt").to_frame().join(rem.rename("ld_mt"), how="outer")
+    merged = merged.fillna(0.0)
+    delta = (merged["panel_mt"] - merged["ld_mt"]).abs()
+    assert delta.max() < 0.05, merged.loc[delta >= 0.05]
+    panel_sum = float(pub.sum())
+    ld_sum = float(rem.sum())
+    assert abs(panel_sum - ld_sum) < 0.05, (panel_sum, ld_sum)
+    legacy_ids = set(sample.loc[sample["is_legacy"], "project_id"])
+    ld_ids = set(ld["by_project"]["project_id"])
+    assert not (ld_ids & legacy_ids), ld_ids & legacy_ids
+    print(
+        f"[validate] L&D remaining = panel lifetime "
+        f"{panel_sum:.2f} Mt PASS"
+    )
 
 
 def main() -> None:
@@ -575,6 +674,7 @@ def main() -> None:
     print("[validate] chain stage counts PASS")
 
     by_project = compute_by_project(inputs)
+    panel = build_emissions_panel(inputs)
     summary = summarise(by_project)
     by_chain = summarise_by_chain(by_project)
     stages = by_stage(by_project)
@@ -688,6 +788,14 @@ def main() -> None:
         assert abs(float(r["effective_util"]) - float(get_param(inputs["params"], "steady_state_utilisation"))) < 1e-9
     print(f"[validate] legacy facilities annual-only (no lifecycle): {legacy_ids} PASS")
 
+    ld = compute_loss_damage(inputs, INPUTS_DIR, panel=panel)
+    _validate_loss_damage(sample, ld, panel)
+    print(
+        f"[validate] loss and damage central "
+        f"${ld['h_central']['total_cad_billion']:.0f} bn "
+        f"CAD 2025 (through 2300, 2% fixed, g=0) PASS"
+    )
+
     # Group and headline annuals — printed against the pre-revision snapshot
     sdef = summary.loc[summary["scenario"] == DEFAULT_SCENARIO]
     annual = float(sample["annual_total"].sum())
@@ -703,6 +811,40 @@ def main() -> None:
     bunk = float(sample["international_bunkers"].sum())
     foreign = float(sample["foreign_territorial"].sum())
 
+    panel_life_mt = panel_lifetime_mt(panel, DEFAULT_SCENARIO)
+    peak_year, peak_mt = panel_peak(panel, DEFAULT_SCENARIO)
+    duration_life = float(sample["lifecycle_total"].sum(min_count=1)) / 1e6
+    if pd.isna(duration_life):
+        duration_life = 0.0
+    print(
+        f"[validate] published lifetime is calendar panel "
+        f"{panel_life_mt:.1f} Mt (duration×average was {duration_life:.1f}; "
+        f"delta {panel_life_mt - duration_life:+.1f})"
+    )
+    print(
+        f"[validate] annual {annual_mt:.1f} is life-average; "
+        f"panel peak {peak_mt:.1f} Mt in {peak_year}"
+    )
+
+    summary = summary.copy()
+    summary["lifecycle_total_mtco2e"] = [
+        panel_lifetime_mt(panel, r["scenario"], calc_group=r["group"])
+        for _, r in summary.iterrows()
+    ]
+    by_chain = by_chain.copy()
+    by_chain["lifecycle_total_mtco2e"] = [
+        panel_lifetime_mt(panel, r["scenario"], chain=r["chain"])
+        for _, r in by_chain.iterrows()
+    ]
+    proj_life = panel_by_project(panel)
+    by_project = by_project.merge(
+        proj_life[["scenario", "project_id", "lifetime_mtco2e"]].rename(
+            columns={"lifetime_mtco2e": "panel_lifetime_mtco2e"}
+        ),
+        on=["scenario", "project_id"],
+        how="left",
+    )
+
     readme = pd.DataFrame(
         [
             ("title", "Canada LNG lifecycle emissions — calc_group grouping"),
@@ -713,11 +855,19 @@ def main() -> None:
             ("calc_group_source", inputs["calc_group_source"]),
             (
                 "headline_note",
+                "Lifetime is the sum of the per-asset calendar panel "
+                f"({PANEL_START_YEAR} to last emitting year). "
+                "Annual is the life-average, not a panel year. "
                 "Headline includes all calc_groups (proposed = advanced + early). "
-                "Grouped by calc_group, not tier. Capacity is per chain; "
-                "headline capacity is export liquefaction only.",
+                "Capacity is per chain; headline capacity is export liquefaction only.",
             ),
             ("annual_total_mtco2e_yr", annual_mt),
+            ("annual_basis", "life-average utilisation over each asset window"),
+            ("lifetime_total_mtco2e", panel_life_mt),
+            ("lifetime_basis", "sum of calendar panel; excludes legacy"),
+            ("duration_x_average_mtco2e", duration_life),
+            ("panel_peak_year", peak_year),
+            ("panel_peak_mtco2e_yr", peak_mt),
             ("export_capacity_mtpa", export_total),
             ("canada_territorial_mtco2e_yr", can / 1e6),
             ("international_bunkers_mtco2e_yr", bunk / 1e6),
@@ -761,15 +911,40 @@ def main() -> None:
         territorial.to_excel(writer, sheet_name="Territorial", index=False)
         assumptions.to_excel(writer, sheet_name="Assumptions", index=False)
         by_chain.to_excel(writer, sheet_name="By Chain", index=False)
+        panel.to_excel(writer, sheet_name="Calendar Panel", index=False)
+        panel_by_project(panel).to_excel(
+            writer, sheet_name="Panel Lifetime By Project", index=False
+        )
         elec_cf = electrification_counterfactual(inputs, by_project)
         elec_cf["summary"].to_excel(writer, sheet_name="Electrification CAN", index=False)
+        ld["headline"].to_excel(writer, sheet_name="LD Headline", index=False)
+        ld["by_project"].to_excel(writer, sheet_name="LD By Project", index=False)
+        ld["burke_grid"].to_excel(writer, sheet_name="LD Burke Grid", index=False)
+        ld["eccc_grid"].to_excel(writer, sheet_name="LD ECCC Grid", index=False)
+        ld["physical_scenarios"].to_excel(writer, sheet_name="LD Physical Scenarios", index=False)
+        ld["sc_table"].to_excel(writer, sheet_name="LD SC-CO2", index=False)
+        ld["horizon_table"].to_excel(writer, sheet_name="LD Horizons", index=False)
+        ld["params_meta"].to_excel(writer, sheet_name="LD Assumptions", index=False)
 
     write_figure(by_project, FIGURE)
-    write_review_summary(SUMMARY_MD, inputs, by_project, summary, by_chain, stages)
-    fig_results = build_all_report_figures(
-        inputs, by_project, stages, FIGURE_DIR, FIGURE_DATA
+    write_review_summary(
+        SUMMARY_MD, inputs, by_project, summary, by_chain, stages, panel, ld=ld
     )
-    slide_tables = build_slide_tables(inputs, by_project, summary, by_chain, stages)
+    fig_results = build_all_report_figures(
+        inputs, by_project, stages, FIGURE_DIR, FIGURE_DATA, panel=panel
+    )
+    fig09 = FIGURE_DIR / "fig09_loss_damage_by_group.png"
+    write_ld_figure(ld["h_central"], fig09)
+    ld_csv = FIGURE_DATA / "fig09_loss_damage_by_group.csv"
+    FIGURE_DATA.mkdir(parents=True, exist_ok=True)
+    ld["horizon_table"].to_csv(ld_csv, index=False)
+    ld["headline"].to_csv(FIGURE_DATA / "ld_headline.csv", index=False)
+    ld["burke_grid"].to_csv(FIGURE_DATA / "ld_burke_grid.csv", index=False)
+    ld["eccc_grid"].to_csv(FIGURE_DATA / "ld_eccc_grid.csv", index=False)
+    panel.to_csv(FIGURE_DATA / "emissions_panel.csv", index=False)
+    slide_tables = build_slide_tables(
+        inputs, by_project, summary, by_chain, stages, panel, ld=ld
+    )
     write_slide_tables_xlsx(slide_tables, SLIDE_TABLES, FIGURE_DATA)
 
     if reg_m is not None and inp_m is not None:
@@ -802,6 +977,11 @@ def main() -> None:
         f"  {'TOTAL':20s}  annual={annual_mt:6.1f} Mt/yr "
         f"(was {BEFORE['annual_mt']:.1f})"
     )
+    print(
+        f"Published lifetime (calendar panel): {panel_life_mt:.1f} Mt  "
+        f"(duration×average was {duration_life:.1f})"
+    )
+    print(f"Panel peak: {peak_mt:.1f} MtCO2e in {peak_year}")
     print(
         f"Liquefaction stage: {liq_mt:.1f} Mt/yr "
         f"(was {BEFORE['liquefaction_mt']:.1f})"
@@ -838,6 +1018,8 @@ def main() -> None:
         print(f"  {r['path'].name}")
         print(f"    csv: {r['csv'].name}")
         print(f"    key: {r['key']}")
+    print(f"  {fig09.name}")
+    print(f"    csv: {ld_csv.name}")
     print(
         "\nFigure validations: stage sum=headline, territorial sum=headline, "
         "fig3 plateau=fig6 plateau, fig5 central=fig4, CSVs present — all PASS"

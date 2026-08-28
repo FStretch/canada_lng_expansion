@@ -21,6 +21,7 @@ from src.trajectories import (
     canada_pathway_series,
     cumulative_case_series,
     oil_lifecycle_gt,
+    panel_lifetime_mt,
 )
 
 DPI = 200
@@ -520,19 +521,30 @@ def figure_7_oil_comparison(
     inputs: dict,
     fig_dir: Path,
     data_dir: Path,
+    panel: pd.DataFrame | None = None,
 ) -> dict:
     sample = by_project.loc[
         (~by_project["excluded_from_totals"])
         & (by_project["scenario"] == DEFAULT_SCENARIO)
     ]
-    lng_all = float(sample["lifecycle_total"].sum(min_count=1)) / 1e9
-    if pd.isna(lng_all):
-        lng_all = 0.0
-    lng_prop = float(
-        sample.loc[sample["calc_group"] == "proposed", "lifecycle_total"].sum(min_count=1)
-    ) / 1e9
-    if pd.isna(lng_prop):
-        lng_prop = 0.0
+    if panel is not None:
+        lng_all = panel_lifetime_mt(panel, DEFAULT_SCENARIO) / 1e3
+        lng_prop = panel_lifetime_mt(
+            panel, DEFAULT_SCENARIO, calc_group="proposed"
+        ) / 1e3
+        method_note = "calendar panel sum (excludes legacy)"
+    else:
+        lng_all = float(sample["lifecycle_total"].sum(min_count=1)) / 1e9
+        if pd.isna(lng_all):
+            lng_all = 0.0
+        lng_prop = float(
+            sample.loc[sample["calc_group"] == "proposed", "lifecycle_total"].sum(
+                min_count=1
+            )
+        ) / 1e9
+        if pd.isna(lng_prop):
+            lng_prop = 0.0
+        method_note = "model lifecycle total (excludes legacy nulls)"
 
     params = inputs["params"]
     report, audit = resolve_report_params(params)
@@ -549,14 +561,14 @@ def figure_7_oil_comparison(
         {
             "item": "Canadian LNG, all assets",
             "lifecycle_gtco2e": lng_all,
-            "method": "model lifecycle total (excludes legacy nulls)",
+            "method": method_note,
             "unvalidated": False,
             "capacity_note": "export headline capacity separate; emissions all chains",
         },
         {
             "item": "Canadian LNG, proposed only",
             "lifecycle_gtco2e": lng_prop,
-            "method": "model lifecycle total, calc_group=proposed",
+            "method": method_note + ", calc_group=proposed",
             "unvalidated": False,
             "capacity_note": "",
         },
@@ -869,6 +881,7 @@ def build_all_report_figures(
     stages: pd.DataFrame,
     fig_dir: Path,
     data_dir: Path,
+    panel: pd.DataFrame | None = None,
 ) -> dict:
     fig_dir = Path(fig_dir)
     data_dir = Path(data_dir)
@@ -895,7 +908,9 @@ def build_all_report_figures(
         inputs, fig_dir, data_dir, results["fig4"]["lng_series"]
     )
     results["fig6"] = figure_6_pathway_vs_total(inputs, fig_dir, data_dir)
-    results["fig7"] = figure_7_oil_comparison(by_project, inputs, fig_dir, data_dir)
+    results["fig7"] = figure_7_oil_comparison(
+        by_project, inputs, fig_dir, data_dir, panel=panel
+    )
     results["fig8"] = figure_8_electrification_appendix(
         inputs, by_project, fig_dir, data_dir
     )

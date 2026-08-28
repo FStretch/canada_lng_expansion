@@ -15,6 +15,8 @@ from src.trajectories import (
     canada_pathway_series,
     cumulative_case_series,
     oil_lifecycle_gt,
+    panel_lifetime_mt,
+    panel_peak,
 )
 
 KEY_YEARS = (2025, 2028, 2030, 2035, 2040, 2050)
@@ -36,6 +38,8 @@ def build_slide_tables(
     summary: pd.DataFrame,
     by_chain: pd.DataFrame,
     stages: pd.DataFrame,
+    panel: pd.DataFrame,
+    ld: dict | None = None,
 ) -> dict[str, pd.DataFrame]:
     sample = by_project.loc[
         (~by_project["excluded_from_totals"]) & (by_project["scenario"] == DEFAULT_SCENARIO)
@@ -51,9 +55,8 @@ def build_slide_tables(
     head = cf["summary"].loc[cf["summary"]["slice"] == "headline"].iloc[0]
 
     annual = float(sample["annual_total"].sum()) / 1e6
-    lifecycle = float(sample["lifecycle_total"].sum(min_count=1)) / 1e6
-    if pd.isna(lifecycle):
-        lifecycle = 0.0
+    lifecycle = panel_lifetime_mt(panel, DEFAULT_SCENARIO)
+    peak_year, peak_mt = panel_peak(panel, DEFAULT_SCENARIO)
     s12 = float(sample["scope_1_2"].sum()) / 1e6
     s3 = float(sample["scope_3"].sum()) / 1e6
     can = float(sample["canada_territorial"].sum()) / 1e6
@@ -81,16 +84,17 @@ def build_slide_tables(
             ("14_CAN_trajectories", "Canada-territorial LNG vs pathway; gas vs electric", "MtCO2e/yr"),
             ("15_Oil_comparison", "Lifecycle Gt vs TMX and Alberta–BC bitumen (fig 7)", "GtCO2e"),
             ("16_Notes", "Units, scenario, what not to sum", "—"),
+            ("17_Loss_damage", "Global L&D, Burke central + ECCC, CAD trillion", "2025 CAD tn"),
         ],
         columns=["sheet", "contents", "units"],
     )
 
     tables["01_Headline"] = pd.DataFrame(
         [
-            ("Annual emissions", _r1(annual), "MtCO2e/yr", "40-year average, all calc_groups"),
-            ("Lifecycle emissions", _r1(lifecycle), "MtCO2e", "Excludes legacy facilities"),
+            ("Annual emissions", _r1(annual), "MtCO2e/yr", "Life-average util over each asset window; not a calendar year"),
+            ("Lifecycle emissions", _r1(lifecycle), "MtCO2e", "Sum of calendar panel; excludes legacy"),
             ("Export capacity", _r1(export_cap), "mtpa", "Export chain only; liquefaction nameplate"),
-            ("Peak calendar-year annual", None, "MtCO2e/yr", "See 13_Trajectories plus_proposed max"),
+            ("Peak calendar-year annual", _r1(peak_mt), "MtCO2e/yr", f"Panel peak in {peak_year}"),
             ("Canada territorial", _r1(can), "MtCO2e/yr", "Stages tagged CAN"),
             ("International bunkers", _r1(bunk), "MtCO2e/yr", "UNFCCC bunkers, no country"),
             ("Foreign territorial", _r1(foreign), "MtCO2e/yr", "Importing-country inventory"),
@@ -199,7 +203,7 @@ def build_slide_tables(
 
     proj = []
     for _, r in sample.sort_values(["calc_group", "chain", "project_name"]).iterrows():
-        life_tot = r["lifecycle_total"]
+        life_tot = r.get("panel_lifetime_mtco2e")
         proj.append(
             {
                 "project_id": r["project_id"],
@@ -215,7 +219,7 @@ def build_slide_tables(
                 "effective_Mt_LNG_yr": _r2(r["effective_tonnes"] / 1e6),
                 "annual_MtCO2e_yr": _r1(r["annual_total"] / 1e6),
                 "lifecycle_MtCO2e": (
-                    "—" if r["is_legacy"] or pd.isna(life_tot) else _r1(life_tot / 1e6)
+                    "—" if r["is_legacy"] or pd.isna(life_tot) else _r1(life_tot)
                 ),
                 "CAN_MtCO2e_yr": _r1(r["canada_territorial"] / 1e6),
                 "BUNK_MtCO2e_yr": _r1(r["international_bunkers"] / 1e6),
@@ -242,9 +246,7 @@ def build_slide_tables(
         s = by_project.loc[
             (~by_project["excluded_from_totals"]) & (by_project["scenario"] == scen)
         ]
-        life = float(s["lifecycle_total"].sum(min_count=1)) / 1e6
-        if pd.isna(life):
-            life = 0.0
+        life = panel_lifetime_mt(panel, scen)
         scen_rows.append(
             {
                 "scenario": scen,
@@ -387,11 +389,7 @@ def build_slide_tables(
     tmx_exp_bpd = float(report["tmx_expansion_bpd"])
     ab_bc_bpd = float(report["alberta_bc_bitumen_pipeline_bpd"])
     lng_all_gt = lifecycle / 1e3
-    lng_prop_gt = float(
-        sample.loc[sample["calc_group"] == "proposed", "lifecycle_total"].sum(min_count=1)
-    ) / 1e9
-    if pd.isna(lng_prop_gt):
-        lng_prop_gt = 0.0
+    lng_prop_gt = panel_lifetime_mt(panel, DEFAULT_SCENARIO, calc_group="proposed") / 1e3
     tables["15_Oil_comparison"] = pd.DataFrame(
         [
             {
@@ -444,6 +442,76 @@ def build_slide_tables(
         columns=["item", "value"],
     )
 
+    if ld is not None:
+        hz = ld["horizon_table"].set_index(["horizon", "discounting"])
+        c = hz.loc[("through_2300", "2pct_fixed")]
+        t2100 = hz.loc[("through_2100", "2pct_fixed")]
+        tables["17_Loss_damage"] = pd.DataFrame(
+            [
+                (
+                    "Externality ratio, proposed",
+                    round(float(c["externality_ratio_proposed"]), 1),
+                    "x",
+                    "Global L&D (CO2/CH4 split) / CBoC 2025 CAD (40 yr)",
+                ),
+                (
+                    "Canada Burke-channel share (FD)",
+                    round(100 * float(c["canada_share_fd"]), 2),
+                    "%",
+                    "1990 1 Gt pulse, 2021-2100; UK HD validates at 1.61%",
+                ),
+                (
+                    "Share externalised",
+                    round(100 * float(c["externalisation_share"]), 1),
+                    "%",
+                    "1 minus Canada FD share",
+                ),
+                (
+                    "Proposed global L&D, through 2300 2%",
+                    round(float(c["proposed_cad_billion"]) / 1000, 1),
+                    "trillion 2025 CAD",
+                    "Figure 2e $3198/t; CO2 + CH4 at ECCC SC-CH4/SC-CO2 ratio",
+                ),
+                (
+                    "Same, GWP100 x SC-CO2 (not used)",
+                    round(float(c["proposed_gwp_cad_billion"]) / 1000, 1),
+                    "trillion 2025 CAD",
+                    "FAQ 4.2 comparison only",
+                ),
+                (
+                    "Proposed global L&D, through 2100 2%",
+                    round(float(t2100["proposed_cad_billion"]) / 1000, 1),
+                    "trillion 2025 CAD",
+                    "Hatton-comparable horizon, same gas split",
+                ),
+                (
+                    "Canadian value, proposed",
+                    round(float(c["canada_value_proposed_cad_billion"]), 0),
+                    "billion 2025 CAD",
+                    "CBoC Table 1 $11.153bn/yr (2020 CAD) at 56 mtpa, scaled, 40 yr, inflated",
+                ),
+                (
+                    "Canada-borne, Burke channel, proposed",
+                    round(float(c["canada_borne_proposed_cad_billion"]), 1),
+                    "billion 2025 CAD",
+                    "0.17% of global; national test is net positive on this channel",
+                ),
+                (
+                    "Canada 1990-2020 emitter total (Fig 4)",
+                    round(ld["fig4"]["canada_owing_usd"] / 1e12, 2),
+                    "trillion 2020 USD",
+                    "All Canadian emissions, not LNG; Canada absent from recipient panel",
+                ),
+                (
+                    "National value / Canada-borne",
+                    round(float(c["national_value_over_borne"]), 1),
+                    "x",
+                    "Indeterminate once omitted channels are allowed for",
+                ),
+            ],
+            columns=["item", "value", "unit", "note"],
+        )
+
     # Fill peak on headline now that trajectories exist
     tables["01_Headline"].loc[
         tables["01_Headline"]["item"] == "Peak calendar-year annual", "value"
@@ -464,6 +532,10 @@ FIGURE_SHEET_NAMES = {
     "fig08_electrification_can_average.csv": "fig08_elec_average",
     "fig08_electrification_can_by_group.csv": "fig08_elec_by_group",
     "fig08_electrification_can_trajectories.csv": "fig08_elec_traj",
+    "fig09_loss_damage_by_group.csv": "fig09_loss_damage",
+    "ld_headline.csv": "ld_headline",
+    "ld_burke_grid.csv": "ld_burke_grid",
+    "ld_eccc_grid.csv": "ld_eccc_grid",
 }
 
 

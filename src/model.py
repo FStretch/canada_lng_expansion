@@ -346,7 +346,9 @@ def compute_by_project(inputs: dict) -> pd.DataFrame:
                 if s not in on_chain:
                     assert stage_annual[s] is None, f"off-chain stage computed: {s}"
 
-            # Legacy: current annual only — no lifecycle total (outlived design life).
+            # Duration × life-average. Not the published lifetime (that is
+            # the calendar panel sum). Kept for diagnostics and util identity.
+            # Legacy: current annual only — no duration product.
             lifecycle_total = None if legacy else annual_total * life
 
             rows.append({

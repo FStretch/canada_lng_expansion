@@ -1,8 +1,11 @@
-"""Calendar-year emission trajectories (2025–2050).
+"""Calendar-year emission panel and figure trajectories.
 
-Uses the same intensities, util ramps, and FID-delay rules as the average
-model, but reports year-by-year values rather than the 40-year average.
-Does not alter the average calculation.
+The per-asset, per-calendar-year panel (build_emissions_panel) is the
+published source of lifetime totals. compute_by_project still produces a
+life-average annual figure; that average is not integrated to a lifetime.
+
+Figure trajectories (TRAJECTORY_YEARS) remain 2025–2050 for plots only.
+They do not cut the panel.
 """
 
 from __future__ import annotations
@@ -11,10 +14,12 @@ from typing import Iterable
 
 import pandas as pd
 
-from src.inputs import DEFAULT_SCENARIO, get_param
+from src.inputs import DEFAULT_SCENARIO, INTENSITY_SCENARIOS, get_param
 from src.model import _fid_ok, _is_legacy, _lifespan, _stage_intensity, previously_classified_electric
 
 TRAJECTORY_YEARS = tuple(range(2025, 2051))
+# First calendar year of the published panel (remaining life from this year).
+PANEL_START_YEAR = 2025
 CUMULATIVE_CASES = (
     ("operating", ("operating",)),
     ("plus_under_construction", ("operating", "under_construction")),
@@ -153,6 +158,150 @@ def project_annual_mt(
         liquefaction_mode=liquefaction_mode,
     )
     return float(row["capacity_mtpa"]) * mtpa_to_t * util * intensity / 1e6
+
+
+def calendar_bounds(inputs: dict, assumed_start: int) -> tuple[int, int]:
+    """Inclusive (first, last) calendar year of the published emissions panel."""
+    last = PANEL_START_YEAR
+    params = inputs["params"]
+    for _, row in inputs["assets"].iterrows():
+        if pd.isna(row["capacity_mtpa"]):
+            continue
+        life, _ = _lifespan(row, params)
+        if _is_legacy(row, life):
+            continue
+        start, _ = _start_year(row, assumed_start)
+        last = max(last, start + life - 1)
+    return PANEL_START_YEAR, last
+
+
+def build_emissions_panel(
+    inputs: dict,
+    *,
+    scenarios: Iterable[str] | None = None,
+    assumed_start: int | None = None,
+    canada_only: bool = False,
+    liquefaction_mode: str | None = None,
+) -> pd.DataFrame:
+    """Per-asset, per-calendar-year MtCO2e. Primary emissions object.
+
+    Legacy assets (outlived design life) are omitted. Years with zero
+    output are omitted. Lifetime totals are the sum of this frame.
+    """
+    from src.report_params import resolve_report_params
+
+    report, _ = resolve_report_params(inputs["params"])
+    if assumed_start is None:
+        assumed_start = int(report["assumed_first_export_year_if_missing"])
+    scen_list = tuple(scenarios) if scenarios is not None else INTENSITY_SCENARIOS
+    year0, year1 = calendar_bounds(inputs, assumed_start)
+    years = range(year0, year1 + 1)
+    rows = []
+    for scenario in scen_list:
+        for _, row in inputs["assets"].iterrows():
+            if pd.isna(row["capacity_mtpa"]):
+                continue
+            life, life_src = _lifespan(row, inputs["params"])
+            if _is_legacy(row, life):
+                continue
+            start, placeholder = _start_year(row, assumed_start)
+            for year in years:
+                mt = project_annual_mt(
+                    row,
+                    year,
+                    inputs,
+                    scenario,
+                    assumed_start,
+                    canada_only=canada_only,
+                    liquefaction_mode=liquefaction_mode,
+                )
+                if mt is None or mt == 0.0:
+                    continue
+                rows.append({
+                    "year": year,
+                    "scenario": scenario,
+                    "project_id": row["project_id"],
+                    "project_name": row["project_name"],
+                    "calc_group": row["calc_group"],
+                    "chain": row["chain"],
+                    "emissions_mtco2e": float(mt),
+                    "start_year": start,
+                    "lifespan_years": life,
+                    "lifespan_source": life_src,
+                    "start_was_placeholder": placeholder,
+                    "canada_only": canada_only,
+                })
+    panel = pd.DataFrame(rows)
+    if not len(panel):
+        raise ValueError("Emissions panel is empty.")
+    return panel
+
+
+def panel_lifetime_mt(
+    panel: pd.DataFrame,
+    scenario: str = DEFAULT_SCENARIO,
+    *,
+    calc_group: str | None = None,
+    chain: str | None = None,
+    project_id: str | None = None,
+) -> float:
+    """Sum of panel MtCO2e for the given slice."""
+    q = panel["scenario"] == scenario
+    if calc_group is not None:
+        q = q & (panel["calc_group"] == calc_group)
+    if chain is not None:
+        q = q & (panel["chain"] == chain)
+    if project_id is not None:
+        q = q & (panel["project_id"] == project_id)
+    return float(panel.loc[q, "emissions_mtco2e"].sum())
+
+
+def panel_by_project(panel: pd.DataFrame) -> pd.DataFrame:
+    """One row per scenario × project: lifetime MtCO2e from the panel."""
+    keys = [
+        "scenario",
+        "project_id",
+        "project_name",
+        "calc_group",
+        "chain",
+        "start_year",
+        "lifespan_years",
+        "start_was_placeholder",
+    ]
+    return (
+        panel.groupby(keys, dropna=False, sort=False)["emissions_mtco2e"]
+        .sum()
+        .reset_index()
+        .rename(columns={"emissions_mtco2e": "lifetime_mtco2e"})
+    )
+
+
+def panel_by_group(panel: pd.DataFrame) -> pd.DataFrame:
+    return (
+        panel.groupby(["scenario", "calc_group"], dropna=False, sort=False)[
+            "emissions_mtco2e"
+        ]
+        .sum()
+        .reset_index()
+        .rename(columns={"emissions_mtco2e": "lifetime_mtco2e"})
+    )
+
+
+def panel_by_year(panel: pd.DataFrame, scenario: str = DEFAULT_SCENARIO) -> pd.DataFrame:
+    sl = panel.loc[panel["scenario"] == scenario]
+    return (
+        sl.groupby("year", sort=True)["emissions_mtco2e"]
+        .sum()
+        .reset_index()
+        .rename(columns={"emissions_mtco2e": "annual_mtco2e_yr"})
+    )
+
+
+def panel_peak(panel: pd.DataFrame, scenario: str = DEFAULT_SCENARIO) -> tuple[int, float]:
+    yearly = panel_by_year(panel, scenario)
+    idx = yearly["annual_mtco2e_yr"].idxmax()
+    row = yearly.loc[idx]
+    return int(row["year"]), float(row["annual_mtco2e_yr"])
 
 
 def annual_series(
