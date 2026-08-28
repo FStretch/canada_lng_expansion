@@ -675,6 +675,17 @@ def _validate_loss_damage(sample: pd.DataFrame, ld: dict, panel: pd.DataFrame) -
     ) < 1e-6
     assert 0.01 < ld["methane_share_of_co2e"] < 0.08, ld["methane_share_of_co2e"]
     assert 0.0 < ld["methane_overstatement_pct"] < 0.10, ld["methane_overstatement_pct"]
+    py = ld["price_by_year"]
+    tonnes = float(py["emissions_mtco2e"].sum()) * 1e6
+    wavg = float(published["total_cad"]) / tonnes
+    assert abs(wavg - ld["weighted_sc_cad2025"]) < 1e-6, (wavg, ld["weighted_sc_cad2025"])
+    y2025 = py.loc[py["year"] == 2025].iloc[0]
+    assert int(y2025["sc_cad2021_per_t"]) == 271
+    factor = ld["cad2021_to_2025_factor"]
+    # Inflation applied once: CAD 2025 = CAD 2021 × deflator, not × deflator².
+    assert abs(float(y2025["sc_cad2025_per_t"]) - 271.0 * factor) < 1e-6
+    assert abs(float(y2025["sc_cad2025_per_t"]) - 271.0 * factor * factor) > 1.0
+    assert int(py["year"].min()) == 2025
     assert ld["gva"] > ld["gva_proposed_as_published"]
     assert not ld["fig4"]["canada_in_recipient_panel"]
     assert abs(ld["fig4"]["usa_owing_usd"] / 1e12 - 10.18) < 0.15
@@ -872,6 +883,13 @@ def main() -> None:
         f"${ld['published']['total_cad_billion']:.0f} bn "
         f"CAD 2025 (ECCC 2% calendar year) PASS"
     )
+    print(
+        f"[validate] emissions-weighted SC-CO2 "
+        f"${ld['weighted_sc_cad2025']:.0f}/t CAD 2025 "
+        f"(simple mean ${ld['simple_sc_cad2025']:.0f}; "
+        f"CAD 2021 weighted ${ld['weighted_sc_cad2021']:.0f}; "
+        f"deflator {ld['cad2021_to_2025_factor']:.4f} applied once) PASS"
+    )
 
     # Group and headline annuals — printed against the pre-revision snapshot
     sdef = summary.loc[summary["scenario"] == DEFAULT_SCENARIO]
@@ -1044,6 +1062,7 @@ def main() -> None:
     ld["headline"].to_csv(FIGURE_DATA / "ld_headline.csv", index=False)
     ld["burke_grid"].to_csv(FIGURE_DATA / "ld_burke_grid.csv", index=False)
     ld["eccc_grid"].to_csv(FIGURE_DATA / "ld_eccc_grid.csv", index=False)
+    ld["price_by_year"].to_csv(FIGURE_DATA / "ld_price_by_year.csv", index=False)
     panel.to_csv(FIGURE_DATA / "emissions_panel.csv", index=False)
     slide_tables = build_slide_tables(
         inputs, by_project, summary, by_chain, stages, panel, ld=ld

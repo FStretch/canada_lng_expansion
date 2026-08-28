@@ -264,6 +264,7 @@ def usd2020_to_cad2025(usd_2020: float, params: dict) -> float:
 
 
 def cad2021_to_cad2025(cad_2021: float, params: dict) -> float:
+    """Inflate official ECCC CAD 2021 prices to CAD 2025. Applied once."""
     c0 = float(_required(params, "canada_gdp_deflator_2021"))
     c1 = float(_required(params, "canada_gdp_deflator_2025"))
     return cad_2021 * (c1 / c0)
@@ -427,6 +428,7 @@ def compute_loss_damage(
                     "emissions_mtco2e": mt,
                     "discount_rate_pct": rate,
                     "growth_rate": g,
+                    "sc_cad2021_per_t": None,
                     "sc_cad2025_per_t": sc,
                     "hatton_sum_cad": hatton,
                     "npv_analysis_year_cad": npv,
@@ -452,6 +454,7 @@ def compute_loss_damage(
                 "emissions_mtco2e": mt,
                 "discount_rate_pct": rate,
                 "growth_rate": None,
+                "sc_cad2021_per_t": sc21,
                 "sc_cad2025_per_t": sc,
                 "hatton_sum_cad": undisc,
                 "npv_analysis_year_cad": npv,
@@ -797,6 +800,37 @@ def compute_loss_damage(
         )
     ].copy()
 
+    cad2021_to_2025_factor = float(_required(p, "canada_gdp_deflator_2025")) / float(
+        _required(p, "canada_gdp_deflator_2021")
+    )
+    eccc_yr = by_year_central.loc[by_year_central["price_family"] == "eccc"]
+    price_by_year = (
+        eccc_yr.groupby("year", sort=True)
+        .agg(
+            emissions_mtco2e=("emissions_mtco2e", "sum"),
+            sc_cad2021_per_t=("sc_cad2021_per_t", "first"),
+            sc_cad2025_per_t=("sc_cad2025_per_t", "first"),
+            damage_cad=("hatton_sum_cad", "sum"),
+        )
+        .reset_index()
+    )
+    price_by_year["damage_cad_billion"] = price_by_year["damage_cad"] / 1e9
+    tonnes = float(price_by_year["emissions_mtco2e"].sum()) * 1e6
+    damages = float(price_by_year["damage_cad"].sum())
+    weighted_sc_cad2025 = damages / tonnes if tonnes else 0.0
+    simple_sc_cad2025 = float(price_by_year["sc_cad2025_per_t"].mean())
+    weighted_sc_cad2021 = (
+        float(
+            (
+                price_by_year["emissions_mtco2e"] * price_by_year["sc_cad2021_per_t"]
+            ).sum()
+        )
+        / float(price_by_year["emissions_mtco2e"].sum())
+        if tonnes
+        else 0.0
+    )
+    simple_sc_cad2021 = float(price_by_year["sc_cad2021_per_t"].mean())
+
     return {
         "params": p,
         "params_meta": ld["meta"],
@@ -848,6 +882,12 @@ def compute_loss_damage(
         "by_group_all": by_group,
         "published": published,
         "h_burke": h_burke,
+        "price_by_year": price_by_year,
+        "cad2021_to_2025_factor": cad2021_to_2025_factor,
+        "weighted_sc_cad2025": weighted_sc_cad2025,
+        "simple_sc_cad2025": simple_sc_cad2025,
+        "weighted_sc_cad2021": weighted_sc_cad2021,
+        "simple_sc_cad2021": simple_sc_cad2021,
     }
 
 
@@ -939,6 +979,25 @@ def format_ld_markdown(ld: dict) -> list[str]:
         f"in 2025. The resulting overstatement is **{over_pct:.1f}%** of the "
         f"central damage bill. This treatment overstates methane and is not "
         f"conservative in that direction."
+    )
+    lines.append("")
+    py = ld["price_by_year"]
+    e_after = float(py.loc[py["year"] > 2050, "emissions_mtco2e"].sum())
+    e_all = float(py["emissions_mtco2e"].sum())
+    lines.append(
+        f"Implied average price is **${ld['weighted_sc_cad2025']:,.0f}/t** "
+        f"CAD 2025 (total damages / lifetime tonnes). That is the "
+        f"emissions-weighted mean of the ECCC 2% schedule after a **single** "
+        f"CAD 2021→2025 inflation of {ld['cad2021_to_2025_factor']:.4f} "
+        f"(deflators {ld['params']['canada_gdp_deflator_2021']} / "
+        f"{ld['params']['canada_gdp_deflator_2025']}). "
+        f"The unweighted mean of the same series over panel years is "
+        f"${ld['simple_sc_cad2025']:,.0f}/t. In CAD 2021 the weighted mean is "
+        f"${ld['weighted_sc_cad2021']:,.0f}/t (2025 official schedule value "
+        f"is $271/t). Prices are looked up on the **calendar year of emission**. "
+        f"{100*e_after/e_all:.0f}% of lifetime tonnes are after 2050, so the "
+        f"weighted mean sits above the 2037 peak-year price. "
+        f"Year table: `Outputs/figure_data/ld_price_by_year.csv`."
     )
     lines.append("")
     lines.append(

@@ -565,6 +565,7 @@ FIGURE_SHEET_NAMES = {
     "ld_headline.csv": "ld_headline",
     "ld_burke_grid.csv": "ld_burke_grid",
     "ld_eccc_grid.csv": "ld_eccc_grid",
+    "ld_price_by_year.csv": "ld_price_by_year",
 }
 
 
