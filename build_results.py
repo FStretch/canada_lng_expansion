@@ -25,6 +25,7 @@ from src.placeholder_sensitivity import (
 )
 from src.loss_damage import compute_loss_damage, format_ld_markdown, write_ld_figure
 from src.monte_carlo import format_mc_markdown, run_monte_carlo
+from src.lca_comparison import figure_10_lca_comparison, format_lca_markdown
 from src.trajectories import (
     PANEL_START_YEAR,
     build_emissions_panel,
@@ -148,6 +149,7 @@ def write_review_summary(
     ld: dict | None = None,
     placeholder_sens: dict | None = None,
     mc: dict | None = None,
+    lca: dict | None = None,
 ) -> None:
     sample = by_project.loc[
         (~by_project["excluded_from_totals"]) & (by_project["scenario"] == DEFAULT_SCENARIO)
@@ -626,6 +628,8 @@ def write_review_summary(
         lines.extend(format_placeholder_markdown(placeholder_sens))
     if mc is not None:
         lines.extend(format_mc_markdown(mc))
+    if lca is not None:
+        lines.extend(format_lca_markdown(lca["tables"]))
 
     path.write_text("\n".join(lines), encoding="utf-8")
     print(f"Wrote review summary: {path}")
@@ -1110,6 +1114,7 @@ def main() -> None:
         mc["parameters"].to_excel(writer, sheet_name="MC Parameters", index=False)
 
     write_figure(by_project, FIGURE)
+    fig10 = figure_10_lca_comparison(inputs, FIGURE_DIR, FIGURE_DATA)
     write_review_summary(
         SUMMARY_MD,
         inputs,
@@ -1121,6 +1126,7 @@ def main() -> None:
         ld=ld,
         placeholder_sens=placeholder_sens,
         mc=mc,
+        lca=fig10,
     )
     fig_results = build_all_report_figures(
         inputs, by_project, stages, FIGURE_DIR, FIGURE_DATA, panel=panel
@@ -1239,6 +1245,9 @@ def main() -> None:
         print(f"    key: {r['key']}")
     print(f"  {fig09.name}")
     print(f"    csv: {ld_csv.name}")
+    print(f"  {fig10['path'].name}")
+    print(f"    csv: {fig10['csv'].name}")
+    print(f"    key: {fig10['key']}")
     print(
         "\nFigure validations: stage sum=headline, territorial sum=headline, "
         "fig3 plateau=fig6 plateau, fig5 central=fig4, CSVs present — all PASS"

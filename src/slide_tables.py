@@ -9,6 +9,7 @@ import pandas as pd
 
 from src.inputs import DEFAULT_SCENARIO, INTENSITY_SCENARIOS, get_param
 from src.model import CHAINS, GROUPS, carbon_budget_shares, electrification_counterfactual
+from src.lca_comparison import build_lca_comparison
 from src.report_params import resolve_report_params
 from src.trajectories import (
     annual_series,
@@ -88,6 +89,8 @@ def build_slide_tables(
             ("16_Notes", "Units, scenario, what not to sum", "—"),
             ("17_Loss_damage", "Global L&D, ECCC central + Burke upper bracket", "2025 CAD tn"),
             ("18_Carbon_budget", "Lifetime CO2e vs GCB 2025 remaining CO2 budgets", "% of GtCO2"),
+            ("19_LCA_comparison", "This model vs published LNG LCAs on aligned boundaries", "tCO2e/t"),
+            ("19_LCA_excluded", "Named sources that are not LNG LCAs", "—"),
         ],
         columns=["sheet", "contents", "units"],
     )
@@ -300,6 +303,39 @@ def build_slide_tables(
             }
         )
     tables["18_Carbon_budget"] = pd.DataFrame(budget_rows)
+
+    lca = build_lca_comparison(inputs)
+    inc = lca["included"].copy()
+    inc["total_tCO2e_per_t"] = inc.apply(
+        lambda r: (
+            f"{r['total_central']:.2f}"
+            if pd.notna(r["total_central"])
+            and abs(float(r["total_low"]) - float(r["total_high"])) < 1e-9
+            else (
+                f"{r['total_low']:.2f}–{r['total_high']:.2f}"
+                + (
+                    f" (expected {r['total_central']:.2f})"
+                    if pd.notna(r["total_central"])
+                    else ""
+                )
+            )
+        ),
+        axis=1,
+    )
+    tables["19_LCA_comparison"] = inc[
+        [
+            "study",
+            "year",
+            "geography",
+            "system_boundary",
+            "combustion_included",
+            "shipping_included",
+            "gwp",
+            "total_tCO2e_per_t",
+            "alignment_note",
+        ]
+    ]
+    tables["19_LCA_excluded"] = lca["excluded"]
 
     gas = float(head["canada_territorial_gas_mtco2e_yr"])
     claimed = float(head["canada_territorial_claimed_electric_mtco2e_yr"])
@@ -583,6 +619,8 @@ FIGURE_SHEET_NAMES = {
     "mc_summary.csv": "mc_summary",
     "mc_howarth_sensitivity.csv": "mc_howarth",
     "mc_parameters.csv": "mc_parameters",
+    "fig10_lca_comparison.csv": "fig10_lca",
+    "fig10_lca_excluded.csv": "fig10_lca_excluded",
 }
 
 
