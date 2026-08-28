@@ -1,0 +1,26 @@
+parameter,value,unit,source
+pulse_year,2020,year,Burke et al. Nature 651:959-966 (2026). SC-CO2 is the 2021-2100 damage from a 1 tCO2 pulse in this year (FD-CO2 / SC-CO2).
+analysis_year,2025,year,Present-value and constant-dollar year for reported CAD.
+damages_horizon_year,2100,year,"Year-by-year Burke path uses the 2100-truncated SC. Longer horizons are applied as constant 2020-pulse SC from Figure 2e (see burke_horizons.csv), not by extending the calendar of emissions."
+us_gdp_deflator_2020,105.377,index 2017=100,"BEA Table 1.1.9 implicit price deflator for GDP; FRED A191RD3A086NBEA. 2020 annual."
+us_gdp_deflator_2025,128.979,index 2017=100,"BEA Table 1.1.9 implicit price deflator for GDP; FRED A191RD3A086NBEA. 2025 annual."
+usd_cad_2025,1.3978,CAD per USD,"Bank of Canada annual average exchange rates. US dollar 2025 = 1.3978."
+canada_gdp_deflator_2020,115.80157,index,"IMF IFS GDP deflator for Canada; FRED NGDPDIXCAA. 2020 annual. Inflates A Rising Tide Table 1 from 2020 CAD to 2025 CAD."
+canada_gdp_deflator_2021,124.81689,index,"IMF IFS GDP deflator for Canada; FRED NGDPDIXCAA. 2021 annual. ECCC C$2021 to C$2025."
+canada_gdp_deflator_2025,143.98050,index,"IMF IFS GDP deflator for Canada; FRED NGDPDIXCAA. 2025 annual."
+central_discount_rate_pct,2.0,percent,"Burke headline and ECCC/TBS central. Canadian CBA has no 1.5% systemic-risk carve-out equivalent to the UK Green Book."
+central_growth_rate,0.0,fraction per year,"g=0 central. Hatton +2% runs against Burke's own pulse-year gradient of about -2%/yr (truncated 2100 window). Longer horizons are handled via Figure 2e rows, not via g."
+central_horizon,through_2300,horizon key,"Burke Figure 2e through-2300 at 2% fixed. Register emits into the 2070s; a calendar-fixed 2100 endpoint truncates late-life pulses. through_2100 is reported alongside for Hatton comparability."
+central_horizon_discounting,2pct_fixed,key,Matches central_discount_rate_pct. Ramsey rows are sensitivities.
+burke_pulse_file,loss_damage_r1/total_damages_by_pulse_2100.csv,path relative to Inputs/,Long-form Burke 2021-2100 damages by pulse year and discount rate (2020 USD / tCO2).
+burke_horizons_file,loss_damage/burke_horizons.csv,path relative to Inputs/,Figure 2e and Table 1 2020-pulse SC-CO2 by damage horizon.
+burke_country_shares_file,loss_damage_r1/burke_country_damage_shares.csv,path relative to Inputs/,"Country share of a 1 GtCO2 1990 pulse at 2%. Canada share_FD applied to later pulses; do not use dam_FD per tonne."
+eccc_schedule_file,loss_damage/eccc_sc_co2.csv,path relative to Inputs/,ECCC official SC-CO2 schedule C$2021.
+eccc_ch4_schedule_file,loss_damage/eccc_sc_ch4.csv,path relative to Inputs/,ECCC official SC-CH4 schedule C$2021 per tCH4 (Table 1 / A.1.1 / A.1.2).
+eccc_central_discount_rate_pct,2.0,percent,ECCC recommended near-term Ramsey rate for CBA (Table 1).
+burke_fig4_canada_file,loss_damage_r1/burke_fig4_canada.csv,path relative to Inputs/,"Derived from damages_and_benefits_k90.rds Figure 4 sankey. Canada as emitter only; CAN-on-CAN is not in the file."
+cboc_gdp_cad_per_year,11153000000,2020 CAD,"Conference Board of Canada, A Rising Tide (July 2020), Table 1 and Appendix B Table 1: Canada GDP at market prices 11,153 (2020 $ millions) at 56 mtpa. Whole-chain including upstream. Commissioned by Canadian LNG Alliance."
+cboc_dollar_year,2020,year,"Table 1 header: annual investment spending / GDP at market prices (2020 $ millions). Appendix B Table 1: annual GDP impacts, 2020 $ millions. Inflate with FRED NGDPDIXCAA 2020 to 2025. Uninflated 2020 CAD is reported alongside."
+cboc_scenario_mtpa,56,mtpa,"A Rising Tide scenario: 56 mtpa LNG industrial capacity in British Columbia (Appendix A)."
+cboc_operating_years,40,years,"A Rising Tide Appendix A: operational lifespan of 40 years after construction. Matches CER licence term used in the emissions numerator. Research sketch used 30; that is reported as a sensitivity."
+cboc_operating_years_sensitivity,30,years,Research memo sketch (C$477bn at 80.7 mtpa).

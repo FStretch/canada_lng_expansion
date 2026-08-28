@@ -1,0 +1,7 @@
+horizon,discounting,sc_co2_usd2020_per_t,source
+through_2100,2pct_fixed,1012.8490006308385,"Burke et al. 2026 Extended Data Table 1 / Inputs/loss_damage_r1/total_damages_by_pulse_2100.csv. 2020 pulse, damages 2021-2100. Same as Hatton Table 1 (1013)."
+no_growth_after_2100,2pct_fixed,2120,"Burke et al. 2026 Figure 2e median, 2020 pulse, 2% fixed. Temperature has no effect on growth after 2100; impacts cumulate through 2300."
+through_2300,2pct_fixed,3198,"Burke et al. 2026 Figure 2e median, 2020 pulse, 2% fixed. Growth impacts continue through 2300. Horizon-consistent with register emissions into the 2070s."
+through_2100,ramsey,1322,"Burke et al. 2026 Figure 2e median, Ramsey discounting calibrated to a near-term 2% rate."
+no_growth_after_2100,ramsey,4045,"Burke et al. 2026 Figure 2e median, Ramsey, no growth impacts after 2100."
+through_2300,ramsey,7056,"Burke et al. 2026 Figure 2e median, Ramsey, growth impacts through 2300."

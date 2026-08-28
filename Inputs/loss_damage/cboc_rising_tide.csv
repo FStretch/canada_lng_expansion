@@ -1,0 +1,15 @@
+item,value,unit,source
+canada_gdp_annual,11153000000,2020 CAD,"Table 1 and Appendix B Table 1: GDP at market prices, Canada, 11,153 (2020 $ millions)"
+bc_gdp_annual,8089000000,2020 CAD,"Table 1 / Table 3: British Columbia 8,089 (2020 $ millions)"
+alberta_gdp_annual,1622000000,2020 CAD,Table 3: Alberta 1,622
+ontario_gdp_annual,1003000000,2020 CAD,Table 3: Ontario 1,003
+quebec_gdp_annual,222000000,2020 CAD,Table 3: Quebec 222
+annual_investment,11246000000,2020 CAD,"Table 1: annual investment spending 11,246 (2020 $ millions). Not GDP. Do not use as value."
+upstream_share_of_gdp,8533000000,2020 CAD,"Table 1 Canada GDP: upstream 8,533 of 11,153 (76.5%)"
+lng_terminal_ops_gdp,993000000,2020 CAD,"Table 1 Canada GDP: LNG terminal operations 993 of 11,153"
+provincial_territorial_revenue_40yr,92000000000,CAD vintage unstated in Table 4,"Body p.10: more than $92 billion over the 40-year operating life. Key findings said more than $90 billion over 2020-64. Product-page $108bn not in this briefing."
+federal_revenue,64000000000,CAD vintage unstated in Table 4,Body p.10: related federal revenue gains would exceed $64 billion
+scenario_mtpa,56,mtpa,Appendix A
+operating_life_years,40,years,Appendix A: operational lifespan of 40 years
+dollar_year,2020,year,Table 1 and Appendix B labelled 2020 $ millions
+commissioned_by,Canadian LNG Alliance,text,Acknowledgements

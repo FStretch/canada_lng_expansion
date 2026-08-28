@@ -1,0 +1,9 @@
+item,value,unit,note
+canada_emissions_caused_usd,1333629912222.3608,2020 USD,"Figure 4 sankey (k90). Canada as emitter, 1990-2020 cumulative. Label CAN ($1.33T). Not an LNG figure. Canada is not a plotted recipient; CAN-on-CAN incidence is not in this file. Keep share_FD 0.17% for victim share."
+canada_share_of_global_owing,0.024004609785380045,fraction,"Emitter share of 1990-2020 damages, not victim share."
+global_owing_usd,55557241885873.32,2020 USD,Sum of owing_real transfers in k90.
+canada_in_owed_to_panel,0.0,1=yes,Canada does not appear as a recipient stratum in Figure 4.
+usa_owing_usd,10179776367205.11,2020 USD,Must match Burke ~USD 10.2tn from US 1990-2020 emissions.
+china_owing_usd,8703076049708.812,2020 USD,Must match Burke USD 8.7tn.
+eu_owing_usd,6416336628713.898,2020 USD,Must match Burke USD 6.42tn.
+uk_owing_usd,1054463575591.8745,2020 USD,GBR emitter total in k90.
