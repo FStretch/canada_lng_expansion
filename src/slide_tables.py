@@ -8,7 +8,7 @@ from pathlib import Path
 import pandas as pd
 
 from src.inputs import DEFAULT_SCENARIO, INTENSITY_SCENARIOS, get_param
-from src.model import CHAINS, GROUPS, electrification_counterfactual
+from src.model import CHAINS, GROUPS, carbon_budget_shares, electrification_counterfactual
 from src.report_params import resolve_report_params
 from src.trajectories import (
     annual_series,
@@ -85,6 +85,7 @@ def build_slide_tables(
             ("15_Oil_comparison", "Lifecycle Gt vs TMX and Alberta–BC bitumen (fig 7)", "GtCO2e"),
             ("16_Notes", "Units, scenario, what not to sum", "—"),
             ("17_Loss_damage", "Global L&D, ECCC central + Burke upper bracket", "2025 CAD tn"),
+            ("18_Carbon_budget", "Lifetime CO2e vs GCB 2025 remaining CO2 budgets", "% of GtCO2"),
         ],
         columns=["sheet", "contents", "units"],
     )
@@ -273,6 +274,21 @@ def build_slide_tables(
         columns=["item", "value", "unit"],
     )
 
+    budgets = carbon_budget_shares(lifecycle, inputs["params"])
+    budget_rows = []
+    for r in budgets.itertuples():
+        budget_rows.append(
+            {
+                "item": f"Share of {r.label} budget",
+                "value": _r1(r.share_pct),
+                "unit": "%",
+                "budget_GtCO2": r.budget_gtco2,
+                "lifetime_GtCO2e": round(r.lifetime_gtco2e, 2),
+                "note": r.units_note,
+            }
+        )
+    tables["18_Carbon_budget"] = pd.DataFrame(budget_rows)
+
     gas = float(head["canada_territorial_gas_mtco2e_yr"])
     claimed = float(head["canada_territorial_claimed_electric_mtco2e_yr"])
     alle = float(head["canada_territorial_all_electric_mtco2e_yr"])
@@ -434,6 +450,11 @@ def build_slide_tables(
                 "Headline assumes gas turbine 0.29 for every terminal. 11 and 12 are appendix only.",
             ),
             ("rounding", "One decimal except oil comparison (two decimals, Gt)."),
+            (
+                "carbon_budget_units",
+                "GCB 2025 remaining budgets are CO2; lifetime totals are GWP100 CO2e. "
+                "Sheet 18 compares CO2e to a CO2 budget (approximation).",
+            ),
             (
                 "send_this_file",
                 "Outputs/SLIDE_TABLES.xlsx — one table per sheet, for the PPT Claude chat.",

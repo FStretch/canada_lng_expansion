@@ -702,3 +702,34 @@ def assumptions_used(inputs: dict, by_project: pd.DataFrame) -> pd.DataFrame:
             "sheet": "Asset Register / Parameters",
         })
     return pd.DataFrame(rows)
+
+
+CARBON_BUDGET_PARAMS = (
+    ("remaining_15c_budget", "1.5°C, 50% from start of 2026"),
+    ("remaining_17c_budget", "1.7°C, 50% from start of 2026"),
+    ("remaining_2c_budget", "2.0°C, 50% from start of 2026"),
+)
+
+
+def carbon_budget_shares(lifetime_mtco2e: float, params) -> pd.DataFrame:
+    """Lifetime CO2e as a share of GCB 2025 remaining CO2 budgets.
+
+    Budgets are CO2; the register is GWP100 CO2e. The comparison is an
+    approximation: a true CO2-only total is not derivable from this model.
+    """
+    gt = float(lifetime_mtco2e) / 1000.0
+    rows = []
+    for name, label in CARBON_BUDGET_PARAMS:
+        budget = float(get_param(params, name))
+        rows.append({
+            "parameter": name,
+            "label": label,
+            "budget_gtco2": budget,
+            "lifetime_gtco2e": gt,
+            "share_pct": 100.0 * gt / budget,
+            "units_note": (
+                "CO2e compared to a CO2 budget (approximation); "
+                "a true CO2-only total is not derivable"
+            ),
+        })
+    return pd.DataFrame(rows)

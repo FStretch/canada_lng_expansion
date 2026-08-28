@@ -168,6 +168,12 @@ America.
 | Delay where no FID | 5 years | Planning assumption, tested across 3 to 7 years |
 | Operating life | 40 years | CER export licence terms, not an assumption |
 | Methane GWP100 / GWP20 | 29.8 / 82.5 | IPCC AR6 Working Group I, fossil methane |
+| Remaining 1.5°C budget (50%) | 170 GtCO2 | Global Carbon Budget 2025, from start of 2026 |
+| Remaining 1.7°C / 2°C (50%) | 525 / 1,055 GtCO2 | Same source |
+
+Lifetime CO2e is also reported as a share of those remaining budgets. The budgets are CO2;
+the register is GWP100 CO2e. That comparison is an approximation: a true CO2-only total is
+not derivable from this model.
 
 The FID delay sits inside the lifespan window rather than extending it, so a delayed project has
 fewer operating years. It is the least evidenced parameter in the model and is worth approximately

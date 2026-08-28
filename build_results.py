@@ -35,6 +35,7 @@ from src.model import (
     assert_no_cross_chain_capacity_sum,
     assumptions_used,
     by_stage,
+    carbon_budget_shares,
     compute_by_project,
     electrification_counterfactual,
     summarise,
@@ -210,6 +211,16 @@ def write_review_summary(
         f"- **Territorial:** CAN {can:.1f} ({can/annual*100:.1f}%)  |  "
         f"BUNK {bunk:.1f} ({bunk/annual*100:.1f}%)  |  "
         f"FOR {foreign:.1f} ({foreign/annual*100:.1f}%)"
+    )
+    budgets = carbon_budget_shares(lifecycle, params)
+    lines.append(
+        "- **Share of remaining carbon budget (GCB 2025, from start of 2026):** "
+        + "  |  ".join(
+            f"{r.label} {r.share_pct:.1f}% of {r.budget_gtco2:g} GtCO2"
+            for r in budgets.itertuples()
+        )
+        + ". Comparison is **CO2e against a CO2 budget** (approximation); "
+        "a true CO2-only total is not derivable."
     )
     lines.append("")
 
@@ -556,8 +567,10 @@ def write_review_summary(
             f"no lifecycle total): {names}."
         )
     lines.append(
-        "- Capacity is never summed across chains (liquefaction ≠ regasification). "
-        "Headline capacity is export-chain only."
+        "- Remaining carbon budgets (GCB 2025) are CO2 from the start of 2026. "
+        "Lifetime totals are GWP100 CO2e. The share-of-budget figures compare "
+        "CO2e to a CO2 budget and are an approximation; a true CO2-only total "
+        "is not derivable from this model."
     )
     lines.append(
         "- Reconciliations close within floating-point tolerance (1e-6 to 1e-3); "
@@ -726,6 +739,10 @@ def main() -> None:
     # calc_group must be read from register, never derived
     assert inputs["calc_group_source"] == "Asset Register:calc_group"
     print("[validate] calc_group read from Asset Register (not derived) PASS")
+    assert abs(float(get_param(inputs["params"], "remaining_15c_budget")) - 170) < 1e-9
+    assert abs(float(get_param(inputs["params"], "remaining_17c_budget")) - 525) < 1e-9
+    assert abs(float(get_param(inputs["params"], "remaining_2c_budget")) - 1055) < 1e-9
+    print("[validate] GCB 2025 carbon budgets 170 / 525 / 1055 GtCO2 PASS")
 
     for chain, n in EXPECTED_CHAIN_LENGTHS.items():
         assert len(inputs["chains"][chain]) == n
@@ -885,6 +902,13 @@ def main() -> None:
         f"[validate] annual {annual_mt:.1f} is life-average; "
         f"panel peak {peak_mt:.1f} Mt in {peak_year}"
     )
+    budgets = carbon_budget_shares(panel_life_mt, inputs["params"])
+    b15 = budgets.loc[budgets["parameter"] == "remaining_15c_budget"].iloc[0]
+    print(
+        f"[validate] lifetime {b15['lifetime_gtco2e']:.2f} GtCO2e is "
+        f"{b15['share_pct']:.1f}% of 1.5C budget {b15['budget_gtco2']:g} GtCO2 "
+        f"(CO2e vs CO2 approximation) PASS"
+    )
 
     summary = summary.copy()
     summary["lifecycle_total_mtco2e"] = [
@@ -925,6 +949,11 @@ def main() -> None:
             ("annual_basis", "life-average utilisation over each asset window"),
             ("lifetime_total_mtco2e", panel_life_mt),
             ("lifetime_basis", "sum of calendar panel; excludes legacy"),
+            (
+                "carbon_budget_units_note",
+                "Lifetime is GWP100 CO2e; GCB 2025 budgets are CO2. "
+                "Share-of-budget is CO2e / CO2 (approximation).",
+            ),
             ("duration_x_average_mtco2e", duration_life),
             ("panel_peak_year", peak_year),
             ("panel_peak_mtco2e_yr", peak_mt),
@@ -933,6 +962,8 @@ def main() -> None:
             ("international_bunkers_mtco2e_yr", bunk / 1e6),
             ("foreign_territorial_mtco2e_yr", foreign / 1e6),
             ("legacy_projects", ", ".join(legacy_ids)),
+            ("gcb_2025_15c_gtco2", float(b15["budget_gtco2"])),
+            ("lifetime_share_of_15c_budget_pct", float(b15["share_pct"])),
             ("inputs_guard", "Inputs opened read-only (rb); writes only under Outputs/."),
             (
                 "slide_tables",
@@ -970,6 +1001,7 @@ def main() -> None:
         stages.to_excel(writer, sheet_name="By Stage", index=False)
         territorial.to_excel(writer, sheet_name="Territorial", index=False)
         assumptions.to_excel(writer, sheet_name="Assumptions", index=False)
+        budgets.to_excel(writer, sheet_name="Carbon Budgets", index=False)
         by_chain.to_excel(writer, sheet_name="By Chain", index=False)
         panel.to_excel(writer, sheet_name="Calendar Panel", index=False)
         panel_by_project(panel).to_excel(
