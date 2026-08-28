@@ -24,6 +24,7 @@ from src.placeholder_sensitivity import (
     run_placeholder_start_sensitivity,
 )
 from src.loss_damage import compute_loss_damage, format_ld_markdown, write_ld_figure
+from src.monte_carlo import format_mc_markdown, run_monte_carlo
 from src.trajectories import (
     PANEL_START_YEAR,
     build_emissions_panel,
@@ -143,6 +144,7 @@ def write_review_summary(
     panel: pd.DataFrame,
     ld: dict | None = None,
     placeholder_sens: dict | None = None,
+    mc: dict | None = None,
 ) -> None:
     sample = by_project.loc[
         (~by_project["excluded_from_totals"]) & (by_project["scenario"] == DEFAULT_SCENARIO)
@@ -619,6 +621,8 @@ def write_review_summary(
         lines.extend(format_ld_markdown(ld))
     if placeholder_sens is not None:
         lines.extend(format_placeholder_markdown(placeholder_sens))
+    if mc is not None:
+        lines.extend(format_mc_markdown(mc))
 
     path.write_text("\n".join(lines), encoding="utf-8")
     print(f"Wrote review summary: {path}")
@@ -948,6 +952,12 @@ def main() -> None:
         f"{placeholder_sens['placeholder_mt']:.1f} Mt "
         f"({placeholder_sens['placeholder_pct']:.1f}% of lifetime) PASS"
     )
+    mc = run_monte_carlo(inputs, INPUTS_DIR, panel)
+    print(
+        f"[validate] Monte Carlo {mc['n_draws']} draws seed {mc['seed']} "
+        f"physics {mc['physics_seconds']:.2f}s price {mc['price_seconds']:.2f}s "
+        f"kernel max abs {mc['kernel_panel_max_abs_mt']:.1e} Mt PASS"
+    )
     budgets = carbon_budget_shares(panel_life_mt, inputs["params"])
     b15 = budgets.loc[budgets["parameter"] == "remaining_15c_budget"].iloc[0]
     print(
@@ -1007,6 +1017,10 @@ def main() -> None:
             ),
             ("placeholder_lifetime_mtco2e", placeholder_sens["placeholder_mt"]),
             ("placeholder_share_of_lifetime_pct", placeholder_sens["placeholder_pct"]),
+            ("monte_carlo_seed", mc["seed"]),
+            ("monte_carlo_n_draws", mc["n_draws"]),
+            ("monte_carlo_physics_seconds", round(mc["physics_seconds"], 3)),
+            ("monte_carlo_price_seconds", round(mc["price_seconds"], 3)),
             (
                 "carbon_budget_units_note",
                 "Lifetime is GWP100 CO2e; GCB 2025 budgets are CO2. "
@@ -1073,6 +1087,9 @@ def main() -> None:
         ld["sc_table"].to_excel(writer, sheet_name="LD SC-CO2", index=False)
         ld["horizon_table"].to_excel(writer, sheet_name="LD Horizons", index=False)
         ld["params_meta"].to_excel(writer, sheet_name="LD Assumptions", index=False)
+        mc["summary"].to_excel(writer, sheet_name="MC Summary", index=False)
+        mc["howarth"].to_excel(writer, sheet_name="MC Howarth", index=False)
+        mc["parameters"].to_excel(writer, sheet_name="MC Parameters", index=False)
 
     write_figure(by_project, FIGURE)
     write_review_summary(
@@ -1085,6 +1102,7 @@ def main() -> None:
         panel,
         ld=ld,
         placeholder_sens=placeholder_sens,
+        mc=mc,
     )
     fig_results = build_all_report_figures(
         inputs, by_project, stages, FIGURE_DIR, FIGURE_DATA, panel=panel
@@ -1115,6 +1133,10 @@ def main() -> None:
     placeholder_sens["by_asset"].to_csv(
         FIGURE_DATA / "placeholder_start_by_asset.csv", index=False
     )
+    mc["summary"].to_csv(FIGURE_DATA / "mc_summary.csv", index=False)
+    mc["howarth"].to_csv(FIGURE_DATA / "mc_howarth_sensitivity.csv", index=False)
+    mc["parameters"].to_csv(FIGURE_DATA / "mc_parameters.csv", index=False)
+    mc["draws"].to_csv(FIGURE_DATA / "mc_draws.csv", index=False)
     panel.to_csv(FIGURE_DATA / "emissions_panel.csv", index=False)
     slide_tables = build_slide_tables(
         inputs, by_project, summary, by_chain, stages, panel, ld=ld

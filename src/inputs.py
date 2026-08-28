@@ -79,6 +79,8 @@ REQUIRED_PARAMS = (
     "lng_energy_content",
     "liquefaction_electrification_assumed",
     "assumed_first_export_year_if_missing",
+    "monte_carlo_seed",
+    "monte_carlo_n_draws",
 )
 
 
