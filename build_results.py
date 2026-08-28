@@ -92,6 +92,9 @@ EXPECTED_ADVANCED_EXPORT = 26.0
 # Life-average territorial shares, one decimal. Tied to the Data Inputs README
 # and the repo README so those documents cannot drift from the model.
 EXPECTED_TERRITORIAL_SHARE_PCT = {"CAN": 18.5, "BUNK": 5.6, "FOR": 75.9}
+EXPECTED_LIFETIME_MT = 9558.2
+EXPECTED_PEAK_YEAR = 2037
+EXPECTED_PEAK_MT = 309.1
 
 
 def write_figure(by_project: pd.DataFrame, path: Path) -> None:
@@ -965,6 +968,19 @@ def main() -> None:
         f"[validate] headline annual is panel peak {peak_mt:.1f} Mt in {peak_year} "
         f"({panel_n_emitting(panel, peak_year, DEFAULT_SCENARIO)} assets); "
         f"life_average_annual_mt {annual_mt:.1f}"
+    )
+    assert abs(round(panel_life_mt, 1) - EXPECTED_LIFETIME_MT) < 1e-9, (
+        panel_life_mt,
+        EXPECTED_LIFETIME_MT,
+    )
+    assert peak_year == EXPECTED_PEAK_YEAR, (peak_year, EXPECTED_PEAK_YEAR)
+    assert abs(round(peak_mt, 1) - EXPECTED_PEAK_MT) < 1e-9, (
+        peak_mt,
+        EXPECTED_PEAK_MT,
+    )
+    print(
+        f"[validate] lifetime {EXPECTED_LIFETIME_MT} Mt and peak "
+        f"{EXPECTED_PEAK_MT} Mt in {EXPECTED_PEAK_YEAR} match locked values PASS"
     )
     placeholder_sens = run_placeholder_start_sensitivity(
         inputs, INPUTS_DIR, panel, ld

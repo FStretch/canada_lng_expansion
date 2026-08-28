@@ -82,7 +82,7 @@ def _write_csv(df: pd.DataFrame, path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Figure 1 — stage breakdown (40-year average)
+# Figure 1 — stage breakdown (life-average annual)
 # ---------------------------------------------------------------------------
 
 def figure_1_stage_breakdown(
@@ -147,7 +147,7 @@ def figure_1_stage_breakdown(
 
 
 # ---------------------------------------------------------------------------
-# Figure 2 — territorial split (40-year average)
+# Figure 2 — territorial split (life-average annual)
 # ---------------------------------------------------------------------------
 
 def figure_2_territorial_split(
@@ -296,7 +296,7 @@ def figure_3_three_trajectories(
     _caption(
         fig,
         f"Figure 3 · Scenario: {DEFAULT_SCENARIO}. Calendar-year annual values "
-        "(not the 40-year average). Membership from calc_group. "
+        "(not the life-average). Membership from calc_group. "
         f"Plateaus ≈ {plateaus['operating']:.0f} / "
         f"{plateaus['plus_under_construction']:.0f} / "
         f"{plateaus['plus_proposed']:.0f} MtCO₂e/yr.",
@@ -395,7 +395,7 @@ def figure_4_pathway_vs_territorial(
         title="Canada's pathway versus territorial LNG emissions",
         caption=(
             f"Figure 4 · Scenario: {DEFAULT_SCENARIO}. Calendar-year annual values "
-            "(not the 40-year average). LNG line is stages tagged CAN only. "
+            "(not the life-average). LNG line is stages tagged CAN only. "
             "Pathway interpolated from Parameters milestones "
             "(694 / 607 / 455 / 417 / 0)."
         ),
@@ -440,7 +440,7 @@ def figure_5_pathway_three_upstream(
         pathway=pathway,
         title="Canada's pathway versus territorial LNG — upstream cases",
         caption=(
-            "Figure 5 · Calendar-year annual values (not the 40-year average). "
+            "Figure 5 · Calendar-year annual values (not the life-average). "
             "Canada pathway unchanged; LNG (CAN stages) under three upstream scenarios. "
             f"Territorial plateaus ≈ {plateaus['measurement_central']:.0f} / "
             f"{plateaus['near_term_methane_gwp20']:.0f} / "
@@ -496,7 +496,7 @@ def figure_6_pathway_vs_total(
         title="Canada's pathway versus total LNG emissions",
         caption=(
             f"Figure 6 · Scenario: {DEFAULT_SCENARIO}. Calendar-year annual values "
-            "(not the 40-year average). Total includes CAN, BUNK and FOR stages. "
+            "(not the life-average). Total includes CAN, BUNK and FOR stages. "
             f"Plateau ≈ {float(lng.max()):.0f} MtCO₂e/yr."
         ),
         out_name="fig06_pathway_vs_total_lng",
@@ -513,7 +513,7 @@ def figure_6_pathway_vs_total(
 
 
 # ---------------------------------------------------------------------------
-# Figure 7 — oil infrastructure comparison (lifecycle Gt, average basis)
+# Figure 7 — oil infrastructure comparison (lifecycle Gt, calendar panel)
 # ---------------------------------------------------------------------------
 
 def figure_7_oil_comparison(
@@ -656,7 +656,7 @@ def figure_7_oil_comparison(
     _caption(
         fig,
         f"Figure 7 · Scenario: {DEFAULT_SCENARIO}. Lifecycle totals (GtCO₂e), not "
-        "calendar-year trajectories. LNG from the 40-year model lifecycle sum "
+        "calendar-year trajectories. LNG from the calendar-panel lifetime sum "
         "(legacy facilities contribute annual only and are excluded from Gt). "
         "Oil rows use Parameters tmx_oil_lifecycle_per_barrel. "
         "Alberta–BC bitumen pipeline is NEW and UNVALIDATED.",
@@ -786,7 +786,7 @@ def figure_8_electrification_appendix(
     ax1.bar(x, [c[1] for c in cases], color=[c[2] for c in cases], width=0.62)
     ax1.set_xticks(x, [c[0] for c in cases])
     ax1.set_ylabel("Canada-territorial LNG (MtCO₂e/yr)")
-    ax1.set_title("40-year average")
+    ax1.set_title("Life-average")
     ymax = max(c[1] for c in cases)
     ax1.set_ylim(0, ymax * 1.22)
     for i, (label, val, _col) in enumerate(cases):
