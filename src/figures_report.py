@@ -16,6 +16,7 @@ from matplotlib.lines import Line2D
 from src.inputs import DEFAULT_SCENARIO, get_param
 from src.model import GROUPS, electrification_counterfactual
 from src.report_params import resolve_report_params
+from src.scope import headline_sample
 from src.trajectories import (
     annual_series,
     canada_pathway_series,
@@ -130,7 +131,8 @@ def figure_1_stage_breakdown(
     ax.set_xlim(0, df["annual_mtco2e_yr"].max() * 1.38)
     _caption(
         fig,
-        f"Figure 1 · Scenario: {DEFAULT_SCENARIO}. Values are life_average_annual_mt "
+        f"Figure 1 · Scenario: {DEFAULT_SCENARIO}. Export-chain headline scope. "
+        f"Values are life_average_annual_mt "
         f"({headline_mt:.1f} MtCO₂e/yr), not the panel-peak headline. "
         "Destination tags from the Chains sheet (CAN / BUNK / FOR).",
     )
@@ -236,7 +238,8 @@ def figure_2_territorial_split(
     fig.text(
         0.5,
         0.02,
-        f"Figure 2 · Scenario: {DEFAULT_SCENARIO}. Values are life_average_annual_mt "
+        f"Figure 2 · Scenario: {DEFAULT_SCENARIO}. Export-chain headline scope. "
+        f"Values are life_average_annual_mt "
         f"({headline_mt:.1f} MtCO₂e/yr), not the panel-peak headline. International bunkers are attributed "
         "to no country under UNFCCC accounting.",
         ha="center",
@@ -295,7 +298,8 @@ def figure_3_three_trajectories(
     plateaus = {col: float(df[col].max()) for col, *_ in series}
     _caption(
         fig,
-        f"Figure 3 · Scenario: {DEFAULT_SCENARIO}. Calendar-year annual values "
+        f"Figure 3 · Scenario: {DEFAULT_SCENARIO}. Export-chain headline scope. "
+        "Calendar-year annual values "
         "(not the life-average). Membership from calc_group. "
         f"Plateaus ≈ {plateaus['operating']:.0f} / "
         f"{plateaus['plus_under_construction']:.0f} / "
@@ -523,10 +527,7 @@ def figure_7_oil_comparison(
     data_dir: Path,
     panel: pd.DataFrame | None = None,
 ) -> dict:
-    sample = by_project.loc[
-        (~by_project["excluded_from_totals"])
-        & (by_project["scenario"] == DEFAULT_SCENARIO)
-    ]
+    sample = headline_sample(by_project, DEFAULT_SCENARIO)
     if panel is not None:
         lng_all = panel_lifetime_mt(panel, DEFAULT_SCENARIO) / 1e3
         lng_prop = panel_lifetime_mt(
@@ -576,7 +577,7 @@ def figure_7_oil_comparison(
             "lifecycle_gtco2e": lng_all,
             "method": method_note,
             "unvalidated": False,
-            "capacity_note": "export headline capacity separate; emissions all chains",
+            "capacity_note": "export headline capacity; emissions are export-chain headline scope",
         },
         {
             "item": "Canadian LNG, proposed only",
@@ -901,10 +902,7 @@ def build_all_report_figures(
     fig_dir.mkdir(parents=True, exist_ok=True)
     data_dir.mkdir(parents=True, exist_ok=True)
 
-    sample = by_project.loc[
-        (~by_project["excluded_from_totals"])
-        & (by_project["scenario"] == DEFAULT_SCENARIO)
-    ]
+    sample = headline_sample(by_project, DEFAULT_SCENARIO)
     headline = float(sample["annual_total"].sum()) / 1e6
     can = float(sample["canada_territorial"].sum()) / 1e6
     bunk = float(sample["international_bunkers"].sum()) / 1e6

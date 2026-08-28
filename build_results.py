@@ -26,6 +26,13 @@ from src.placeholder_sensitivity import (
 from src.loss_damage import compute_loss_damage, format_ld_markdown, write_ld_figure
 from src.monte_carlo import format_mc_markdown, run_monte_carlo
 from src.lca_comparison import figure_10_lca_comparison, format_lca_markdown
+from src.scope import (
+    SCOPE_RULE_ONE_LINE,
+    exclusion_report,
+    filter_panel,
+    headline_sample,
+    headline_scope_sets,
+)
 from src.trajectories import (
     PANEL_START_YEAR,
     build_emissions_panel,
@@ -153,10 +160,9 @@ def write_review_summary(
     placeholder_sens: dict | None = None,
     mc: dict | None = None,
     lca: dict | None = None,
+    exclusion: dict | None = None,
 ) -> None:
-    sample = by_project.loc[
-        (~by_project["excluded_from_totals"]) & (by_project["scenario"] == DEFAULT_SCENARIO)
-    ]
+    sample = headline_sample(by_project, DEFAULT_SCENARIO)
     params = inputs["params"]
     national = float(get_param(params, "canada_national_emissions"))
     t_low = float(get_param(params, "canada_2030_target_low"))
@@ -207,18 +213,29 @@ def write_review_summary(
     )
     lines.append(
         f"- **Lifetime total (calendar panel {panel_year0}–{panel_year1}):** "
-        f"{lifecycle:.1f} MtCO2e (excludes legacy facilities; remaining years from "
+        f"{lifecycle:.1f} MtCO2e (headline scope; remaining years from "
         f"{PANEL_START_YEAR}, not duration × life-average)"
     )
     lines.append(
         f"- **Headline capacity (export chain only):** {export_cap:.1f} mtpa "
         "(liquefaction; not summed with import regasification or other chains)"
     )
+    if exclusion is not None:
+        lines.append(
+            f"- **Scope:** {SCOPE_RULE_ONE_LINE} "
+            f"Excluded {exclusion['n_excluded']} in-total non-export assets totalling "
+            f"{exclusion['lifetime_mt']:.1f} MtCO2e on the full-register panel "
+            f"({exclusion['share_of_all_assets_pct']:.1f}% of the all-assets "
+            f"{exclusion['all_assets_lifetime_mt']:.1f} Mt). "
+            "They remain in the register."
+        )
     lines.append("")
     lines.append("| chain | mtpa |")
     lines.append("|---|---|")
     for chain in CHAINS:
         cap = float(sample.loc[sample["chain"] == chain, "capacity_mtpa"].sum())
+        if cap == 0:
+            continue
         lines.append(f"| {chain} | {cap:.1f} |")
     lines.append("")
     lines.append(
@@ -322,6 +339,8 @@ def write_review_summary(
     cdef = by_chain.loc[by_chain["scenario"] == DEFAULT_SCENARIO]
     for chain in CHAINS:
         r = cdef.loc[cdef["chain"] == chain].iloc[0]
+        if float(r["capacity_mtpa"]) == 0 and float(r["annual_total_mtco2e_yr"]) == 0:
+            continue
         clife = panel_lifetime_mt(panel, DEFAULT_SCENARIO, chain=chain)
         lines.append(
             f"| {chain} | {chain_stages[chain]} | {r['capacity_mtpa']:.1f} | "
@@ -364,6 +383,45 @@ def write_review_summary(
         )
     lines.append("")
 
+    if exclusion is not None:
+        lines.append("## Headline exclusion (retained in the register)")
+        lines.append("")
+        lines.append(
+            f"{SCOPE_RULE_ONE_LINE} Combined excluded tonnage: "
+            f"**{exclusion['lifetime_mt']:.1f} MtCO2e** "
+            f"({exclusion['n_excluded']} in-total assets; "
+            f"{exclusion['peak_mt']:.1f} Mt in the all-assets peak year "
+            f"{exclusion['peak_year']}). Already out of totals: "
+            f"{exclusion['already_out_of_totals'] or 'none'}."
+        )
+        lines.append("")
+        lines.append(
+            "| project | chain | calc_group | start | mtpa | lifetime Mt | "
+            "legacy |"
+        )
+        lines.append("|---|---|---|---:|---:|---:|---|")
+        for _, r in exclusion["table"].iterrows():
+            start = (
+                "—"
+                if pd.isna(r["first_export_year"])
+                else str(int(r["first_export_year"]))
+            )
+            lines.append(
+                f"| {r['project_id']} | {r['chain']} | {r['calc_group']} | "
+                f"{start} | {r['capacity_mtpa']:.2f} | "
+                f"{r['lifetime_mtco2e']:.1f} | "
+                f"{'yes' if r['is_legacy'] else ''} |"
+            )
+        lines.append("")
+        lines.append("| chain | n | mtpa | lifetime Mt |")
+        lines.append("|---|---:|---:|---:|")
+        for _, r in exclusion["by_chain"].iterrows():
+            lines.append(
+                f"| {r['chain']} | {int(r['n'])} | {r['capacity_mtpa']:.1f} | "
+                f"{r['lifetime_mtco2e']:.1f} |"
+            )
+        lines.append("")
+
     # 5 By stage
     lines.append("## 5. By stage")
     lines.append("")
@@ -383,9 +441,7 @@ def write_review_summary(
     lines.append("| scenario | upstream | life_average_annual_mt | Lifecycle Mt | CAN Mt/yr |")
     lines.append("|---|---|---|---|---|")
     for scen in INTENSITY_SCENARIOS:
-        s = by_project.loc[
-            (~by_project["excluded_from_totals"]) & (by_project["scenario"] == scen)
-        ]
+        s = headline_sample(by_project, scen)
         up = inputs["upstream_by_scenario"][scen]
         life = panel_lifetime_mt(panel, scen)
         lines.append(
@@ -421,16 +477,12 @@ def write_review_summary(
     lines.append("## 8. Assumptions that move the number most")
     lines.append("")
     base_annual = annual
-    howarth = by_project.loc[
-        (~by_project["excluded_from_totals"])
-        & (by_project["scenario"] == "howarth_high"),
-        "annual_total",
-    ].sum() / 1e6
-    inventory = by_project.loc[
-        (~by_project["excluded_from_totals"])
-        & (by_project["scenario"] == "inventory_as_reported"),
-        "annual_total",
-    ].sum() / 1e6
+    howarth = float(
+        headline_sample(by_project, "howarth_high")["annual_total"].sum()
+    ) / 1e6
+    inventory = float(
+        headline_sample(by_project, "inventory_as_reported")["annual_total"].sum()
+    ) / 1e6
     lines.append(
         f"- **Upstream factor** (central 0.25): inventory_as_reported (0.22) → "
         f"{inventory:.1f} Mt/yr ({inventory-base_annual:+.1f}); "
@@ -497,7 +549,8 @@ def write_review_summary(
             f"- **Placeholder start year** (`assumed_first_export_year_if_missing`="
             f"{placeholder_sens['named_start']}): "
             f"{placeholder_sens['placeholder_mt']:.1f} MtCO2e "
-            f"({placeholder_sens['placeholder_pct']:.1f}% of lifetime) from six "
+            f"({placeholder_sens['placeholder_pct']:.1f}% of lifetime) from "
+            f"{len(placeholder_sens['by_asset'])} "
             "assets with a blank `first_export_year`. The 2069 tail is entirely "
             "this fill. Sensitivity at 2033 and 2035 is tabulated below."
         )
@@ -802,16 +855,31 @@ def main() -> None:
     print("[validate] chain stage counts PASS")
 
     by_project = compute_by_project(inputs)
-    panel = build_emissions_panel(inputs)
+    panel_all = build_emissions_panel(inputs)
+    exclusion = exclusion_report(by_project, panel_all, inputs)
+    panel = filter_panel(panel_all, inputs)
     summary = summarise(by_project)
     by_chain = summarise_by_chain(by_project)
     stages = by_stage(by_project)
     territorial = territorial_table(by_project, inputs["params"])
     assumptions = assumptions_used(inputs, by_project)
 
-    sample = by_project.loc[
-        (~by_project["excluded_from_totals"]) & (by_project["scenario"] == DEFAULT_SCENARIO)
+    sample = headline_sample(by_project, DEFAULT_SCENARIO)
+    full_in_total = by_project.loc[
+        (~by_project["excluded_from_totals"])
+        & (by_project["scenario"] == DEFAULT_SCENARIO)
     ]
+    scope_chains, scope_groups = headline_scope_sets(inputs)
+    print(
+        f"[scope] {SCOPE_RULE_ONE_LINE} "
+        f"n_headline={sample['project_id'].nunique()} "
+        f"n_excluded={exclusion['n_excluded']} "
+        f"excluded_mt={exclusion['lifetime_mt']:.1f}"
+    )
+
+    assert set(sample["chain"].unique()) == {"export"}
+    assert int(sample["project_id"].nunique()) == 10, sample["project_id"].unique()
+    print("[validate] headline sample is 10 export assets PASS")
 
     # No watch group in calculation
     assert "watch" not in set(sample["calc_group"].unique()), sample["calc_group"].unique()
@@ -819,11 +887,15 @@ def main() -> None:
     assert not inputs["excluded_watch"] or all(
         pid not in set(sample["project_id"]) for pid in inputs["excluded_watch"]
     )
-    # Saint John must be operating via calc_group
-    sj_row = sample.loc[sample["project_id"] == "saint_john_import_facility"]
+    # Saint John stays in the register as operating/watch; out of headline (import).
+    sj_row = full_in_total.loc[full_in_total["project_id"] == "saint_john_import_facility"]
     assert len(sj_row) == 1 and sj_row.iloc[0]["calc_group"] == "operating"
     assert sj_row.iloc[0]["tier"] == "watch"
-    print("[validate] no watch calc_group in calculation; Saint John=operating PASS")
+    assert not bool(sj_row.iloc[0]["in_headline_scope"])
+    print(
+        "[validate] no watch calc_group in headline; "
+        "Saint John=operating in register, out of headline scope PASS"
+    )
 
     assert_no_cross_chain_capacity_sum(
         {"summary": summary, "by_chain": by_chain, "by_project": by_project}
@@ -868,7 +940,7 @@ def main() -> None:
     assert len(electric_left) == 0, electric_left["project_id"].tolist()
     print("[validate] no electric_committed or electric_planned active drive PASS")
 
-    liq_rows = sample.loc[sample["chain"].isin(["export", "bunkering"])]
+    liq_rows = full_in_total.loc[full_in_total["chain"].isin(["export", "bunkering"])]
     liq_delta = (liq_rows["intensity_liquefaction"].astype(float) - 0.29).abs()
     assert len(liq_rows) and liq_delta.max() < 1e-9, liq_delta.max()
     print("[validate] liquefaction intensity=0.29 for all export and bunkering PASS")
@@ -897,12 +969,12 @@ def main() -> None:
         ),
         "FOR": round(100 * float(sample["foreign_territorial"].sum()) / terr_total, 1),
     }
-    for code, exp in EXPECTED_TERRITORIAL_SHARE_PCT.items():
-        assert terr_share[code] == exp, (code, terr_share, EXPECTED_TERRITORIAL_SHARE_PCT)
     print(
-        f"[validate] territorial split CAN {terr_share['CAN']}% / "
+        f"[scope-change] territorial split CAN {terr_share['CAN']}% / "
         f"BUNK {terr_share['BUNK']}% / FOR {terr_share['FOR']}% "
-        "matches documented shares PASS"
+        f"(was locked {EXPECTED_TERRITORIAL_SHARE_PCT['CAN']} / "
+        f"{EXPECTED_TERRITORIAL_SHARE_PCT['BUNK']} / "
+        f"{EXPECTED_TERRITORIAL_SHARE_PCT['FOR']}; re-lock in Task C)"
     )
     scope_delta = (
         sample["scope_1_2"] + sample["scope_3"] - sample["annual_total"]
@@ -910,26 +982,31 @@ def main() -> None:
     assert scope_delta.max() < 1e-6
     print("[validate] scope 1+2 + scope 3 = total PASS")
 
-    sj = sample.loc[sample["project_id"] == "saint_john_import_facility"].iloc[0]
+    sj = full_in_total.loc[full_in_total["project_id"] == "saint_john_import_facility"].iloc[0]
     sj_mt = float(sj["annual_total"]) / 1e6
     assert abs(sj_mt - 0.5) < 0.15 and sj_mt < 5
-    print(f"[validate] Saint John={sj_mt:.3f} MtCO2e/yr PASS")
+    print(f"[validate] Saint John={sj_mt:.3f} MtCO2e/yr (register, out of headline) PASS")
 
     p1 = sample.loc[sample["project_id"] == "lng_canada_phase_1"].iloc[0]
     nameplate_liq = float(p1["capacity_mtpa"]) * float(p1["intensity_liquefaction"])
     assert abs(nameplate_liq - 4.06) < 0.02
     print(f"[validate] Phase 1 liquefaction nameplate={nameplate_liq:.3f} PASS")
 
-    # Legacy facilities
-    legacy = sample.loc[sample["is_legacy"]]
+    # Legacy facilities remain in the register; they are out of headline (domestic).
+    legacy = full_in_total.loc[full_in_total["is_legacy"]]
     legacy_ids = sorted(legacy["project_id"].unique())
     assert "tilbury_original" in legacy_ids
     assert "energir_montreal_lng" in legacy_ids
+    assert set(legacy_ids).isdisjoint(set(sample["project_id"]))
     for _, r in legacy.iterrows():
         assert pd.isna(r["lifecycle_total"]), r["project_id"]
         assert "legacy" in str(r["utilisation_source"]).lower()
         assert abs(float(r["effective_util"]) - float(get_param(inputs["params"], "steady_state_utilisation"))) < 1e-9
-    print(f"[validate] legacy facilities annual-only (no lifecycle): {legacy_ids} PASS")
+        assert not bool(r["in_headline_scope"])
+    print(
+        f"[validate] legacy facilities annual-only, out of headline scope: "
+        f"{legacy_ids} PASS"
+    )
 
     _validate_licence_end(inputs, panel, sample)
 
@@ -978,18 +1055,11 @@ def main() -> None:
         f"({panel_n_emitting(panel, peak_year, DEFAULT_SCENARIO)} assets); "
         f"life_average_annual_mt {annual_mt:.1f}"
     )
-    assert abs(round(panel_life_mt, 1) - EXPECTED_LIFETIME_MT) < 1e-9, (
-        panel_life_mt,
-        EXPECTED_LIFETIME_MT,
-    )
-    assert peak_year == EXPECTED_PEAK_YEAR, (peak_year, EXPECTED_PEAK_YEAR)
-    assert abs(round(peak_mt, 1) - EXPECTED_PEAK_MT) < 1e-9, (
-        peak_mt,
-        EXPECTED_PEAK_MT,
-    )
     print(
-        f"[validate] lifetime {EXPECTED_LIFETIME_MT} Mt and peak "
-        f"{EXPECTED_PEAK_MT} Mt in {EXPECTED_PEAK_YEAR} match locked values PASS"
+        f"[scope-change] lifetime {round(panel_life_mt, 1)} Mt "
+        f"(was locked {EXPECTED_LIFETIME_MT}); "
+        f"peak {peak_year}/{round(peak_mt, 1)} "
+        f"(was locked {EXPECTED_PEAK_YEAR}/{EXPECTED_PEAK_MT}; re-lock in Task C)"
     )
     placeholder_sens = run_placeholder_start_sensitivity(
         inputs, INPUTS_DIR, panel, ld
@@ -1046,8 +1116,11 @@ def main() -> None:
                 f"({PANEL_START_YEAR} to last emitting year). "
                 "Headline annual is the panel peak calendar year. "
                 "life_average_annual_mt is utilisation over each asset window. "
-                "Headline includes all calc_groups (proposed = advanced + early). "
-                "Capacity is per chain; headline capacity is export liquefaction only.",
+                "Headline includes calc_groups in headline_scope_calc_groups "
+                "on chains in headline_scope_chains (export operating / "
+                "under construction / proposed). "
+                "Capacity is per chain; headline capacity is export liquefaction only. "
+                "Non-export assets stay in the register as a stated exclusion.",
             ),
             ("annual_total_mtco2e_yr", peak_mt),
             ("annual_basis", "panel peak calendar year"),
@@ -1057,7 +1130,13 @@ def main() -> None:
             ("life_average_annual_mt", annual_mt),
             ("life_average_basis", "life-average utilisation over each asset window"),
             ("lifetime_total_mtco2e", panel_life_mt),
-            ("lifetime_basis", "sum of calendar panel; excludes legacy"),
+            ("lifetime_basis", "sum of calendar panel; headline scope (export chain)"),
+            ("headline_scope_rule", SCOPE_RULE_ONE_LINE),
+            ("headline_scope_chains", ",".join(sorted(scope_chains))),
+            ("headline_scope_calc_groups", ",".join(sorted(scope_groups))),
+            ("headline_n_assets", int(sample["project_id"].nunique())),
+            ("excluded_n_assets", exclusion["n_excluded"]),
+            ("excluded_lifetime_mtco2e", exclusion["lifetime_mt"]),
             (
                 "assumed_first_export_year_if_missing",
                 int(get_param(inputs["params"], "assumed_first_export_year_if_missing")),
@@ -1120,6 +1199,7 @@ def main() -> None:
         assumptions.to_excel(writer, sheet_name="Assumptions", index=False)
         budgets.to_excel(writer, sheet_name="Carbon Budgets", index=False)
         by_chain.to_excel(writer, sheet_name="By Chain", index=False)
+        exclusion["table"].to_excel(writer, sheet_name="Headline Exclusion", index=False)
         panel.to_excel(writer, sheet_name="Calendar Panel", index=False)
         panel_by_project(panel).to_excel(
             writer, sheet_name="Panel Lifetime By Project", index=False
@@ -1152,6 +1232,7 @@ def main() -> None:
         placeholder_sens=placeholder_sens,
         mc=mc,
         lca=fig10,
+        exclusion=exclusion,
     )
     fig_results = build_all_report_figures(
         inputs, by_project, stages, FIGURE_DIR, FIGURE_DATA, panel=panel

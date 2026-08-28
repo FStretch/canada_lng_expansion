@@ -32,6 +32,7 @@ import pandas as pd
 
 from src.inputs import DEFAULT_SCENARIO, INTENSITY_SCENARIOS, MissingInputError, get_param
 from src.model import GROUPS, _stage_intensity
+from src.scope import filter_panel
 from src.trajectories import build_emissions_panel, calendar_bounds, project_annual_mt
 
 BURKE_RATES = (1.5, 2.0, 3.0, 5.0)
@@ -394,6 +395,7 @@ def compute_loss_damage(
             scenarios=LD_EMISSION_SCENARIOS,
             assumed_start=assumed_start,
         )
+        panel = filter_panel(panel, inputs)
     else:
         panel = panel.loc[panel["scenario"].isin(LD_EMISSION_SCENARIOS)].copy()
         if not len(panel):

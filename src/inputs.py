@@ -81,6 +81,8 @@ REQUIRED_PARAMS = (
     "assumed_first_export_year_if_missing",
     "monte_carlo_seed",
     "monte_carlo_n_draws",
+    "headline_scope_chains",
+    "headline_scope_calc_groups",
 )
 
 

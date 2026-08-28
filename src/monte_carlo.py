@@ -18,6 +18,7 @@ import pandas as pd
 from src.inputs import DEFAULT_SCENARIO, get_param
 from src.loss_damage import cad2021_to_cad2025, load_eccc_schedule, load_ld_params
 from src.model import _fid_ok, _is_legacy, _licence_end_year, _lifespan
+from src.scope import headline_scope_sets, row_in_headline_scope
 from src.trajectories import PANEL_START_YEAR, _start_year
 
 MC_SEED_PARAM = "monte_carlo_seed"
@@ -89,11 +90,14 @@ def _compile_assets(inputs: dict) -> list[AssetSpec]:
     ph1_ss = float(get_param(params, "lng_canada_ph1_steady_state_utilisation"))
     sj = float(get_param(params, "saint_john_utilisation"))
     specs = []
+    scope_chains, scope_groups = headline_scope_sets(inputs)
     for _, row in inputs["assets"].iterrows():
         if pd.isna(row["capacity_mtpa"]):
             continue
         chain = row["chain"]
         if chain not in inputs["chains"]:
+            continue
+        if not row_in_headline_scope(row, scope_chains, scope_groups):
             continue
         life, src = _lifespan(row, params)
         if _is_legacy(row, life):

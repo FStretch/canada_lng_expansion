@@ -1,9 +1,9 @@
 """Placeholder first-export-year sensitivity (Parameters sheet).
 
-Six in-scope assets have a blank Asset Register first_export_year. The
-named parameter assumed_first_export_year_if_missing fills that gap.
-With licence-end stops on the licensed terminals, the panel tail is
-entirely this placeholder.
+Five headline-scope export assets have a blank Asset Register
+first_export_year. The named parameter assumed_first_export_year_if_missing
+fills that gap. With licence-end stops on the licensed terminals, the
+panel tail is entirely this placeholder.
 """
 
 from __future__ import annotations
@@ -14,6 +14,7 @@ import pandas as pd
 
 from src.inputs import DEFAULT_SCENARIO, get_param
 from src.loss_damage import LD_EMISSION_SCENARIOS, compute_loss_damage
+from src.scope import filter_panel
 from src.trajectories import (
     build_emissions_panel,
     panel_by_project,
@@ -83,6 +84,7 @@ def run_placeholder_start_sensitivity(
                 scenarios=LD_EMISSION_SCENARIOS,
                 assumed_start=start,
             )
+            panel_s = filter_panel(panel_s, inputs)
             ld_s = compute_loss_damage(
                 inputs, inputs_dir, panel=panel_s, assumed_start=start
             )

@@ -1,0 +1,4 @@
+assumed_first_export_year_if_missing,is_central,lifetime_mtco2e,peak_year,peak_mtco2e_yr,peak_n_assets,last_emitting_year,central_damage_cad_billion
+2030,True,9315.32425,2037,298.689545,10,2069,4163.877066128376
+2033,False,9315.32425,2040,298.689545,10,2072,4252.136928230233
+2035,False,9315.32425,2042,298.689545,10,2074,4310.414686545675

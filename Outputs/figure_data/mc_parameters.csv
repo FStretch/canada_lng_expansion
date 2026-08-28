@@ -1,0 +1,14 @@
+parameter,distribution,source,sampled
+upstream_production,"triangular(0.22, 0.25, 0.33)",inventory 0.22 / central 0.25 / GWP20-equivalent 0.33; Howarth 0.55 excluded,True
+liquefaction,fixed 0.29,"Emission Factors central; 0.12 is electric, not an uncertainty band",False
+pipeline_transport,"triangular(0.05, 0.1, 0.18)",Emission Factors range_low / central / range_high,True
+shipping,"triangular(0.05, 0.12, 0.31)",Emission Factors range_low / central / range_high,True
+regasification,"triangular(0.02, 0.04, 0.06)",Emission Factors range_low / central / range_high,True
+combustion,"triangular(2.5, 2.75, 3.0)",Emission Factors range_low / central / range_high,True
+fid_delay_mid,"triangular(3.0, 5.0, 7.0), rounded to int",Parameters fid_delay_low / mid / high; applied to non-FID assets,True
+lifecycle_years_default,"triangular(30.0, 40.0, 50.0), rounded to int","Parameters lifespan_sensitivity_low / default / high. Sampled for: marinvest_baie_comeau, fermeuse_energy_flng, discovery_t1t4, kanata_lng. Licence terms and stated project lives held.",True
+utilisation ramp,"fixed (year_1=0.4, year_2=0.7, steady=0.839, ramp=2)",No published range; IGU 83.9% is a point,False
+upstream_ch4_share,fixed 0.30,Not independent of the 0.22 × 1.5 upstream construction,False
+howarth_high,"named point, upstream 0.55, other stages central",Scenarios sheet; excluded from the sampling distribution,False
+monte_carlo_seed,20260828,Parameters sheet,False
+monte_carlo_n_draws,10000,Parameters sheet,False

@@ -19,6 +19,7 @@ from src.inputs import (
     MissingInputError,
     get_param,
 )
+from src.scope import headline_scope_sets, scope_mask
 
 GROUPS = CALC_GROUPS
 CHAINS = ("export", "bunkering", "domestic", "import")
@@ -71,7 +72,13 @@ def _fid_ok(row) -> bool:
 
 
 def _is_legacy(row, lifespan: int, current_year: int | None = None) -> bool:
-    """True when first_export_year + lifespan is already in the past."""
+    """True when first_export_year + lifespan is already in the past.
+
+    Kept so the full-register panel does not invent a remaining life for
+    1971/1976 peak-shaving plants. Headline membership is the named
+    chain/calc_group filter (src.scope), not this flag. After that filter
+    these plants are already out (domestic, not export).
+    """
     current_year = current_year or datetime.now().year
     start = row.get("first_export_year")
     if pd.isna(start):
@@ -214,9 +221,8 @@ def electrification_counterfactual(
     t_low = float(get_param(params, "canada_2030_target_low"))
     t_high = float(get_param(params, "canada_2030_target_high"))
 
-    sample = by_project.loc[
-        (~by_project["excluded_from_totals"]) & (by_project["scenario"] == scenario)
-    ].copy()
+    sample = _totals_frame(by_project)
+    sample = sample.loc[sample["scenario"] == scenario].copy()
     notes = inputs["assets"][["project_id", "liquefaction_drive_note"]].drop_duplicates(
         "project_id"
     )
@@ -408,6 +414,14 @@ def compute_by_project(inputs: dict) -> pd.DataFrame:
             })
 
     result = pd.DataFrame(rows)
+    chains, groups = headline_scope_sets(inputs)
+    if len(result):
+        result["in_headline_scope"] = (
+            ~result["excluded_from_totals"].astype(bool)
+            & scope_mask(result, chains, groups)
+        )
+    else:
+        result["in_headline_scope"] = pd.Series(dtype=bool)
     active = result.loc[~result["excluded_from_totals"]]
     if len(active):
         terr_sum = (
@@ -420,6 +434,11 @@ def compute_by_project(inputs: dict) -> pd.DataFrame:
             active["scope_1_2"] + active["scope_3"] - active["annual_total"]
         ).abs().max() < 1e-6
         print(f"[reconcile] territory+scope identity OK (n={len(active)})")
+    n_head = int(result.loc[result["in_headline_scope"], "project_id"].nunique())
+    print(
+        f"[scope] headline = chain in {sorted(chains)} and calc_group in "
+        f"{sorted(groups)} (n={n_head})"
+    )
     return result
 
 
@@ -468,12 +487,19 @@ def _capacity_by_chain(g: pd.DataFrame) -> dict:
     return out
 
 
+def _totals_frame(by_project: pd.DataFrame) -> pd.DataFrame:
+    """Rows that enter published totals: headline scope when the flag exists."""
+    if "in_headline_scope" in by_project.columns:
+        return by_project.loc[by_project["in_headline_scope"]]
+    return by_project.loc[~by_project["excluded_from_totals"]]
+
+
 def summarise(by_project: pd.DataFrame) -> pd.DataFrame:
     """One row per calc_group per scenario. Early-stage is inside proposed.
 
     Capacity is reported per chain; headline capacity is export only.
     """
-    active = by_project.loc[~by_project["excluded_from_totals"]]
+    active = _totals_frame(by_project)
     rows = []
     for scenario, s_df in active.groupby("scenario", sort=False):
         for group in GROUPS:
@@ -488,7 +514,7 @@ def summarise(by_project: pd.DataFrame) -> pd.DataFrame:
 
 def summarise_by_chain(by_project: pd.DataFrame) -> pd.DataFrame:
     """One row per chain per scenario. Capacity is within-chain only."""
-    active = by_project.loc[~by_project["excluded_from_totals"]]
+    active = _totals_frame(by_project)
     rows = []
     for scenario, s_df in active.groupby("scenario", sort=False):
         for chain in CHAINS:
@@ -516,10 +542,8 @@ def assert_no_cross_chain_capacity_sum(outputs: dict) -> None:
     by_chain = outputs["by_chain"]
     # Within-chain capacity is fine; verify chains are not then re-summed elsewhere
     # by checking By Project is the only place with mixed-chain capacity rows.
-    sample = outputs["by_project"]
-    sample = sample.loc[
-        (~sample["excluded_from_totals"]) & (sample["scenario"] == DEFAULT_SCENARIO)
-    ]
+    sample = _totals_frame(outputs["by_project"])
+    sample = sample.loc[sample["scenario"] == DEFAULT_SCENARIO]
     mixed = sample.groupby("calc_group")["chain"].nunique()
     # Groups can contain multiple chains — that is OK at project grain.
     # Forbidden: a rolled-up number that adds those capacities.
@@ -546,9 +570,8 @@ def assert_no_cross_chain_capacity_sum(outputs: dict) -> None:
 
 def by_stage(by_project: pd.DataFrame, scenario: str = DEFAULT_SCENARIO) -> pd.DataFrame:
     """Stage totals for full headline (all calc_groups)."""
-    head = by_project.loc[
-        (~by_project["excluded_from_totals"]) & (by_project["scenario"] == scenario)
-    ]
+    head = _totals_frame(by_project)
+    head = head.loc[head["scenario"] == scenario]
     total = float(head["annual_total"].sum())
     rows, running = [], 0.0
     for stage in ALL_STAGES:
@@ -576,9 +599,8 @@ def territorial_table(
     params: dict,
     scenario: str = DEFAULT_SCENARIO,
 ) -> pd.DataFrame:
-    active = by_project.loc[
-        (~by_project["excluded_from_totals"]) & (by_project["scenario"] == scenario)
-    ]
+    active = _totals_frame(by_project)
+    active = active.loc[active["scenario"] == scenario]
     national = float(get_param(params, "canada_national_emissions"))
     t_low = float(get_param(params, "canada_2030_target_low"))
     t_high = float(get_param(params, "canada_2030_target_high"))

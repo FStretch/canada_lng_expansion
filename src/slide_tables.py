@@ -11,6 +11,7 @@ from src.inputs import DEFAULT_SCENARIO, INTENSITY_SCENARIOS, get_param
 from src.model import CHAINS, GROUPS, carbon_budget_shares, electrification_counterfactual
 from src.lca_comparison import build_lca_comparison
 from src.report_params import resolve_report_params
+from src.scope import headline_sample
 from src.trajectories import (
     annual_series,
     canada_pathway_series,
@@ -44,9 +45,7 @@ def build_slide_tables(
     ld: dict | None = None,
     mc: dict | None = None,
 ) -> dict[str, pd.DataFrame]:
-    sample = by_project.loc[
-        (~by_project["excluded_from_totals"]) & (by_project["scenario"] == DEFAULT_SCENARIO)
-    ].copy()
+    sample = headline_sample(by_project, DEFAULT_SCENARIO)
     params = inputs["params"]
     national = float(get_param(params, "canada_national_emissions"))
     t_low = float(get_param(params, "canada_2030_target_low"))
@@ -111,7 +110,7 @@ def build_slide_tables(
                 "MtCO2e/yr",
                 "Life-average util over each asset window; not a calendar year",
             ),
-            ("Lifecycle emissions", _r1(lifecycle), "MtCO2e", "Central case: calendar-panel sum; excludes legacy. Not the Monte Carlo median."),
+            ("Lifecycle emissions", _r1(lifecycle), "MtCO2e", "Central case: calendar-panel sum; export-chain headline scope. Not the Monte Carlo median."),
             ("Export capacity", _r1(export_cap), "mtpa", "Export chain only; liquefaction nameplate"),
             ("Canada territorial", _r1(can), "MtCO2e/yr", "Stages tagged CAN (life-average)"),
             ("International bunkers", _r1(bunk), "MtCO2e/yr", "UNFCCC bunkers, no country (life-average)"),
@@ -261,9 +260,7 @@ def build_slide_tables(
 
     scen_rows = []
     for scen in INTENSITY_SCENARIOS:
-        s = by_project.loc[
-            (~by_project["excluded_from_totals"]) & (by_project["scenario"] == scen)
-        ]
+        s = headline_sample(by_project, scen)
         life = panel_lifetime_mt(panel, scen)
         scen_rows.append(
             {
@@ -535,6 +532,12 @@ def build_slide_tables(
         [
             ("scenario", DEFAULT_SCENARIO),
             ("run_at_utc", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")),
+            (
+                "headline_scope",
+                "Headline is chain in headline_scope_chains and calc_group in "
+                "headline_scope_calc_groups (export / operating, under construction, "
+                "proposed). Non-export assets stay in the register as a stated exclusion.",
+            ),
             (
                 "annual_basis",
                 "Headline annual is the panel peak calendar year. "

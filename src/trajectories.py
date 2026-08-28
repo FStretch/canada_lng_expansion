@@ -23,6 +23,7 @@ from src.model import (
     _stage_intensity,
     previously_classified_electric,
 )
+from src.scope import headline_scope_sets, row_in_headline_scope
 
 TRAJECTORY_YEARS = tuple(range(2025, 2051))
 # First calendar year of the published panel (remaining life from this year).
@@ -195,8 +196,12 @@ def build_emissions_panel(
 ) -> pd.DataFrame:
     """Per-asset, per-calendar-year MtCO2e. Primary emissions object.
 
-    Legacy assets (outlived design life) are omitted. Years with zero
-    output are omitted. Lifetime totals are the sum of this frame.
+    Legacy assets (outlived design life) are omitted here so the full
+    register panel does not invent a remaining life for plants
+    commissioned in 1971 and 1976. Headline membership is the named
+    chain/calc_group filter in src.scope, applied after this frame is
+    built. Years with zero output are omitted. Lifetime totals are the
+    sum of the (optionally scoped) frame.
     """
     if assumed_start is None:
         assumed_start = int(get_param(inputs["params"], "assumed_first_export_year_if_missing"))
@@ -339,11 +344,14 @@ def annual_series(
     if assumed_start is None:
         assumed_start = int(get_param(inputs["params"], "assumed_first_export_year_if_missing"))
     groups = set(calc_groups) if calc_groups is not None else None
+    scope_chains, scope_groups = headline_scope_sets(inputs)
 
     rows = []
     for year in years:
         total = 0.0
         for _, row in inputs["assets"].iterrows():
+            if not row_in_headline_scope(row, scope_chains, scope_groups):
+                continue
             if groups is not None and row["calc_group"] not in groups:
                 continue
             val = project_annual_mt(
