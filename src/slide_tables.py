@@ -84,7 +84,7 @@ def build_slide_tables(
             ("14_CAN_trajectories", "Canada-territorial LNG vs pathway; gas vs electric", "MtCO2e/yr"),
             ("15_Oil_comparison", "Lifecycle Gt vs TMX and Alberta–BC bitumen (fig 7)", "GtCO2e"),
             ("16_Notes", "Units, scenario, what not to sum", "—"),
-            ("17_Loss_damage", "Global L&D, Burke central + ECCC, CAD trillion", "2025 CAD tn"),
+            ("17_Loss_damage", "Global L&D, ECCC central + Burke upper bracket", "2025 CAD tn"),
         ],
         columns=["sheet", "contents", "units"],
     )
@@ -443,70 +443,66 @@ def build_slide_tables(
     )
 
     if ld is not None:
+        egrid = ld["eccc_grid"].set_index("discount_rate_pct")
+        published = ld["published"]
         hz = ld["horizon_table"].set_index(["horizon", "discounting"])
-        c = hz.loc[("through_2300", "2pct_fixed")]
-        t2100 = hz.loc[("through_2100", "2pct_fixed")]
+        b2300 = hz.loc[("through_2300", "2pct_fixed")]
+        b2100 = hz.loc[("through_2100", "2pct_fixed")]
         tables["17_Loss_damage"] = pd.DataFrame(
             [
                 (
-                    "Externality ratio, proposed",
-                    round(float(c["externality_ratio_proposed"]), 1),
-                    "x",
-                    "Global L&D (CO2/CH4 split) / CBoC 2025 CAD (40 yr)",
-                ),
-                (
-                    "Canada Burke-channel share (FD)",
-                    round(100 * float(c["canada_share_fd"]), 2),
-                    "%",
-                    "1990 1 Gt pulse, 2021-2100; UK HD validates at 1.61%",
-                ),
-                (
-                    "Share externalised",
-                    round(100 * float(c["externalisation_share"]), 1),
-                    "%",
-                    "1 minus Canada FD share",
-                ),
-                (
-                    "Proposed global L&D, through 2300 2%",
-                    round(float(c["proposed_cad_billion"]) / 1000, 1),
+                    "Central, ECCC 2% calendar year",
+                    round(float(published["total_cad_billion"]) / 1000, 2),
                     "trillion 2025 CAD",
-                    "Figure 2e $3198/t; CO2 + CH4 at ECCC SC-CH4/SC-CO2 ratio",
+                    "Named: central_price_family=eccc, central_aggregation=calendar_year",
                 ),
                 (
-                    "Same, GWP100 x SC-CO2 (not used)",
-                    round(float(c["proposed_gwp_cad_billion"]) / 1000, 1),
+                    "ECCC 1.5% calendar year",
+                    round(float(egrid.loc[1.5, "calendar_year_total_cad_billion"]) / 1000, 2),
                     "trillion 2025 CAD",
-                    "FAQ 4.2 comparison only",
+                    "Central-case sensitivity (higher damages)",
                 ),
                 (
-                    "Proposed global L&D, through 2100 2%",
-                    round(float(t2100["proposed_cad_billion"]) / 1000, 1),
+                    "ECCC 2.5% calendar year",
+                    round(float(egrid.loc[2.5, "calendar_year_total_cad_billion"]) / 1000, 2),
                     "trillion 2025 CAD",
-                    "Hatton-comparable horizon, same gas split",
+                    "Central-case sensitivity (lower damages)",
+                ),
+                (
+                    "Proposed only, ECCC 2%",
+                    round(float(published["proposed_cad_billion"]) / 1000, 2),
+                    "trillion 2025 CAD",
+                    "Same central price, proposed slate",
+                ),
+                (
+                    "Burke through-2300 2% g=0 (upper bracket)",
+                    round(float(b2300["total_cad_billion"]) / 1000, 1),
+                    "trillion 2025 CAD",
+                    "Figure 2e; not the paper central",
+                ),
+                (
+                    "Burke through-2100 2% g=0",
+                    round(float(b2100["total_cad_billion"]) / 1000, 1),
+                    "trillion 2025 CAD",
+                    "Hatton-comparable horizon",
                 ),
                 (
                     "Canadian value, proposed",
-                    round(float(c["canada_value_proposed_cad_billion"]), 0),
+                    round(float(b2300["canada_value_proposed_cad_billion"]), 0),
                     "billion 2025 CAD",
                     "CBoC Table 1 $11.153bn/yr (2020 CAD) at 56 mtpa, scaled, 40 yr, inflated",
                 ),
                 (
-                    "Canada-borne, Burke channel, proposed",
-                    round(float(c["canada_borne_proposed_cad_billion"]), 1),
-                    "billion 2025 CAD",
-                    "0.17% of global; national test is net positive on this channel",
+                    "Canada Burke-channel share (FD)",
+                    round(100 * float(b2300["canada_share_fd"]), 2),
+                    "%",
+                    "1990 1 Gt pulse, 2021-2100; UK HD validates at 1.61%",
                 ),
                 (
                     "Canada 1990-2020 emitter total (Fig 4)",
                     round(ld["fig4"]["canada_owing_usd"] / 1e12, 2),
                     "trillion 2020 USD",
                     "All Canadian emissions, not LNG; Canada absent from recipient panel",
-                ),
-                (
-                    "National value / Canada-borne",
-                    round(float(c["national_value_over_borne"]), 1),
-                    "x",
-                    "Indeterminate once omitted channels are allowed for",
                 ),
             ],
             columns=["item", "value", "unit", "note"],

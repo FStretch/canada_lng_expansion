@@ -3,28 +3,23 @@
 Physical tonnes come from the existing lifecycle model (full chain, GWP100
 CO2e). This module does not change those calculations.
 
-Burke path (headline): Hatton (2026) applied to Burke et al. (2026) SC-CO2
-for a 2020 pulse, inflated to 2025 CAD, grown at a real rate g:
+The published central case is named in Inputs/loss_damage/parameters.csv
+(`central_price_family`, `central_aggregation`, `eccc_central_discount_rate_pct`).
+Default: ECCC official SC-CO2 at 2%, applied per calendar year of emissions
+(year t tonnes × year t SC, summed in 2025 CAD). ECCC 1.5% and 2.5% are the
+central case's sensitivity range. A second NPV of those year-values to 2025
+is a sensitivity only; the official schedule already embeds discounting.
+
+Burke et al. (2026) is an upper-bracket sensitivity across discount rates
+and Figure 2e horizons. Burke default is g = 0; Hatton's +2% is not used
+as a Burke default. The SC already discounts the damage stream.
 
     SC_t = SC_2020_CAD2025 * (1 + g) ** (t - 2020)
     L&D  = sum_t SC_t * E_t
 
-The SC already discounts the damage stream; the sum across emission years
-is not further discounted to 2025 (Hatton's aggregation). A 2025 NPV using
-the same r is reported alongside.
-
-Central case (desk research 25 Aug 2026): 2% discount, g = 0, Figure 2e
-through-2300 SC as the horizon-consistent price, Conference Board
-whole-chain GDP as the Canada denominator. Headline metrics are the
-externality ratio (global L&D / Canadian value) and the Burke-channel
-externalisation share (1 − Canada's 0.17% of a 1990 pulse). The national
-cost-benefit test is reported, not led with.
-
 ECCC path: official SC-CO2 and SC-CH4 schedules (C$2021) inflated to C$2025.
-
-Central valuation splits upstream into CO2 mass and CH4 mass (ECCC FAQ 4.2).
-Burke has no SC-CH4; methane is priced at Burke SC-CO2 times the ECCC
-SC-CH4/SC-CO2 ratio. GWP100-CO2e x SC-CO2 is kept as a comparison row.
+Upstream is split into CO2 mass and CH4 mass (ECCC FAQ 4.2) for the split
+rows; GWP100-CO2e × SC-CO2 is kept as a comparison.
 """
 
 from __future__ import annotations
@@ -89,6 +84,8 @@ def load_ld_params(inputs_dir: Path) -> dict:
         "usd_cad_2025",
         "canada_gdp_deflator_2021",
         "canada_gdp_deflator_2025",
+        "central_price_family",
+        "central_aggregation",
         "central_discount_rate_pct",
         "central_growth_rate",
         "central_horizon",
@@ -311,8 +308,24 @@ def compute_loss_damage(
     year0, year1 = calendar_bounds(inputs, assumed_start)
     horizon = int(float(_required(p, "damages_horizon_year")))
     analysis = int(float(_required(p, "analysis_year")))
-    central_r = float(_required(p, "central_discount_rate_pct"))
-    central_g = float(_required(p, "central_growth_rate"))
+    central_price_family = str(_required(p, "central_price_family")).strip().lower()
+    central_aggregation = str(_required(p, "central_aggregation")).strip().lower()
+    if central_price_family != "eccc":
+        raise MissingInputError(
+            f"central_price_family={central_price_family!r}; paper central is ECCC. "
+            "Burke is an upper-bracket sensitivity, not a selectable central."
+        )
+    if central_aggregation != "calendar_year":
+        raise MissingInputError(
+            f"central_aggregation={central_aggregation!r}; "
+            "paper central applies ECCC SC per calendar year."
+        )
+    burke_r = float(_required(p, "central_discount_rate_pct"))
+    burke_g = float(_required(p, "central_growth_rate"))
+    if burke_g != 0.0:
+        raise MissingInputError(
+            f"Burke default growth_rate is 0; got {burke_g}. Do not use Hatton +2%."
+        )
     central_horizon = str(_required(p, "central_horizon")).strip()
     central_h_disc = str(_required(p, "central_horizon_discounting")).strip()
     eccc_r = float(_required(p, "eccc_central_discount_rate_pct"))
@@ -499,7 +512,7 @@ def compute_loss_damage(
             q = q & (by_group["growth_rate"] == growth)
         return by_group.loc[q].copy()
 
-    central = _slice("burke", DEFAULT_SCENARIO, central_r, central_g)
+    burke_default = _slice("burke", DEFAULT_SCENARIO, burke_r, burke_g)
     eccc_central = _slice("eccc", DEFAULT_SCENARIO, eccc_r, None)
 
     def _total(df: pd.DataFrame) -> float:
@@ -539,8 +552,8 @@ def compute_loss_damage(
         by_year.loc[
             (by_year["price_family"] == "burke")
             & (by_year["scenario"] == DEFAULT_SCENARIO)
-            & (by_year["discount_rate_pct"] == central_r)
-            & (by_year["growth_rate"] == central_g)
+            & (by_year["discount_rate_pct"] == burke_r)
+            & (by_year["growth_rate"] == burke_g)
         ]
         .drop_duplicates(["project_id", "year"])
     )
@@ -581,10 +594,11 @@ def compute_loss_damage(
             "discounting": hr["discounting"],
             "sc_co2_usd2020_per_t": float(hr["sc_co2_usd2020_per_t"]),
             "sc_co2_cad2025_per_t": sc_cad,
-            "is_central": (
+            "is_burke_default": (
                 str(hr["horizon"]) == central_horizon
                 and str(hr["discounting"]) == central_h_disc
             ),
+            "is_central": False,
             "total_cad_billion": total / 1e9,
             "proposed_cad_billion": proposed / 1e9,
             "proposed_gwp_cad_billion": proposed_gwp / 1e9,
@@ -600,21 +614,33 @@ def compute_loss_damage(
             "breakeven_share_proposed": None if proposed == 0 else v_proposed / proposed,
         })
     horizon_table = pd.DataFrame(horizon_rows)
-    h_central = horizon_table.loc[horizon_table["is_central"]]
-    if len(h_central) != 1:
+    h_burke = horizon_table.loc[horizon_table["is_burke_default"]]
+    if len(h_burke) != 1:
         raise MissingInputError(
-            f"central_horizon={central_horizon!r} discounting={central_h_disc!r} "
-            f"matched {len(h_central)} horizon rows."
+            f"Burke default horizon={central_horizon!r} discounting={central_h_disc!r} "
+            f"matched {len(h_burke)} horizon rows."
         )
-    h_central = h_central.iloc[0]
+    h_burke = h_burke.iloc[0]
 
-    headline_rows = []
-    for label, df, family, method in (
-        ("burke_central_hatton", central, "burke", "hatton_sum"),
-        ("burke_central_npv_2025", central, "burke", "npv_analysis_year"),
+    headline_specs = [
+        ("published_central", eccc_central, "eccc", "hatton_sum"),
         ("eccc_central_npv_2025", eccc_central, "eccc", "npv_analysis_year"),
-        ("eccc_central_undiscounted_across_years", eccc_central, "eccc", "hatton_sum"),
-    ):
+        ("burke_default_hatton", burke_default, "burke", "hatton_sum"),
+        ("burke_default_npv_2025", burke_default, "burke", "npv_analysis_year"),
+    ]
+    for rate in ECCC_RATES:
+        if rate == eccc_r:
+            continue
+        headline_specs.append(
+            (
+                f"eccc_{rate:g}pct_calendar",
+                _slice("eccc", DEFAULT_SCENARIO, rate, None),
+                "eccc",
+                "hatton_sum",
+            )
+        )
+    headline_rows = []
+    for label, df, family, method in headline_specs:
         total = _total(df) if method == "hatton_sum" else _npv(df)
         by_g = {
             g: (
@@ -628,10 +654,13 @@ def compute_loss_damage(
         committed = by_g["operating"] + by_g["under_construction"]
         inv = None if v_proposed == 0 or total == 0 else v_proposed / total
         inv_prop = None if v_proposed == 0 or proposed == 0 else v_proposed / proposed
+        agg_label = (
+            "calendar_year" if family == "eccc" and method == "hatton_sum" else method
+        )
         headline_rows.append({
             "case": label,
             "price_family": family,
-            "aggregation": method,
+            "aggregation": agg_label,
             "scenario": DEFAULT_SCENARIO,
             "currency": "CAD 2025",
             "total_cad": total,
@@ -646,6 +675,7 @@ def compute_loss_damage(
             "breakeven_note": "technique only; not the headline (actual Burke share is known)",
         })
     headline = pd.DataFrame(headline_rows)
+    published = headline.loc[headline["case"] == "published_central"].iloc[0]
 
     # Sensitivity grid: Burke rate × g, measurement_central, Hatton sum, all groups
     sens = by_group.loc[
@@ -665,7 +695,8 @@ def compute_loss_damage(
                 "proposed_cad_billion": float(
                     sl.loc[sl["calc_group"] == "proposed", "hatton_sum_cad"].sum()
                 ) / 1e9,
-                "is_central": rate == central_r and g == central_g,
+                "is_burke_default": rate == burke_r and g == burke_g,
+                "is_central": False,
             })
     burke_grid = pd.DataFrame(grid_rows)
 
@@ -678,21 +709,25 @@ def compute_loss_damage(
         ]
         eccc_sens.append({
             "discount_rate_pct": rate,
+            "calendar_year_total_cad_billion": float(sl["hatton_sum_cad"].sum()) / 1e9,
+            "calendar_year_proposed_cad_billion": float(
+                sl.loc[sl["calc_group"] == "proposed", "hatton_sum_cad"].sum()
+            ) / 1e9,
             "npv_2025_total_cad_billion": float(sl["npv_analysis_year_cad"].sum()) / 1e9,
             "npv_2025_proposed_cad_billion": float(
                 sl.loc[sl["calc_group"] == "proposed", "npv_analysis_year_cad"].sum()
             ) / 1e9,
             "is_central": rate == eccc_r,
+            "is_sensitivity_range": rate != eccc_r,
         })
     eccc_grid = pd.DataFrame(eccc_sens)
 
     phys = []
     for scenario in LD_EMISSION_SCENARIOS:
         sl = by_group.loc[
-            (by_group["price_family"] == "burke")
+            (by_group["price_family"] == "eccc")
             & (by_group["scenario"] == scenario)
-            & (by_group["discount_rate_pct"] == central_r)
-            & (by_group["growth_rate"] == central_g)
+            & (by_group["discount_rate_pct"] == eccc_r)
         ]
         phys.append({
             "scenario": scenario,
@@ -711,9 +746,9 @@ def compute_loss_damage(
             "discount_rate_pct": rate,
             "sc_pulse_year_usd2020": usd,
             "sc_pulse_year_cad2025": cad,
-            "sc_analysis_year_cad2025_g_central": burke_sc_cad2025(
-                analysis, rate, central_g, cad, p
-            ) if rate == central_r else None,
+            "sc_analysis_year_cad2025_g0": burke_sc_cad2025(
+                analysis, rate, burke_g, cad, p
+            ) if rate == burke_r else None,
         })
     sc_table = pd.DataFrame(sc_audit)
 
@@ -723,8 +758,8 @@ def compute_loss_damage(
         & (
             (
                 (by_year["price_family"] == "burke")
-                & (by_year["discount_rate_pct"] == central_r)
-                & (by_year["growth_rate"] == central_g)
+                & (by_year["discount_rate_pct"] == burke_r)
+                & (by_year["growth_rate"] == burke_g)
             )
             | (
                 (by_year["price_family"] == "eccc")
@@ -738,8 +773,8 @@ def compute_loss_damage(
         & (
             (
                 (by_project["price_family"] == "burke")
-                & (by_project["discount_rate_pct"] == central_r)
-                & (by_project["growth_rate"] == central_g)
+                & (by_project["discount_rate_pct"] == burke_r)
+                & (by_project["growth_rate"] == burke_g)
             )
             | (
                 (by_project["price_family"] == "eccc")
@@ -780,19 +815,23 @@ def compute_loss_damage(
         "tonnes_proposed_mtco2": tonnes_co2_proposed,
         "tonnes_proposed_mtch4": tonnes_ch4_proposed,
         "ch4_co2_ratio_2020": ch4_co2_ratio_2020,
-        "central_r": central_r,
-        "central_g": central_g,
+        "central_price_family": central_price_family,
+        "central_aggregation": central_aggregation,
+        "central_r": eccc_r,
+        "burke_r": burke_r,
+        "central_g": burke_g,
         "central_horizon": central_horizon,
         "eccc_r": eccc_r,
         "burke_usd": burke_usd,
         "burke_cad": burke_cad,
         "by_group_all": by_group,
-        "h_central": h_central,
+        "published": published,
+        "h_burke": h_burke,
     }
 
 
 def write_ld_figure(h_row, path: Path) -> None:
-    """Bar: central horizon global L&D by calc_group, trillion 2025 CAD."""
+    """Bar: published central (ECCC 2% calendar year) L&D by calc_group."""
     path.parent.mkdir(parents=True, exist_ok=True)
     labels = ["Operating", "Under construction", "Proposed"]
     vals = [
@@ -812,9 +851,9 @@ def write_ld_figure(h_row, path: Path) -> None:
         ax.text(i, v + ymax * 0.03, f"{v:.1f}", ha="center", fontsize=10)
     fig.text(
         0.5, 0.02,
-        "Burke et al. 2026 SC-CO2, 2% discount, g=0, through-2300 (Figure 2e). "
-        "CO2/CH4 split (ECCC FAQ 4.2). Global damages, not Canada-only. "
-        f"Canada Burke-channel share {100*float(h_row['canada_share_fd']):.2f}%.",
+        "Central case: ECCC SC-CO2 at 2%, applied per calendar year of emissions "
+        "(2025 CAD). ECCC 1.5% and 2.5% are the sensitivity range. "
+        "Burke is an upper-bracket sensitivity, not shown here. Global damages.",
         ha="center", fontsize=8, color="#444",
     )
     fig.subplots_adjust(bottom=0.16, top=0.9)
@@ -829,42 +868,115 @@ def _money_cad(billion: float) -> str:
 
 
 def format_ld_markdown(ld: dict) -> list[str]:
-    h = ld["h_central"]
-    eccc = ld["headline"].set_index("case").loc["eccc_central_npv_2025"]
+    published = ld["published"]
+    h = ld["headline"].set_index("case")
+    eccc_npv = h.loc["eccc_central_npv_2025"]
+    egrid = ld["eccc_grid"].set_index("discount_rate_pct")
+    eccc_lo = egrid.loc[2.5]
+    eccc_hi = egrid.loc[1.5]
+    burke = ld["h_burke"]
     share_pct = 100 * ld["canada_share"]
     lines = []
     lines.append("## 11. Climate loss and damage (global)")
     lines.append("")
     lines.append(
         "Monetised economic damages from the modelled lifecycle emissions. "
-        "Central price is Burke et al. (2026) Figure 2e **through 2300**, "
-        "2% fixed, g = 0, in 2025 CAD. Through-2100 is shown for comparability "
-        "with Hatton (2026). Damages are **global**. They are not a legal bill. "
+        "The **central case** is ECCC official SC-CO2 at the **2%** discount "
+        "rate, applied per calendar year of emissions, in 2025 CAD "
+        f"(named parameters `central_price_family={ld['central_price_family']}`, "
+        f"`central_aggregation={ld['central_aggregation']}`). "
+        "ECCC 1.5% and 2.5% are the central case's sensitivity range. "
+        "Burke et al. (2026) is an **upper-bracket sensitivity** across discount "
+        "rates and Figure 2e horizons (default g = 0; Hatton +2% is not used). "
+        "Damages are **global**. They are not a legal bill. "
         "Upstream is split into CO2 mass and CH4 mass; methane is priced at "
-        "Burke SC-CO2 times the ECCC SC-CH4/SC-CO2 ratio (FAQ 4.2). Pipeline "
-        "and shipping methane remain inside the CO2e total as CO2. Construction, "
-        "sea-level rise, extremes, and mortality outside GDP are omitted."
+        "ECCC SC-CH4 (and, on the Burke path, Burke SC-CO2 times the ECCC "
+        "SC-CH4/SC-CO2 ratio). Pipeline and shipping methane remain inside "
+        "the CO2e total as CO2. Construction, sea-level rise, extremes, and "
+        "mortality outside GDP are omitted."
     )
     lines.append("")
     ch4_mt = ld["tonnes_proposed_mtch4"]
     co2_mt = ld["tonnes_proposed_mtco2"]
     co2e_mt = ld["tonnes_proposed_mtco2e"]
-    gwp_bn = float(h["proposed_gwp_cad_billion"])
-    split_bn = float(h["proposed_cad_billion"])
     lines.append(
         f"Proposed remaining gases: {co2e_mt:,.0f} MtCO2e = {co2_mt:,.0f} MtCO2 + "
-        f"{ch4_mt:,.1f} MtCH4. Split damages "
-        f"{_money_cad(split_bn)} vs GWP100×SC-CO2 {_money_cad(gwp_bn)} "
+        f"{ch4_mt:,.1f} MtCH4 "
         f"(ECCC 2020 2% SC-CH4/SC-CO2 = {ld['ch4_co2_ratio_2020']:.2f}, "
         f"GWP100 = 29.8)."
     )
     lines.append("")
     lines.append(
-        f"Canada's Burke-channel **victim** share of a 1990 1 Gt pulse, future "
-        f"window: **{share_pct:.2f}%** (UK historical share in the same file is "
-        f"1.61%, matching Hatton). That share is applied to later pulses; the "
-        f"$3.13/t Canada FD rate is not. Probability of net Canada damage on "
-        f"this channel rises from 0.33 (1990–2020) to 0.41 (2021–2100)."
+        f"- **Central (ECCC 2%, calendar year), all in-scope:** "
+        f"**{_money_cad(published['total_cad_billion'])}** "
+        f"(operating {_money_cad(published['operating_cad_billion'])}  |  "
+        f"under construction {_money_cad(published['under_construction_cad_billion'])}  |  "
+        f"proposed {_money_cad(published['proposed_cad_billion'])})"
+    )
+    lines.append(
+        f"- **Central sensitivity (ECCC 1.5%–2.5%, calendar year):** "
+        f"{_money_cad(eccc_lo['calendar_year_total_cad_billion'])} "
+        f"to {_money_cad(eccc_hi['calendar_year_total_cad_billion'])}"
+    )
+    lines.append(
+        f"- **ECCC 2% NPV to 2025 (sensitivity, not central):** "
+        f"{_money_cad(eccc_npv['total_cad_billion'])} "
+        f"(proposed {_money_cad(eccc_npv['proposed_cad_billion'])})"
+    )
+    bgrid = ld["burke_grid"]
+    burke_g0 = bgrid.loc[bgrid["growth_rate"] == 0.0]
+    burke_min = float(burke_g0["total_cad_billion"].min())
+    burke_max = float(burke_g0["total_cad_billion"].max())
+    lines.append(
+        f"- **Burke upper bracket (g = 0, year-by-year 2100 path, 1.5%–5%):** "
+        f"{_money_cad(burke_min)} to {_money_cad(burke_max)}; "
+        f"Figure 2e through-2300 at 2% fixed: "
+        f"**{_money_cad(burke['total_cad_billion'])}** "
+        f"(proposed {_money_cad(burke['proposed_cad_billion'])})"
+    )
+    v_prop = float(burke["canada_value_proposed_cad_billion"])
+    lines.append(
+        f"- **Canadian value (proposed, CBoC scaled, 40 yr, 2025 CAD):** "
+        f"**{_money_cad(v_prop)}**"
+    )
+    eccc_ratio = (
+        published["proposed_cad_billion"] / v_prop if v_prop else None
+    )
+    lines.append(
+        f"- **Externality ratio, ECCC central (proposed):** "
+        f"**{eccc_ratio:.1f}x** global damages / Canadian value "
+        f"(Hatton UK range was 5.9x–16.8x; Burke through-2300 is "
+        f"{burke['externality_ratio_proposed']:.0f}x)"
+    )
+    lines.append(
+        f"- **Canada Burke-channel victim share (sensitivity, not central):** "
+        f"**{share_pct:.2f}%** of a 1990 1 Gt pulse, so it externalises "
+        f"{100*(1-ld['canada_share']):.1f}% "
+        f"({_money_cad(burke['canada_borne_proposed_cad_billion'])} borne at "
+        f"the through-2300 2% price)"
+    )
+    lines.append(
+        f"- **National test, Burke channel only (not the headline):** "
+        f"Canadian value is {burke['national_value_over_borne']:.1f}x the damages "
+        f"Canada itself bears. Reported as indeterminate."
+    )
+    v30 = ld["gva_proposed_30yr"] / 1e9
+    ratio30 = published["proposed_cad_billion"] / v30 if v30 else None
+    lines.append(
+        f"- **30-year denominator sensitivity (ECCC central, proposed):** "
+        f"{_money_cad(v30)} Canadian value, ratio "
+        f"**{ratio30:.0f}x** (research sketch used 30 years; central uses 40)."
+    )
+    v_com = ld["gva_committed"] / 1e9
+    d_com = (
+        published["operating_cad_billion"]
+        + published["under_construction_cad_billion"]
+    )
+    ratio_com = d_com / v_com if v_com else None
+    lines.append(
+        f"- **Operating + under construction only (ECCC central):** "
+        f"{_money_cad(d_com)} global L&D / {_money_cad(v_com)} value = "
+        f"**{ratio_com:.0f}x** ({ld['committed_export_mtpa']:.1f} mtpa export)."
     )
     lines.append("")
     f4 = ld["fig4"]
@@ -891,59 +1003,9 @@ def format_ld_markdown(ld: dict) -> list[str]:
     )
     lines.append("")
     lines.append(
-        f"- **Proposed global L&D (through 2300, 2%):** "
-        f"**{_money_cad(h['proposed_cad_billion'])}**"
-    )
-    lines.append(
-        f"- **Canadian value (proposed, CBoC scaled, 40 yr, 2025 CAD):** "
-        f"**{_money_cad(h['canada_value_proposed_cad_billion'])}**"
-    )
-    lines.append(
-        f"- **Externality ratio (global damages / Canadian value):** "
-        f"**{h['externality_ratio_proposed']:.0f}x** "
-        f"(Hatton UK range was 5.9x–16.8x)"
-    )
-    lines.append(
-        f"- **Canada bears {share_pct:.2f}% of the damage it causes, so it "
-        f"externalises {100*(1-ld['canada_share']):.1f}%** "
-        f"(Burke-channel; {_money_cad(h['canada_borne_proposed_cad_billion'])} borne)"
-    )
-    lines.append(
-        f"- **National test, Burke channel only (not the headline):** "
-        f"Canadian value is {h['national_value_over_borne']:.1f}x the damages "
-        f"Canada itself bears. Omitted channels would need a "
-        f"{h['national_value_over_borne']:.1f}x uplift to flip the sign. "
-        "Reported as indeterminate."
-    )
-    lines.append(
-        f"- **All in-scope, same price:** {_money_cad(h['total_cad_billion'])}  |  "
-        f"operating {_money_cad(h['operating_cad_billion'])}  |  "
-        f"under construction {_money_cad(h['under_construction_cad_billion'])}"
-    )
-    lines.append(
-        f"- **ECCC SC-CO2 + SC-CH4 (2% Ramsey, NPV to 2025), all groups:** "
-        f"{_money_cad(eccc['total_cad_billion'])} "
-        f"(proposed {_money_cad(eccc['proposed_cad_billion'])})"
-    )
-    v30 = ld["gva_proposed_30yr"] / 1e9
-    ratio30 = h["proposed_cad_billion"] / v30 if v30 else None
-    lines.append(
-        f"- **30-year denominator sensitivity:** "
-        f"{_money_cad(v30)} Canadian value, ratio "
-        f"**{ratio30:.0f}x** (research sketch used 30 years; central uses 40)."
-    )
-    v_com = ld["gva_committed"] / 1e9
-    d_com = h["operating_cad_billion"] + h["under_construction_cad_billion"]
-    ratio_com = d_com / v_com if v_com else None
-    lines.append(
-        f"- **Operating + under construction only:** "
-        f"{_money_cad(d_com)} global L&D / {_money_cad(v_com)} value = "
-        f"**{ratio_com:.0f}x** ({ld['committed_export_mtpa']:.1f} mtpa export)."
-    )
-    lines.append("")
-    lines.append(
-        "Burke horizon rows (g = 0, proposed slate). Global L&D and value "
-        "in trillion 2025 CAD; Canada-borne in billion 2025 CAD."
+        "Burke horizon rows (g = 0, proposed slate; upper bracket, not central). "
+        "Global L&D and value in trillion 2025 CAD; Canada-borne in billion 2025 CAD. "
+        "Bold is the Burke default horizon, not the paper central."
     )
     lines.append("")
     lines.append(
@@ -952,7 +1014,7 @@ def format_ld_markdown(ld: dict) -> list[str]:
     )
     lines.append("|---|---|---|---|---|---|---|")
     for _, r in ld["horizon_table"].iterrows():
-        mark = "**" if r["is_central"] else ""
+        mark = "**" if r["is_burke_default"] else ""
         lines.append(
             f"| {mark}{r['horizon']}{mark} | {r['discounting']} | "
             f"{r['sc_co2_usd2020_per_t']:,.0f} | "
@@ -963,8 +1025,9 @@ def format_ld_markdown(ld: dict) -> list[str]:
         )
     lines.append("")
     lines.append(
-        "Through-2100 year-by-year path, g bracket (trillion 2025 CAD, all / proposed). "
-        "Central g = 0; +2% is Hatton's headline and is not ours."
+        "Burke through-2100 year-by-year path, g bracket "
+        "(trillion 2025 CAD, all / proposed). Burke default g = 0; "
+        "+2% is Hatton's headline and is not used."
     )
     lines.append("")
     lines.append("| discount | g=−2% | g=0% | g=+2% |")
@@ -976,7 +1039,7 @@ def format_ld_markdown(ld: dict) -> list[str]:
             r = grid.loc[
                 (grid["discount_rate_pct"] == rate) & (grid["growth_rate"] == g)
             ].iloc[0]
-            mark = "**" if r["is_central"] else ""
+            mark = "**" if r["is_burke_default"] else ""
             cells.append(
                 f"{mark}{r['total_cad_billion']/1000:,.1f} / "
                 f"{r['proposed_cad_billion']/1000:,.1f}{mark}"

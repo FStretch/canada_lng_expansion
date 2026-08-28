@@ -8,10 +8,12 @@ usd_cad_2025,1.3978,CAD per USD,"Bank of Canada annual average exchange rates. U
 canada_gdp_deflator_2020,115.80157,index,"IMF IFS GDP deflator for Canada; FRED NGDPDIXCAA. 2020 annual. Inflates A Rising Tide Table 1 from 2020 CAD to 2025 CAD."
 canada_gdp_deflator_2021,124.81689,index,"IMF IFS GDP deflator for Canada; FRED NGDPDIXCAA. 2021 annual. ECCC C$2021 to C$2025."
 canada_gdp_deflator_2025,143.98050,index,"IMF IFS GDP deflator for Canada; FRED NGDPDIXCAA. 2025 annual."
-central_discount_rate_pct,2.0,percent,"Burke headline and ECCC/TBS central. Canadian CBA has no 1.5% systemic-risk carve-out equivalent to the UK Green Book."
-central_growth_rate,0.0,fraction per year,"g=0 central. Hatton +2% runs against Burke's own pulse-year gradient of about -2%/yr (truncated 2100 window). Longer horizons are handled via Figure 2e rows, not via g."
-central_horizon,through_2300,horizon key,"Burke Figure 2e through-2300 at 2% fixed. Register emits into the 2070s; a calendar-fixed 2100 endpoint truncates late-life pulses. through_2100 is reported alongside for Hatton comparability."
-central_horizon_discounting,2pct_fixed,key,Matches central_discount_rate_pct. Ramsey rows are sensitivities.
+central_price_family,eccc,family,"Paper central: ECCC official SC-CO2 schedule applied per calendar year of emissions. Burke is an upper-bracket sensitivity across discount rates and damage horizons."
+central_aggregation,calendar_year,method,"Emissions in year t × ECCC SC at year t, summed in 2025 CAD. The official schedule already embeds Ramsey discounting; a second NPV to 2025 is a sensitivity only."
+central_discount_rate_pct,2.0,percent,"Burke default discount (not the paper central). Paper central rate is eccc_central_discount_rate_pct."
+central_growth_rate,0.0,fraction per year,"Burke default g=0. Hatton +2% is reported in the grid and is not used. Longer horizons are handled via Figure 2e rows, not via g."
+central_horizon,through_2300,horizon key,"Burke default horizon (Figure 2e through-2300 at 2% fixed). Not the paper central. through_2100 is reported alongside for Hatton comparability."
+central_horizon_discounting,2pct_fixed,key,Matches Burke central_discount_rate_pct. Ramsey rows are Burke sensitivities.
 burke_pulse_file,loss_damage_r1/total_damages_by_pulse_2100.csv,path relative to Inputs/,Long-form Burke 2021-2100 damages by pulse year and discount rate (2020 USD / tCO2).
 burke_horizons_file,loss_damage/burke_horizons.csv,path relative to Inputs/,Figure 2e and Table 1 2020-pulse SC-CO2 by damage horizon.
 burke_country_shares_file,loss_damage_r1/burke_country_damage_shares.csv,path relative to Inputs/,"Country share of a 1 GtCO2 1990 pulse at 2%. Canada share_FD applied to later pulses; do not use dam_FD per tonne."

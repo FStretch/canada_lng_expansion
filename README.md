@@ -178,14 +178,18 @@ fewer operating years. It is the least evidenced parameter in the model and is w
 A separate module (`src/loss_damage.py`) multiplies the same full-lifecycle, year-of-emission
 CO2e series by a social cost of carbon. It does not change the emissions totals.
 
-The central case uses Burke et al. (2026) Figure 2e through-2300 SC-CO2 at a 2% discount
-and g = 0, converted to 2025 CAD. Through-2100 is reported for comparability with Hatton
-(2026). Canada's 0.17% share of a 1990 pulse (future window) is applied to global damages.
-The Conference Board whole-chain GDP figure (Table 1: C$11.153bn/yr in 2020 CAD at
-56 mtpa), scaled on proposed export nameplate and inflated to 2025 CAD, is the
-denominator. Headlines are the externality ratio
-and the 99.8% externalisation share, not a national cost-benefit test. Upstream methane is
-priced with ECCC's SC-CH4/SC-CO2 ratio rather than GWP100 × SC-CO2 (ECCC FAQ 4.2).
+The **central case** is named in `Inputs/loss_damage/parameters.csv`
+(`central_price_family=eccc`, `central_aggregation=calendar_year`,
+`eccc_central_discount_rate_pct=2`): ECCC official SC-CO2 applied per calendar
+year of emissions, converted to 2025 CAD. ECCC 1.5% and 2.5% are the central
+case's sensitivity range. Burke et al. (2026) is an upper-bracket sensitivity
+across discount rates and Figure 2e horizons (default g = 0; Hatton +2% is
+not used). Canada's 0.17% share of a 1990 pulse (future window) is applied
+to Burke damages only. The Conference Board whole-chain GDP figure (Table 1:
+C$11.153bn/yr in 2020 CAD at 56 mtpa), scaled on proposed export nameplate
+and inflated to 2025 CAD, is the Canada denominator. Upstream methane is
+priced with ECCC's SC-CH4/SC-CO2 ratio rather than GWP100 × SC-CO2
+(ECCC FAQ 4.2).
 
 Lifespan comes from each project's CER export licence term where one exists. Where a proponent
 states a different operating life, that is used instead: Summit Lake PG LNG states 30 years.

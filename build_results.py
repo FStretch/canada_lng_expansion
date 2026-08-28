@@ -572,13 +572,12 @@ def write_review_summary(
         "not re-derived in code."
     )
     lines.append(
-        "- Loss and damage applies SC-CO2 to GWP100 CO2e (methane is not "
-        "valued with SC-CH4). Damages after 2100, sea-level rise, extremes "
-        "and mortality outside GDP are omitted. Headline is the externality "
-        "ratio and Canada's 0.17% Burke-channel share, not a national "
-        "cost-benefit inversion. Upstream methane is priced with the ECCC "
-        "SC-CH4/SC-CO2 ratio, not GWP100. The Conference Board denominator "
-        "is Table 1 GDP in 2020 CAD, inflated to 2025 CAD."
+        "- Loss and damage central case is ECCC SC-CO2 at 2%, applied per "
+        "calendar year (`central_price_family=eccc`). Burke is an upper-bracket "
+        "sensitivity (g = 0). Damages after 2100, sea-level rise, extremes "
+        "and mortality outside GDP are omitted. Upstream methane is priced "
+        "with the ECCC SC-CH4/SC-CO2 ratio, not GWP100. The Conference Board "
+        "denominator is Table 1 GDP in 2020 CAD, inflated to 2025 CAD."
     )
     lines.append("")
 
@@ -590,24 +589,36 @@ def write_review_summary(
 
 
 def _validate_loss_damage(sample: pd.DataFrame, ld: dict, panel: pd.DataFrame) -> None:
-    """L&D remaining tonnes must equal the published panel; proposed > operating."""
+    """L&D remaining tonnes must equal the published panel; ECCC is central."""
+    assert ld["central_price_family"] == "eccc"
+    assert ld["central_aggregation"] == "calendar_year"
+    assert ld["eccc_r"] == 2.0
+    assert ld["burke_r"] == 2.0
+    assert ld["central_g"] == 0.0
     h = ld["headline"].set_index("case")
-    burke = h.loc["burke_central_hatton"]
-    eccc = h.loc["eccc_central_npv_2025"]
-    assert burke["proposed_cad_billion"] > burke["operating_cad_billion"] > 0
-    assert burke["total_cad_billion"] > eccc["total_cad_billion"] > 0
+    published = h.loc["published_central"]
+    assert published["price_family"] == "eccc"
+    assert published["aggregation"] == "calendar_year"
+    eccc_npv = h.loc["eccc_central_npv_2025"]
+    assert published["proposed_cad_billion"] > published["operating_cad_billion"] > 0
+    assert published["total_cad_billion"] > eccc_npv["total_cad_billion"] > 0
+    egrid = ld["eccc_grid"].set_index("discount_rate_pct")
+    assert (
+        float(egrid.loc[1.5, "calendar_year_total_cad_billion"])
+        > float(egrid.loc[2.0, "calendar_year_total_cad_billion"])
+        > float(egrid.loc[2.5, "calendar_year_total_cad_billion"])
+    )
+    hb = ld["h_burke"]
+    assert float(hb["total_cad_billion"]) > float(published["total_cad_billion"])
     share = ld["canada_share"]
     assert 0.0015 < share < 0.0020, share
-    h = ld["h_central"]
-    assert h["externality_ratio_proposed"] > 10
-    assert h["national_value_over_borne"] > 1
-    assert abs(h["externalisation_share"] - (1 - share)) < 1e-12
-    assert float(h["proposed_cad_billion"]) < float(h["proposed_gwp_cad_billion"])
+    assert hb["externality_ratio_proposed"] > 10
+    assert hb["national_value_over_borne"] > 1
+    assert abs(hb["externalisation_share"] - (1 - share)) < 1e-12
+    assert float(hb["proposed_cad_billion"]) < float(hb["proposed_gwp_cad_billion"])
     assert ld["gva"] > ld["gva_proposed_as_published"]
     assert not ld["fig4"]["canada_in_recipient_panel"]
     assert abs(ld["fig4"]["usa_owing_usd"] / 1e12 - 10.18) < 0.15
-    assert ld["central_r"] == 2.0
-    assert ld["central_g"] == 0.0
     assert ld["gva_proposed_30yr"] < ld["gva"]
     grid = ld["burke_grid"]
     lo = float(
@@ -623,6 +634,7 @@ def _validate_loss_damage(sample: pd.DataFrame, ld: dict, panel: pd.DataFrame) -
         ].iloc[0]
     )
     assert hi > lo, (hi, lo)
+    assert not bool(grid["is_central"].any())
 
     rem = (
         ld["by_year"]
@@ -792,8 +804,8 @@ def main() -> None:
     _validate_loss_damage(sample, ld, panel)
     print(
         f"[validate] loss and damage central "
-        f"${ld['h_central']['total_cad_billion']:.0f} bn "
-        f"CAD 2025 (through 2300, 2% fixed, g=0) PASS"
+        f"${ld['published']['total_cad_billion']:.0f} bn "
+        f"CAD 2025 (ECCC 2% calendar year) PASS"
     )
 
     # Group and headline annuals — printed against the pre-revision snapshot
@@ -934,10 +946,21 @@ def main() -> None:
         inputs, by_project, stages, FIGURE_DIR, FIGURE_DATA, panel=panel
     )
     fig09 = FIGURE_DIR / "fig09_loss_damage_by_group.png"
-    write_ld_figure(ld["h_central"], fig09)
+    write_ld_figure(ld["published"], fig09)
     ld_csv = FIGURE_DATA / "fig09_loss_damage_by_group.csv"
     FIGURE_DATA.mkdir(parents=True, exist_ok=True)
-    ld["horizon_table"].to_csv(ld_csv, index=False)
+    pd.DataFrame(
+        [
+            {
+                "calc_group": g,
+                "cad_trillion_2025": float(ld["published"][f"{g}_cad_billion"]) / 1000.0,
+                "price_family": "eccc",
+                "discount_rate_pct": ld["eccc_r"],
+                "aggregation": "calendar_year",
+            }
+            for g in GROUPS
+        ]
+    ).to_csv(ld_csv, index=False)
     ld["headline"].to_csv(FIGURE_DATA / "ld_headline.csv", index=False)
     ld["burke_grid"].to_csv(FIGURE_DATA / "ld_burke_grid.csv", index=False)
     ld["eccc_grid"].to_csv(FIGURE_DATA / "ld_eccc_grid.csv", index=False)
