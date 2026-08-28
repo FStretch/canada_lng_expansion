@@ -1,30 +1,35 @@
 # Canada LNG Expansion: Lifecycle Emissions Model
 
 An open, reproducible model of the greenhouse gas emissions caused by Canada's liquefied natural
-gas industry, covering every LNG asset in the country: operating, under construction and proposed.
+gas export expansion, covering every LNG asset in the country in the register: operating, under
+construction and proposed. Headline results are the export chain.
 
 ---
 
 ## What this produces
 
-At full buildout across all Canadian LNG assets:
+At full export buildout (ten projects, 100.1 mtpa):
 
 | | |
 |---|---|
-| Headline annual (panel peak) | **309.1 MtCO2e** in 2037 |
-| life_average_annual_mt | **268.1 MtCO2e/yr** (not a calendar year) |
-| Lifetime emissions | **9,558.2 MtCO2e** (calendar panel 2025–2069) |
+| Headline annual (panel peak) | **298.7 MtCO2e** in 2037 |
+| life_average_annual_mt | **258.9 MtCO2e/yr** (not a calendar year) |
+| Lifetime emissions | **9,315.3 MtCO2e** (calendar panel 2025–2069) |
 | Export capacity | 100.1 mtpa across ten projects |
-| Scope 1 and 2 | 48.3 Mt/yr, 18.0% |
-| Scope 3 | 219.8 Mt/yr, 82.0% |
+| Scope 1 and 2 | 46.7 Mt/yr, 18.0% |
+| Scope 3 | 212.2 Mt/yr, 82.0% |
 
-Split by where the emissions are counted: **18.5% Canada, 5.6% international marine bunkers,
-75.9% foreign**.
+Split by where the emissions are counted: **18.0% Canada, 3.4% international marine bunkers,
+78.6% foreign**.
+
+Headline results include assets whose chain is in `headline_scope_chains` (export) and whose
+calc_group is in `headline_scope_calc_groups` (operating, under construction, proposed). Eight
+non-export assets totalling 242.9 MtCO2e stay in the register as a stated exclusion.
 
 The published lifetime total is the sum of a per-asset, per-calendar-year panel from 2025
 through each asset's last emitting year (currently 2069). It is not duration × life-average.
-The headline annual figure is the panel peak (309.1 MtCO2e in 2037). `life_average_annual_mt`
-(268.1 MtCO2e/yr) is a life-average of utilisation over each facility's operating window,
+The headline annual figure is the panel peak (298.7 MtCO2e in 2037). `life_average_annual_mt`
+(258.9 MtCO2e/yr) is a life-average of utilisation over each facility's operating window,
 including start-up years; it is not a calendar year.
 
 ---
@@ -41,6 +46,7 @@ src/
   inputs.py                         loads and validates both workbooks, exposes typed frames
   model.py                          the lifecycle calculation and aggregation
   trajectories.py                   calendar panel (published lifetime) and 2025–2050 figures
+  scope.py                          headline chain/calc_group filter (Parameters sheet)
   loss_damage.py                    global L&D from year-of-emission × SC-CO2 (Burke + ECCC)
   figures_report.py                 report figures and their CSV series
   slide_tables.py                   deck-facing Excel tables
@@ -280,9 +286,9 @@ places it on the bunkering chain and records the disagreement rather than resolv
 **Capacity is never summed across chains.** Export and bunkering capacity is liquefaction; import
 capacity is regasification. They measure opposite operations.
 
-**Annual figures come in two forms.** The headline annual is the panel peak (309.1 MtCO2e in
-2037). `life_average_annual_mt` (268.1 MtCO2e/yr) is a life-average across each facility's
-operating window. The published lifetime (9,558.2 MtCO2e) is the sum of the calendar panel
+**Annual figures come in two forms.** The headline annual is the panel peak (298.7 MtCO2e in
+2037). `life_average_annual_mt` (258.9 MtCO2e/yr) is a life-average across each facility's
+operating window. The published lifetime (9,315.3 MtCO2e) is the sum of the calendar panel
 from 2025 through 2069. Duration × life-average is no longer published.
 
 ---

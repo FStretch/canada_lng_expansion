@@ -98,10 +98,12 @@ EXPECTED_EARLY_EXPORT = 54.7
 EXPECTED_ADVANCED_EXPORT = 26.0
 # Life-average territorial shares, one decimal. Tied to the Data Inputs README
 # and the repo README so those documents cannot drift from the model.
-EXPECTED_TERRITORIAL_SHARE_PCT = {"CAN": 18.5, "BUNK": 5.6, "FOR": 75.9}
-EXPECTED_LIFETIME_MT = 9558.2
+# Previous all-assets lock: CAN 18.5 / BUNK 5.6 / FOR 75.9; lifetime 9558.2;
+# peak 309.1 in 2037. Re-locked after the export-scope filter (Task C).
+EXPECTED_TERRITORIAL_SHARE_PCT = {"CAN": 18.0, "BUNK": 3.4, "FOR": 78.6}
+EXPECTED_LIFETIME_MT = 9315.3
 EXPECTED_PEAK_YEAR = 2037
-EXPECTED_PEAK_MT = 309.1
+EXPECTED_PEAK_MT = 298.7
 
 
 def write_figure(by_project: pd.DataFrame, path: Path) -> None:
@@ -969,12 +971,12 @@ def main() -> None:
         ),
         "FOR": round(100 * float(sample["foreign_territorial"].sum()) / terr_total, 1),
     }
+    for code, exp in EXPECTED_TERRITORIAL_SHARE_PCT.items():
+        assert terr_share[code] == exp, (code, terr_share, EXPECTED_TERRITORIAL_SHARE_PCT)
     print(
-        f"[scope-change] territorial split CAN {terr_share['CAN']}% / "
+        f"[validate] territorial split CAN {terr_share['CAN']}% / "
         f"BUNK {terr_share['BUNK']}% / FOR {terr_share['FOR']}% "
-        f"(was locked {EXPECTED_TERRITORIAL_SHARE_PCT['CAN']} / "
-        f"{EXPECTED_TERRITORIAL_SHARE_PCT['BUNK']} / "
-        f"{EXPECTED_TERRITORIAL_SHARE_PCT['FOR']}; re-lock in Task C)"
+        "matches documented shares PASS"
     )
     scope_delta = (
         sample["scope_1_2"] + sample["scope_3"] - sample["annual_total"]
@@ -1055,11 +1057,18 @@ def main() -> None:
         f"({panel_n_emitting(panel, peak_year, DEFAULT_SCENARIO)} assets); "
         f"life_average_annual_mt {annual_mt:.1f}"
     )
+    assert abs(round(panel_life_mt, 1) - EXPECTED_LIFETIME_MT) < 1e-9, (
+        panel_life_mt,
+        EXPECTED_LIFETIME_MT,
+    )
+    assert peak_year == EXPECTED_PEAK_YEAR, (peak_year, EXPECTED_PEAK_YEAR)
+    assert abs(round(peak_mt, 1) - EXPECTED_PEAK_MT) < 1e-9, (
+        peak_mt,
+        EXPECTED_PEAK_MT,
+    )
     print(
-        f"[scope-change] lifetime {round(panel_life_mt, 1)} Mt "
-        f"(was locked {EXPECTED_LIFETIME_MT}); "
-        f"peak {peak_year}/{round(peak_mt, 1)} "
-        f"(was locked {EXPECTED_PEAK_YEAR}/{EXPECTED_PEAK_MT}; re-lock in Task C)"
+        f"[validate] lifetime {EXPECTED_LIFETIME_MT} Mt and peak "
+        f"{EXPECTED_PEAK_MT} Mt in {EXPECTED_PEAK_YEAR} match locked values PASS"
     )
     placeholder_sens = run_placeholder_start_sensitivity(
         inputs, INPUTS_DIR, panel, ld

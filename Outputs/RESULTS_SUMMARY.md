@@ -1,6 +1,6 @@
 # Canada LNG lifecycle emissions — review summary
 
-Default scenario: `measurement_central`. Run at 2026-08-28 16:43 UTC. Numbers to one decimal. Inputs read-only. `calc_group` from `Asset Register:calc_group`.
+Default scenario: `measurement_central`. Run at 2026-08-28 16:45 UTC. Numbers to one decimal. Inputs read-only. `calc_group` from `Asset Register:calc_group`.
 
 Deck-facing tables (one sheet per table, 1-decimal): `Outputs/SLIDE_TABLES.xlsx`. Send that workbook to the PPT chat.
 
@@ -222,7 +222,7 @@ Placeholder-start assets account for **5509.6 MtCO2e** (59.1% of the 9315.3 Mt l
 
 ## Monte Carlo (physics sampled, ECCC 2% applied after)
 
-10,000 draws, seed `20260828`. Physics 0.15s; pricing 0.03s. Kernel vs published panel max abs 0.0e+00 Mt. Liquefaction held at 0.29. Howarth 0.55 is a named point, not a draw.
+10,000 draws, seed `20260828`. Physics 0.12s; pricing 0.03s. Kernel vs published panel max abs 0.0e+00 Mt. Liquefaction held at 0.29. Howarth 0.55 is a named point, not a draw.
 
 | build-out | lifetime median [p5, p95] Mt | peak-year median [p5, p95] Mt | ECCC 2% damage median [p5, p95] CAD bn |
 |---|---|---|---|
