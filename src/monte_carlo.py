@@ -529,7 +529,8 @@ def format_mc_markdown(mc: dict, published: dict | None = None) -> list[str]:
         f"{mc['n_draws']:,} draws, seed `{mc['seed']}`. "
         f"Physics {mc['physics_seconds']:.2f}s; pricing {mc['price_seconds']:.2f}s. "
         f"Kernel vs published panel max abs {mc['kernel_panel_max_abs_mt']:.1e} Mt. "
-        "Liquefaction held at 0.29. Howarth 0.55 is a named point, not a draw."
+        "Liquefaction held at 0.29. Howarth 0.55 is a named point, not a draw. "
+        "Draws are on the headline scope (export chain)."
     )
     lines.append("")
     lines.append(
