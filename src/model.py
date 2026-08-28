@@ -24,18 +24,41 @@ GROUPS = CALC_GROUPS
 CHAINS = ("export", "bunkering", "domestic", "import")
 
 
+def _licence_end_year(row) -> int | None:
+    """Inclusive last authorised calendar year, or None if the register field is blank."""
+    val = row.get("authorised_export_end_year")
+    if val is None or (isinstance(val, float) and pd.isna(val)) or pd.isna(val):
+        return None
+    return int(val)
+
+
 def _lifespan(row, params) -> tuple[int, str]:
     if pd.notna(row["authorised_export_term_years"]):
-        return (
-            int(row["authorised_export_term_years"]),
-            "Asset Register:authorised_export_term_years",
-        )
-    if pd.notna(row["project_life_years"]):
-        return int(row["project_life_years"]), "Asset Register:project_life_years"
-    return (
-        int(get_param(params, "lifecycle_years_default")),
-        "Parameters:lifecycle_years_default",
-    )
+        life = int(row["authorised_export_term_years"])
+        src = "Asset Register:authorised_export_term_years"
+    elif pd.notna(row["project_life_years"]):
+        life = int(row["project_life_years"])
+        src = "Asset Register:project_life_years"
+    else:
+        life = int(get_param(params, "lifecycle_years_default"))
+        src = "Parameters:lifecycle_years_default"
+
+    licence_end = _licence_end_year(row)
+    start = row.get("first_export_year")
+    if licence_end is not None and pd.notna(start):
+        capped = licence_end - int(start) + 1
+        if capped < 1:
+            raise MissingInputError(
+                f"{row['project_id']}: authorised_export_end_year={licence_end} "
+                f"is before first_export_year={int(start)}."
+            )
+        if capped < life:
+            return (
+                capped,
+                f"Asset Register:authorised_export_end_year={licence_end} "
+                f"(hard stop; cuts {life - capped}y from {src})",
+            )
+    return life, src
 
 
 def _fid_ok(row) -> bool:

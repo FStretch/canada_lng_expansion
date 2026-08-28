@@ -196,8 +196,10 @@ is charged at SC-CO2 rather than at ECCC SC-CH4. There is no native per-gas
 split; the bound is reported as a percentage of the damage bill. This
 treatment is not conservative in that direction.
 
-Lifespan comes from each project's CER export licence term where one exists. Where a proponent
-states a different operating life, that is used instead: Summit Lake PG LNG states 30 years.
+Lifespan comes from each project's CER export licence term where one exists, then
+is cut at `authorised_export_end_year` when that field is populated (inclusive:
+the end year may emit; the year after may not). Where a proponent states a
+different operating life, that is used instead: Summit Lake PG LNG states 30 years.
 
 ### Scenarios
 

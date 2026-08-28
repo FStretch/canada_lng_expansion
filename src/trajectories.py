@@ -15,7 +15,14 @@ from typing import Iterable
 import pandas as pd
 
 from src.inputs import DEFAULT_SCENARIO, INTENSITY_SCENARIOS, get_param
-from src.model import _fid_ok, _is_legacy, _lifespan, _stage_intensity, previously_classified_electric
+from src.model import (
+    _fid_ok,
+    _is_legacy,
+    _licence_end_year,
+    _lifespan,
+    _stage_intensity,
+    previously_classified_electric,
+)
 
 TRAJECTORY_YEARS = tuple(range(2025, 2051))
 # First calendar year of the published panel (remaining life from this year).
@@ -122,6 +129,9 @@ def util_in_calendar_year(
 ) -> float:
     if legacy:
         return _steady_from_schedule(sched)
+    licence_end = _licence_end_year(row)
+    if licence_end is not None and year > licence_end:
+        return 0.0
     idx = year - start
     if idx < 0 or idx >= lifespan:
         return 0.0

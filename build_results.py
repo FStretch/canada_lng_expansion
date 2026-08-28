@@ -30,6 +30,8 @@ from src.trajectories import (
 from src.model import (
     CHAINS,
     GROUPS,
+    _licence_end_year,
+    _lifespan,
     assert_no_cross_chain_capacity_sum,
     assumptions_used,
     by_stage,
@@ -590,6 +592,44 @@ def write_review_summary(
     print(f"Wrote review summary: {path}")
 
 
+def _validate_licence_end(
+    inputs: dict, panel: pd.DataFrame, sample: pd.DataFrame
+) -> None:
+    """No asset emits after authorised_export_end_year where that field is set."""
+    assets = inputs["assets"].set_index("project_id")
+    pdef = panel.loc[panel["scenario"] == DEFAULT_SCENARIO]
+    n = 0
+    for pid, arow in assets.iterrows():
+        end = _licence_end_year(arow)
+        if end is None:
+            continue
+        n += 1
+        years = pdef.loc[pdef["project_id"] == pid, "year"]
+        last = int(years.max()) if len(years) else None
+        if last is not None:
+            assert last <= end, (pid, last, end)
+        prow = sample.loc[sample["project_id"] == pid]
+        if not len(prow):
+            continue
+        life = int(prow.iloc[0]["lifespan_years"])
+        src = str(prow.iloc[0]["lifespan_source"])
+        derived = None
+        if pd.notna(arow.get("authorised_export_term_years")):
+            derived = int(arow["authorised_export_term_years"])
+        cut = (derived - life) if derived is not None else None
+        print(
+            f"  licence stop {pid}: last_year={last} end={end} "
+            f"life={life}"
+            + (f" (cut {cut}y from term {derived})" if cut else "")
+            + f" src={src}"
+        )
+    assert n > 0
+    print(
+        f"[validate] no asset emits past authorised_export_end_year "
+        f"(n={n} licenced) PASS"
+    )
+
+
 def _validate_loss_damage(sample: pd.DataFrame, ld: dict, panel: pd.DataFrame) -> None:
     """L&D remaining tonnes must equal the published panel; ECCC is central."""
     assert ld["central_price_family"] == "eccc"
@@ -805,6 +845,8 @@ def main() -> None:
         assert "legacy" in str(r["utilisation_source"]).lower()
         assert abs(float(r["effective_util"]) - float(get_param(inputs["params"], "steady_state_utilisation"))) < 1e-9
     print(f"[validate] legacy facilities annual-only (no lifecycle): {legacy_ids} PASS")
+
+    _validate_licence_end(inputs, panel, sample)
 
     ld = compute_loss_damage(inputs, INPUTS_DIR, panel=panel)
     _validate_loss_damage(sample, ld, panel)
