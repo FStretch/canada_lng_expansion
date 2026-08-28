@@ -11,8 +11,8 @@ At full buildout across all Canadian LNG assets:
 
 | | |
 |---|---|
-| Annual emissions | **272.0 MtCO2e/yr** (life-average) |
-| Peak calendar-year | **309.1 MtCO2e** in 2037 |
+| Headline annual (panel peak) | **309.1 MtCO2e** in 2037 |
+| life_average_annual_mt | **268.1 MtCO2e/yr** (not a calendar year) |
 | Lifetime emissions | **10,689.4 MtCO2e** (calendar panel 2025–2069) |
 | Export capacity | 100.1 mtpa across ten projects |
 | Scope 1 and 2 | 49.0 Mt/yr, 18.0% |
@@ -23,9 +23,9 @@ Split by where the emissions are counted: **18.5% Canada, 5.6% international mar
 
 The published lifetime total is the sum of a per-asset, per-calendar-year panel from 2025
 through each asset's last emitting year (currently 2069). It is not duration × life-average.
-The 272.0 MtCO2e/yr figure is still a life-average of utilisation over each facility's operating
-window, including start-up years. Peak calendar-year emissions on the panel are 309.1 MtCO2e
-in 2037. Do not treat 272.0 as a year on the panel.
+The headline annual figure is the panel peak (309.1 MtCO2e in 2037). `life_average_annual_mt`
+(268.1 MtCO2e/yr) is a life-average of utilisation over each facility's operating window,
+including start-up years; it is not a calendar year.
 
 ---
 
@@ -280,10 +280,10 @@ places it on the bunkering chain and records the disagreement rather than resolv
 **Capacity is never summed across chains.** Export and bunkering capacity is liquefaction; import
 capacity is regasification. They measure opposite operations.
 
-**Annual figures come in two forms.** The headline of 272.0 MtCO2e a year is a life-average
-across each facility's operating window. The published lifetime (10,689.4 MtCO2e) is the sum of
-the calendar panel from 2025 through 2069. Panel peak is 309.1 MtCO2e in 2037. Both are stated
-wherever used. Duration × life-average is no longer published.
+**Annual figures come in two forms.** The headline annual is the panel peak (309.1 MtCO2e in
+2037). `life_average_annual_mt` (268.1 MtCO2e/yr) is a life-average across each facility's
+operating window. The published lifetime (10,689.4 MtCO2e) is the sum of the calendar panel
+from 2025 through 2069. Duration × life-average is no longer published.
 
 ---
 

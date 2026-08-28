@@ -16,6 +16,7 @@ from src.trajectories import (
     cumulative_case_series,
     oil_lifecycle_gt,
     panel_lifetime_mt,
+    panel_n_emitting,
     panel_peak,
 )
 
@@ -57,6 +58,7 @@ def build_slide_tables(
     annual = float(sample["annual_total"].sum()) / 1e6
     lifecycle = panel_lifetime_mt(panel, DEFAULT_SCENARIO)
     peak_year, peak_mt = panel_peak(panel, DEFAULT_SCENARIO)
+    peak_n = panel_n_emitting(panel, peak_year, DEFAULT_SCENARIO)
     s12 = float(sample["scope_1_2"].sum()) / 1e6
     s3 = float(sample["scope_3"].sum()) / 1e6
     can = float(sample["canada_territorial"].sum()) / 1e6
@@ -68,7 +70,7 @@ def build_slide_tables(
 
     tables["00_Index"] = pd.DataFrame(
         [
-            ("01_Headline", "Headline totals for title / key-number slides", "MtCO2e/yr, mtpa, Mt"),
+            ("01_Headline", "Panel-peak annual (headline) plus life_average_annual_mt", "MtCO2e/yr, mtpa, Mt"),
             ("02_Scope_territory", "Scope 1+2 vs 3 and CAN / BUNK / FOR split", "MtCO2e/yr and %"),
             ("03_By_group", "Operating / under construction / proposed", "mtpa and MtCO2e"),
             ("04_Capacity_by_chain", "Capacity within each group, never summed across chains", "mtpa"),
@@ -92,15 +94,25 @@ def build_slide_tables(
 
     tables["01_Headline"] = pd.DataFrame(
         [
-            ("Annual emissions", _r1(annual), "MtCO2e/yr", "Life-average util over each asset window; not a calendar year"),
+            (
+                "Annual emissions (panel peak)",
+                _r1(peak_mt),
+                "MtCO2e/yr",
+                f"Calendar year {peak_year}; {peak_n} assets emitting",
+            ),
+            (
+                "life_average_annual_mt",
+                _r1(annual),
+                "MtCO2e/yr",
+                "Life-average util over each asset window; not a calendar year",
+            ),
             ("Lifecycle emissions", _r1(lifecycle), "MtCO2e", "Sum of calendar panel; excludes legacy"),
             ("Export capacity", _r1(export_cap), "mtpa", "Export chain only; liquefaction nameplate"),
-            ("Peak calendar-year annual", _r1(peak_mt), "MtCO2e/yr", f"Panel peak in {peak_year}"),
-            ("Canada territorial", _r1(can), "MtCO2e/yr", "Stages tagged CAN"),
-            ("International bunkers", _r1(bunk), "MtCO2e/yr", "UNFCCC bunkers, no country"),
-            ("Foreign territorial", _r1(foreign), "MtCO2e/yr", "Importing-country inventory"),
-            ("Scope 1 and 2", _r1(s12), "MtCO2e/yr", "Upstream, pipeline, liquefaction"),
-            ("Scope 3", _r1(s3), "MtCO2e/yr", "Shipping, regasification, combustion"),
+            ("Canada territorial", _r1(can), "MtCO2e/yr", "Stages tagged CAN (life-average)"),
+            ("International bunkers", _r1(bunk), "MtCO2e/yr", "UNFCCC bunkers, no country (life-average)"),
+            ("Foreign territorial", _r1(foreign), "MtCO2e/yr", "Importing-country inventory (life-average)"),
+            ("Scope 1 and 2", _r1(s12), "MtCO2e/yr", "Upstream, pipeline, liquefaction (life-average)"),
+            ("Scope 3", _r1(s3), "MtCO2e/yr", "Shipping, regasification, combustion (life-average)"),
             ("Scenario", DEFAULT_SCENARIO, "—", "Default headline scenario"),
         ],
         columns=["item", "value", "unit", "note"],
@@ -125,7 +137,7 @@ def build_slide_tables(
             {
                 "calc_group": g,
                 "export_mtpa": _r1(r["capacity_export_headline_mtpa"]),
-                "annual_MtCO2e_yr": _r1(r["annual_total_mtco2e_yr"]),
+                "life_average_annual_mt": _r1(r["annual_total_mtco2e_yr"]),
                 "lifecycle_MtCO2e": _r1(r["lifecycle_total_mtco2e"]),
                 "CAN_MtCO2e_yr": _r1(r["canada_territorial_mtco2e_yr"]),
                 "BUNK_MtCO2e_yr": _r1(r["international_bunkers_mtco2e_yr"]),
@@ -138,7 +150,7 @@ def build_slide_tables(
         {
             "calc_group": "TOTAL",
             "export_mtpa": _r1(export_cap),
-            "annual_MtCO2e_yr": _r1(annual),
+            "life_average_annual_mt": _r1(annual),
             "lifecycle_MtCO2e": _r1(lifecycle),
             "CAN_MtCO2e_yr": _r1(can),
             "BUNK_MtCO2e_yr": _r1(bunk),
@@ -176,7 +188,7 @@ def build_slide_tables(
                     "tier": tier,
                     "chain": chain,
                     "mtpa": _r1(gc["capacity_mtpa"].sum()),
-                    "annual_MtCO2e_yr": _r1(gc["annual_total"].sum() / 1e6),
+                    "life_average_annual_mt": _r1(gc["annual_total"].sum() / 1e6),
                     "CAN_MtCO2e_yr": _r1(gc["canada_territorial"].sum() / 1e6),
                     "BUNK_MtCO2e_yr": _r1(gc["international_bunkers"].sum() / 1e6),
                     "FOR_MtCO2e_yr": _r1(gc["foreign_territorial"].sum() / 1e6),
@@ -193,7 +205,7 @@ def build_slide_tables(
                 "chain": chain,
                 "stages": stages_s,
                 "mtpa": _r1(r["capacity_mtpa"]),
-                "annual_MtCO2e_yr": _r1(r["annual_total_mtco2e_yr"]),
+                "life_average_annual_mt": _r1(r["annual_total_mtco2e_yr"]),
                 "lifecycle_MtCO2e": _r1(r["lifecycle_total_mtco2e"]),
                 "CAN_MtCO2e_yr": _r1(r["canada_territorial_mtco2e_yr"]),
                 "BUNK_MtCO2e_yr": _r1(r["international_bunkers_mtco2e_yr"]),
@@ -218,7 +230,7 @@ def build_slide_tables(
                 ),
                 "life_years": int(r["lifespan_years"]),
                 "effective_Mt_LNG_yr": _r2(r["effective_tonnes"] / 1e6),
-                "annual_MtCO2e_yr": _r1(r["annual_total"] / 1e6),
+                "life_average_annual_mt": _r1(r["annual_total"] / 1e6),
                 "lifecycle_MtCO2e": (
                     "—" if r["is_legacy"] or pd.isna(life_tot) else _r1(life_tot)
                 ),
@@ -236,7 +248,7 @@ def build_slide_tables(
             {
                 "stage": r["stage"],
                 "territorial_destination": r["territorial_destination"],
-                "annual_MtCO2e_yr": _r1(r["annual_mtco2e_yr"]),
+                "life_average_annual_mt": _r1(r["annual_mtco2e_yr"]),
                 "share_pct": _r1(100 * r["share_of_total"] if r["share_of_total"] else 0),
             }
         )
@@ -252,7 +264,7 @@ def build_slide_tables(
             {
                 "scenario": scen,
                 "upstream_tCO2e_per_t": inputs["upstream_by_scenario"][scen],
-                "annual_MtCO2e_yr": _r1(s["annual_total"].sum() / 1e6),
+                "life_average_annual_mt": _r1(s["annual_total"].sum() / 1e6),
                 "lifecycle_MtCO2e": _r1(life),
                 "CAN_MtCO2e_yr": _r1(s["canada_territorial"].sum() / 1e6),
             }
@@ -440,7 +452,12 @@ def build_slide_tables(
         [
             ("scenario", DEFAULT_SCENARIO),
             ("run_at_utc", datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")),
-            ("annual_basis", "40-year average unless the sheet name says trajectories"),
+            (
+                "annual_basis",
+                "Headline annual is the panel peak calendar year. "
+                "life_average_annual_mt is utilisation-weighted over each asset window. "
+                "Trajectory sheets are calendar years.",
+            ),
             (
                 "capacity_rule",
                 "Never sum export + bunkering + import. Export is liquefaction; import is regasification.",
@@ -540,11 +557,6 @@ def build_slide_tables(
             ],
             columns=["item", "value", "unit", "note"],
         )
-
-    # Fill peak on headline now that trajectories exist
-    tables["01_Headline"].loc[
-        tables["01_Headline"]["item"] == "Peak calendar-year annual", "value"
-    ] = _r1(peak)
 
     return tables
 

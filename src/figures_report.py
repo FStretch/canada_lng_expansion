@@ -94,7 +94,7 @@ def figure_1_stage_breakdown(
     df = stages.copy()
     df = df.sort_values("annual_mtco2e_yr", ascending=True)
     df["share_pct"] = df["share_of_total"] * 100
-    df["value_kind"] = "40-year average"
+    df["value_kind"] = "life_average_annual_mt"
     df["scenario"] = DEFAULT_SCENARIO
     _write_csv(
         df[[
@@ -116,7 +116,7 @@ def figure_1_stage_breakdown(
     y = np.arange(len(df))
     ax.barh(y, df["annual_mtco2e_yr"], color=bar_colors, height=0.65)
     ax.set_yticks(y, df["stage"].str.replace("_", " "))
-    ax.set_xlabel("Annual emissions (MtCO₂e/yr)")
+    ax.set_xlabel("Life-average annual emissions (MtCO₂e/yr)")
     ax.set_title("Lifecycle emissions by stage")
     for i, r in enumerate(df.itertuples()):
         dest = r.territorial_destination or "—"
@@ -130,8 +130,8 @@ def figure_1_stage_breakdown(
     ax.set_xlim(0, df["annual_mtco2e_yr"].max() * 1.38)
     _caption(
         fig,
-        f"Figure 1 · Scenario: {DEFAULT_SCENARIO}. Values are the 40-year average "
-        f"(headline {headline_mt:.1f} MtCO₂e/yr), not a single calendar-year trajectory. "
+        f"Figure 1 · Scenario: {DEFAULT_SCENARIO}. Values are life_average_annual_mt "
+        f"({headline_mt:.1f} MtCO₂e/yr), not the panel-peak headline. "
         "Destination tags from the Chains sheet (CAN / BUNK / FOR).",
     )
     out = fig_dir / "fig01_stage_breakdown.png"
@@ -179,7 +179,7 @@ def figure_2_territorial_split(
         },
     ])
     rows["share_pct"] = rows["annual_mtco2e_yr"] / headline_mt * 100
-    rows["value_kind"] = "40-year average"
+    rows["value_kind"] = "life_average_annual_mt"
     rows["scenario"] = DEFAULT_SCENARIO
     _write_csv(rows, data_dir / "fig02_territorial_split.csv")
 
@@ -211,7 +211,7 @@ def figure_2_territorial_split(
             )
         left += r.annual_mtco2e_yr
     ax.set_yticks([])
-    ax.set_xlabel("Annual emissions (MtCO₂e/yr)")
+    ax.set_xlabel("Life-average annual emissions (MtCO₂e/yr)")
     ax.set_title("Territorial attribution of lifecycle emissions")
     ax.set_xlim(0, headline_mt * 1.02)
     # Legend with hatch-free labels; bunkers note in caption + legend entry
@@ -236,8 +236,8 @@ def figure_2_territorial_split(
     fig.text(
         0.5,
         0.02,
-        f"Figure 2 · Scenario: {DEFAULT_SCENARIO}. Values are the 40-year average "
-        f"(headline {headline_mt:.1f} MtCO₂e/yr). International bunkers are attributed "
+        f"Figure 2 · Scenario: {DEFAULT_SCENARIO}. Values are life_average_annual_mt "
+        f"({headline_mt:.1f} MtCO₂e/yr), not the panel-peak headline. International bunkers are attributed "
         "to no country under UNFCCC accounting.",
         ha="center",
         va="bottom",
@@ -755,7 +755,7 @@ def figure_8_electrification_appendix(
         },
     ])
     avg_rows["delta_vs_gas_mtco2e_yr"] = avg_rows["canada_territorial_mtco2e_yr"] - gas
-    avg_rows["value_kind"] = "40-year average"
+    avg_rows["value_kind"] = "life_average_annual_mt"
     avg_rows["scenario"] = DEFAULT_SCENARIO
     _write_csv(avg_rows, data_dir / "fig08_electrification_can_average.csv")
     _write_csv(groups_df, data_dir / "fig08_electrification_can_by_group.csv")

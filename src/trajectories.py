@@ -314,6 +314,20 @@ def panel_peak(panel: pd.DataFrame, scenario: str = DEFAULT_SCENARIO) -> tuple[i
     return int(row["year"]), float(row["annual_mtco2e_yr"])
 
 
+def panel_n_emitting(
+    panel: pd.DataFrame,
+    year: int,
+    scenario: str = DEFAULT_SCENARIO,
+) -> int:
+    """Count assets with positive emissions in a calendar year."""
+    sl = panel.loc[
+        (panel["scenario"] == scenario)
+        & (panel["year"] == year)
+        & (panel["emissions_mtco2e"] > 0)
+    ]
+    return int(sl["project_id"].nunique())
+
+
 def annual_series(
     inputs: dict,
     scenario: str = DEFAULT_SCENARIO,

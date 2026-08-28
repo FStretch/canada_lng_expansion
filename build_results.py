@@ -25,6 +25,7 @@ from src.trajectories import (
     build_emissions_panel,
     panel_by_project,
     panel_lifetime_mt,
+    panel_n_emitting,
     panel_peak,
 )
 from src.model import (
@@ -109,7 +110,7 @@ def write_figure(by_project: pd.DataFrame, path: Path) -> None:
     fig, ax = plt.subplots(figsize=(9.5, 6.2))
     ax.bar(x, s12, 0.55, label="Scope 1+2", color="#1f4e5f")
     ax.bar(x, s3, 0.55, bottom=s12, label="Scope 3", color="#c47b3a")
-    ax.set_ylabel("Annual emissions (MtCO2e / year)")
+    ax.set_ylabel("Life-average annual emissions (MtCO2e / year)")
     ax.set_xticks(x, labels)
     ax.legend(frameon=False, loc="upper left")
     ymax = max(a + b for a, b in zip(s12, s3))
@@ -180,12 +181,14 @@ def write_review_summary(
     # 1 Headline
     lines.append("## 1. Headline")
     lines.append("")
+    peak_n = panel_n_emitting(panel, peak_year, DEFAULT_SCENARIO)
     lines.append(
-        f"- **Annual total (life-average):** {annual:.1f} MtCO2e/yr "
-        "(mean utilisation over each asset's operating window; not a calendar year)"
+        f"- **Annual total (panel peak):** {peak_mt:.1f} MtCO2e in {peak_year} "
+        f"({peak_n} assets emitting that year)"
     )
     lines.append(
-        f"- **Peak calendar-year (panel):** {peak_mt:.1f} MtCO2e in {peak_year}"
+        f"- **life_average_annual_mt:** {annual:.1f} MtCO2e/yr "
+        "(mean utilisation over each asset's operating window; not a calendar year)"
     )
     lines.append(
         f"- **Lifetime total (calendar panel {panel_year0}–{panel_year1}):** "
@@ -228,7 +231,7 @@ def write_review_summary(
     lines.append("## 2. By group")
     lines.append("")
     lines.append(
-        "| calc_group | export mtpa | Annual Mt/yr | Lifecycle Mt | "
+        "| calc_group | export mtpa | life_average_annual_mt | Lifecycle Mt | "
         "CAN / BUNK / FOR Mt/yr |"
     )
     lines.append("|---|---|---|---|---|")
@@ -268,7 +271,7 @@ def write_review_summary(
     lines.append("### Proposed: advanced vs early (tier split)")
     lines.append("")
     lines.append(
-        "| tier | chain scope | mtpa | Annual Mt/yr | CAN / BUNK / FOR |"
+        "| tier | chain scope | mtpa | life_average_annual_mt | CAN / BUNK / FOR |"
     )
     lines.append("|---|---|---|---|---|")
     prop = sample.loc[sample["calc_group"] == "proposed"]
@@ -298,7 +301,7 @@ def write_review_summary(
         for c in CHAINS
     }
     lines.append(
-        "| chain | stages | mtpa | Annual Mt/yr | Lifecycle Mt | CAN / BUNK / FOR |"
+        "| chain | stages | mtpa | life_average_annual_mt | Lifecycle Mt | CAN / BUNK / FOR |"
     )
     lines.append("|---|---|---|---|---|---|")
     cdef = by_chain.loc[by_chain["scenario"] == DEFAULT_SCENARIO]
@@ -349,7 +352,7 @@ def write_review_summary(
     # 5 By stage
     lines.append("## 5. By stage")
     lines.append("")
-    lines.append("| stage | destination | Annual Mt/yr | share |")
+    lines.append("| stage | destination | life_average_annual_mt | share |")
     lines.append("|---|---|---|---|")
     for _, r in stages.iterrows():
         share = r["share_of_total"] * 100 if r["share_of_total"] is not None else 0
@@ -362,7 +365,7 @@ def write_review_summary(
     # 6 Scenario range
     lines.append("## 6. Scenario range")
     lines.append("")
-    lines.append("| scenario | upstream | Annual Mt/yr | Lifecycle Mt | CAN Mt/yr |")
+    lines.append("| scenario | upstream | life_average_annual_mt | Lifecycle Mt | CAN Mt/yr |")
     lines.append("|---|---|---|---|---|")
     for scen in INTENSITY_SCENARIOS:
         s = by_project.loc[
@@ -897,7 +900,7 @@ def main() -> None:
     annual_mt = annual / 1e6
     liq_mt = float(sample["annual_liquefaction"].sum()) / 1e6
     print(
-        f"[validate] headline {annual_mt:.1f} Mt/yr "
+        f"[validate] life_average_annual_mt {annual_mt:.1f} Mt/yr "
         f"(was {BEFORE['annual_mt']:.1f}); "
         f"liquefaction {liq_mt:.1f} Mt/yr (was {BEFORE['liquefaction_mt']:.1f})"
     )
@@ -917,8 +920,9 @@ def main() -> None:
         f"delta {panel_life_mt - duration_life:+.1f})"
     )
     print(
-        f"[validate] annual {annual_mt:.1f} is life-average; "
-        f"panel peak {peak_mt:.1f} Mt in {peak_year}"
+        f"[validate] headline annual is panel peak {peak_mt:.1f} Mt in {peak_year} "
+        f"({panel_n_emitting(panel, peak_year, DEFAULT_SCENARIO)} assets); "
+        f"life_average_annual_mt {annual_mt:.1f}"
     )
     budgets = carbon_budget_shares(panel_life_mt, inputs["params"])
     b15 = budgets.loc[budgets["parameter"] == "remaining_15c_budget"].iloc[0]
@@ -959,12 +963,18 @@ def main() -> None:
                 "headline_note",
                 "Lifetime is the sum of the per-asset calendar panel "
                 f"({PANEL_START_YEAR} to last emitting year). "
-                "Annual is the life-average, not a panel year. "
+                "Headline annual is the panel peak calendar year. "
+                "life_average_annual_mt is utilisation over each asset window. "
                 "Headline includes all calc_groups (proposed = advanced + early). "
                 "Capacity is per chain; headline capacity is export liquefaction only.",
             ),
-            ("annual_total_mtco2e_yr", annual_mt),
-            ("annual_basis", "life-average utilisation over each asset window"),
+            ("annual_total_mtco2e_yr", peak_mt),
+            ("annual_basis", "panel peak calendar year"),
+            ("panel_peak_year", peak_year),
+            ("panel_peak_mtco2e_yr", peak_mt),
+            ("panel_peak_n_assets", panel_n_emitting(panel, peak_year, DEFAULT_SCENARIO)),
+            ("life_average_annual_mt", annual_mt),
+            ("life_average_basis", "life-average utilisation over each asset window"),
             ("lifetime_total_mtco2e", panel_life_mt),
             ("lifetime_basis", "sum of calendar panel; excludes legacy"),
             (
@@ -973,8 +983,6 @@ def main() -> None:
                 "Share-of-budget is CO2e / CO2 (approximation).",
             ),
             ("duration_x_average_mtco2e", duration_life),
-            ("panel_peak_year", peak_year),
-            ("panel_peak_mtco2e_yr", peak_mt),
             ("export_capacity_mtpa", export_total),
             ("canada_territorial_mtco2e_yr", can / 1e6),
             ("international_bunkers_mtco2e_yr", bunk / 1e6),
@@ -1086,7 +1094,12 @@ def main() -> None:
     for c, val in BEFORE["chain_annual"].items():
         print(f"  chain {c:20s}  annual={val:6.1f} Mt/yr")
     print("AFTER:")
-    print("Group annual totals (measurement_central, 40-year average):")
+    print(
+        f"Headline annual (panel peak): {peak_mt:.1f} MtCO2e in {peak_year} "
+        f"({panel_n_emitting(panel, peak_year, DEFAULT_SCENARIO)} assets emitting)"
+    )
+    print(f"life_average_annual_mt: {annual_mt:.1f} MtCO2e/yr")
+    print("Group annual totals (measurement_central, life-average):")
     for g in GROUPS:
         r = sdef.loc[sdef["group"] == g].iloc[0]
         before_g = BEFORE["group_annual"][g]
@@ -1096,7 +1109,7 @@ def main() -> None:
             f"export_cap={r['capacity_export_headline_mtpa']:5.1f} mtpa"
         )
     print(
-        f"  {'TOTAL':20s}  annual={annual_mt:6.1f} Mt/yr "
+        f"  {'TOTAL':20s}  life_average={annual_mt:6.1f} Mt/yr "
         f"(was {BEFORE['annual_mt']:.1f})"
     )
     print(
