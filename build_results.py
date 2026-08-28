@@ -88,6 +88,9 @@ EXPECTED_EXPORT_BY_CALC = {
 EXPECTED_EXPORT_TOTAL = 100.1
 EXPECTED_EARLY_EXPORT = 54.7
 EXPECTED_ADVANCED_EXPORT = 26.0
+# Life-average territorial shares, one decimal. Tied to the Data Inputs README
+# and the repo README so those documents cannot drift from the model.
+EXPECTED_TERRITORIAL_SHARE_PCT = {"CAN": 18.5, "BUNK": 5.6, "FOR": 75.9}
 
 
 def write_figure(by_project: pd.DataFrame, path: Path) -> None:
@@ -870,6 +873,21 @@ def main() -> None:
     ).abs()
     assert terr_delta.max() < 1e-6
     print("[validate] CAN + BUNK + FOR = total PASS")
+    terr_total = float(sample["annual_total"].sum())
+    terr_share = {
+        "CAN": round(100 * float(sample["canada_territorial"].sum()) / terr_total, 1),
+        "BUNK": round(
+            100 * float(sample["international_bunkers"].sum()) / terr_total, 1
+        ),
+        "FOR": round(100 * float(sample["foreign_territorial"].sum()) / terr_total, 1),
+    }
+    for code, exp in EXPECTED_TERRITORIAL_SHARE_PCT.items():
+        assert terr_share[code] == exp, (code, terr_share, EXPECTED_TERRITORIAL_SHARE_PCT)
+    print(
+        f"[validate] territorial split CAN {terr_share['CAN']}% / "
+        f"BUNK {terr_share['BUNK']}% / FOR {terr_share['FOR']}% "
+        "matches documented shares PASS"
+    )
     scope_delta = (
         sample["scope_1_2"] + sample["scope_3"] - sample["annual_total"]
     ).abs()

@@ -13,10 +13,10 @@ At full buildout across all Canadian LNG assets:
 |---|---|
 | Headline annual (panel peak) | **309.1 MtCO2e** in 2037 |
 | life_average_annual_mt | **268.1 MtCO2e/yr** (not a calendar year) |
-| Lifetime emissions | **10,689.4 MtCO2e** (calendar panel 2025–2069) |
+| Lifetime emissions | **9,558.2 MtCO2e** (calendar panel 2025–2069) |
 | Export capacity | 100.1 mtpa across ten projects |
-| Scope 1 and 2 | 49.0 Mt/yr, 18.0% |
-| Scope 3 | 223.0 Mt/yr, 82.0% |
+| Scope 1 and 2 | 48.3 Mt/yr, 18.0% |
+| Scope 3 | 219.8 Mt/yr, 82.0% |
 
 Split by where the emissions are counted: **18.5% Canada, 5.6% international marine bunkers,
 75.9% foreign**.
@@ -282,7 +282,7 @@ capacity is regasification. They measure opposite operations.
 
 **Annual figures come in two forms.** The headline annual is the panel peak (309.1 MtCO2e in
 2037). `life_average_annual_mt` (268.1 MtCO2e/yr) is a life-average across each facility's
-operating window. The published lifetime (10,689.4 MtCO2e) is the sum of the calendar panel
+operating window. The published lifetime (9,558.2 MtCO2e) is the sum of the calendar panel
 from 2025 through 2069. Duration × life-average is no longer published.
 
 ---
