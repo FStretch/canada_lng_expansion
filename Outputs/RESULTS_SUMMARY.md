@@ -1,6 +1,6 @@
 # Canada LNG lifecycle emissions — review summary
 
-Default scenario: `measurement_central`. Run at 2026-08-29 09:44 UTC. Numbers to one decimal. Inputs read-only. `calc_group` from `Asset Register:calc_group`.
+Default scenario: `measurement_central`. Run at 2026-08-29 09:50 UTC. Numbers to one decimal. Inputs read-only. `calc_group` from `Asset Register:calc_group`.
 
 Deck-facing tables (one sheet per table, 1-decimal): `Outputs/SLIDE_TABLES.xlsx`. Send that workbook to the PPT chat.
 
@@ -219,7 +219,9 @@ Implied average price is **$438/t** CAD 2025 (total damages / lifetime CO2e tonn
 - **Central sensitivity (ECCC 1.5%–2.5%, calendar year):** $2.7 trillion to $6.4 trillion
 - **ECCC 2% NPV to 2025 (sensitivity, not central):** $2.5 trillion (proposed $2.0 trillion)
 - **Burke upper bracket (whole CO2e at Burke SC-CO2, no SC-CH4; g = 0, year-by-year 2100 path, 1.5%–5%):** $4.5 trillion to $20.7 trillion; Figure 2e through-2300 at 2% fixed: **$50.9 trillion** (proposed $40.6 trillion)
-- **Canada Burke-channel victim share (sensitivity, not central):** **0.17%** of a 1990 1 Gt pulse, so it externalises 99.8% ($69 billion borne at the through-2300 2% price)
+- **Canada Burke-channel victim share (sensitivity, not central):** **0.17%** of a **1990** 1 Gt pulse, future window, so it externalises 99.8% ($69 billion borne at the through-2300 2% price). Alongside it, **P_dam_FD = 0.41**: the share of Burke draws in which Canada's damage from that pulse is positive. Only 41 per cent of draws put Canada in net loss at all, against 0.33 on the historical window and 0.98 for the United States and China. The 0.17% is a mean over a distribution that is not reliably signed for Canada, and should be read with the P_dam figure attached.
+
+**Pulse year: only the 1990 pulse is available.** The paper's emissions are 2025 onward, so the natural question is Canada's share of a **2020** pulse. It cannot be computed from the replication package. `burke_country_damage_shares.csv` in this repository holds one row per country and is derived from the package's `1gtco2_damages_1990_2020.rds` and `1gtco2_damages_2020_2100.rds`; the script that writes both (`scripts/working/figures/preparing_data/fig2a_b_c_d_ED5_ED7.R`) begins `subset(total_damages_1gtco2_cd, emitter == 1990)`, so both files are the **1990 pulse** and their `year_cat` values ("1990-2020", "2021-2100") are damage-accumulation windows, not pulse years. The shipped `total_damages_by_pulse_2020.rds` and `_2100.rds` are global totals by emitter year with no country column. The country-by-emitter-year intermediate that would answer the question, `total_damages_1gtco2_1990_2020.rds`, is read by that script from a pipeline output path and is **not shipped** - not on the default branch and not in the tagged v1.1 release archived on Zenodo (concept DOI 10.5281/zenodo.18158445, v1.1 10.5281/zenodo.18199013, CC BY 4.0). Checked 29 August 2026. No 2020-pulse share is reported, and the `0.0015 < share < 0.0020` assertion is **not** relaxed.
 
 ### Not in paper (economic-value comparison dropped 26 August 2026)
 
@@ -364,7 +366,7 @@ One row per headline-scope asset. Full machine-readable version, with capacity_b
 
 ## Monte Carlo (physics sampled, ECCC 2% per gas applied after)
 
-10,000 draws, seed `20260828`. Physics 0.18s; pricing 0.04s. Kernel vs published panel max abs 2.8e-14 Mt. Liquefaction held at 0.29. Howarth 0.55 is a named point, not a draw. Draws are on the headline scope (export chain). Each draw carries its own upstream and shipping factor, so its CH4 mass moves with it; damages are CO2 at SC-CO2 plus CH4 mass at SC-CH4, the same per-gas treatment as the central case.
+10,000 draws, seed `20260828`. Physics 0.22s; pricing 0.04s. Kernel vs published panel max abs 2.8e-14 Mt. Liquefaction held at 0.29. Howarth 0.55 is a named point, not a draw. Draws are on the headline scope (export chain). Each draw carries its own upstream and shipping factor, so its CH4 mass moves with it; damages are CO2 at SC-CO2 plus CH4 mass at SC-CH4, the same per-gas treatment as the central case.
 
 | build-out | lifetime median [p5, p95] Mt | peak-year median [p5, p95] Mt | ECCC 2% damage median [p5, p95] CAD bn |
 |---|---|---|---|

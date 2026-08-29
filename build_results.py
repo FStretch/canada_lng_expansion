@@ -1157,7 +1157,15 @@ def _validate_loss_damage(sample: pd.DataFrame, ld: dict, panel: pd.DataFrame) -
     hb = ld["h_burke"]
     assert float(hb["total_cad_billion"]) > float(published["total_cad_billion"])
     share = ld["canada_share"]
+    # Task 11: NOT relaxed. The Burke replication package (GitHub
+    # echolab-stanford/loss_damage; Zenodo 10.5281/zenodo.18199013, v1.1)
+    # ships no country-level damages table by pulse year, so no 2020-pulse
+    # share can be computed and this 1990-pulse bound still stands.
     assert 0.0015 < share < 0.0020, share
+    assert ld["burke_country_share_pulse_year"] == 1990
+    assert 0.0 < ld["canada_p_dam_fd"] < 1.0, ld["canada_p_dam_fd"]
+    assert abs(ld["canada_p_dam_fd"] - 0.41) < 0.005, ld["canada_p_dam_fd"]
+    assert abs(ld["canada_p_dam_hd"] - 0.33) < 0.005, ld["canada_p_dam_hd"]
     assert hb["externality_ratio_proposed"] > 10
     assert hb["national_value_over_borne"] > 1
     assert abs(hb["externalisation_share"] - (1 - share)) < 1e-12
@@ -1428,6 +1436,14 @@ def main() -> None:
 
     ld = compute_loss_damage(inputs, INPUTS_DIR, panel=panel)
     _validate_loss_damage(sample, ld, panel)
+    print(
+        f"[validate] Burke country share is the {ld['burke_country_share_pulse_year']} "
+        f"pulse only (no by-pulse country table in the replication package); "
+        f"Canada share {100*ld['canada_share']:.2f}% with "
+        f"P_dam_FD={ld['canada_p_dam_fd']:.2f}, "
+        f"P_dam_HD={ld['canada_p_dam_hd']:.2f}; "
+        f"0.0015 < share < 0.0020 assertion NOT relaxed PASS"
+    )
     print(
         f"[validate] loss and damage central "
         f"${ld['published']['total_cad_billion']:.0f} bn "
@@ -1817,6 +1833,48 @@ def main() -> None:
     ld["burke_grid"].to_csv(FIGURE_DATA / "ld_burke_grid.csv", index=False)
     ld["eccc_grid"].to_csv(FIGURE_DATA / "ld_eccc_grid.csv", index=False)
     ld["price_by_year"].to_csv(FIGURE_DATA / "ld_price_by_year.csv", index=False)
+    pd.DataFrame(
+        [
+            {
+                "item": "canada_share_of_1gt_pulse_future_window",
+                "value": ld["canada_share"],
+                "unit": "fraction",
+                "pulse_year": ld["burke_country_share_pulse_year"],
+                "note": "share_FD_% / 100 from burke_country_damage_shares.csv",
+            },
+            {
+                "item": "canada_P_dam_FD",
+                "value": ld["canada_p_dam_fd"],
+                "unit": "fraction of Burke draws",
+                "pulse_year": ld["burke_country_share_pulse_year"],
+                "note": (
+                    "share of Burke draws in which Canada's damage from that "
+                    "pulse is positive, future window. Report with the 0.17%."
+                ),
+            },
+            {
+                "item": "canada_P_dam_HD",
+                "value": ld["canada_p_dam_hd"],
+                "unit": "fraction of Burke draws",
+                "pulse_year": ld["burke_country_share_pulse_year"],
+                "note": "same, historical window",
+            },
+            {
+                "item": "canada_share_of_1gt_pulse_historical_window",
+                "value": ld["canada_share_hd"],
+                "unit": "fraction",
+                "pulse_year": ld["burke_country_share_pulse_year"],
+                "note": "share_HD_% / 100",
+            },
+            {
+                "item": "pulse_year_availability",
+                "value": None,
+                "unit": "-",
+                "pulse_year": ld["burke_country_share_pulse_year"],
+                "note": ld["burke_country_share_availability"],
+            },
+        ]
+    ).to_csv(FIGURE_DATA / "burke_canada_share.csv", index=False)
     placeholder_sens["cases"].to_csv(
         FIGURE_DATA / "placeholder_start_sensitivity.csv", index=False
     )

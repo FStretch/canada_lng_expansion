@@ -879,6 +879,18 @@ def compute_loss_damage(
         "canada_share": canada_share,
         "uk_fd_share": uk_fd_share,
         "canada_row": can_row,
+        "canada_p_dam_fd": float(can_row["P_dam_FD"]),
+        "canada_p_dam_hd": float(can_row["P_dam_HD"]),
+        "canada_share_hd": float(can_row["share_HD_%"]) / 100.0,
+        "canada_dam_fd_usd": float(can_row["dam_FD"]),
+        "canada_dam_hd_usd": float(can_row["dam_HD"]),
+        "burke_country_share_pulse_year": 1990,
+        "burke_country_share_availability": (
+            "1990 pulse only. The replication package (Zenodo concept DOI "
+            "10.5281/zenodo.18158445, release v1.1 10.5281/zenodo.18199013, "
+            "CC BY 4.0; GitHub echolab-stanford/loss_damage) ships no "
+            "country-level damages table by pulse year."
+        ),
         "fig4": fig4,
         "tonnes_proposed_mtco2e": tonnes_proposed,
         "methane_share_of_co2e": methane_share,
@@ -1077,10 +1089,41 @@ def format_ld_markdown(ld: dict) -> list[str]:
     )
     lines.append(
         f"- **Canada Burke-channel victim share (sensitivity, not central):** "
-        f"**{share_pct:.2f}%** of a 1990 1 Gt pulse, so it externalises "
-        f"{100*(1-ld['canada_share']):.1f}% "
+        f"**{share_pct:.2f}%** of a **1990** 1 Gt pulse, future window, so it "
+        f"externalises {100*(1-ld['canada_share']):.1f}% "
         f"({_money_cad(burke['canada_borne_proposed_cad_billion'])} borne at "
-        f"the through-2300 2% price)"
+        f"the through-2300 2% price). Alongside it, **P_dam_FD = "
+        f"{ld['canada_p_dam_fd']:.2f}**: the share of Burke draws in which "
+        f"Canada's damage from that pulse is positive. Only 41 per cent of "
+        f"draws put Canada in net loss at all, against "
+        f"{ld['canada_p_dam_hd']:.2f} on the historical window and 0.98 for "
+        f"the United States and China. The 0.17% is a mean over a "
+        f"distribution that is not reliably signed for Canada, and should be "
+        f"read with the P_dam figure attached."
+    )
+    lines.append("")
+    lines.append(
+        f"**Pulse year: only the 1990 pulse is available.** The paper's "
+        f"emissions are 2025 onward, so the natural question is Canada's "
+        f"share of a **2020** pulse. It cannot be computed from the "
+        f"replication package. `burke_country_damage_shares.csv` in this "
+        f"repository holds one row per country and is derived from the "
+        f"package's `1gtco2_damages_1990_2020.rds` and "
+        f"`1gtco2_damages_2020_2100.rds`; the script that writes both "
+        f"(`scripts/working/figures/preparing_data/fig2a_b_c_d_ED5_ED7.R`) "
+        f"begins `subset(total_damages_1gtco2_cd, emitter == 1990)`, so both "
+        f"files are the **1990 pulse** and their `year_cat` values "
+        f"(\"1990-2020\", \"2021-2100\") are damage-accumulation windows, "
+        f"not pulse years. The shipped `total_damages_by_pulse_2020.rds` and "
+        f"`_2100.rds` are global totals by emitter year with no country "
+        f"column. The country-by-emitter-year intermediate that would answer "
+        f"the question, `total_damages_1gtco2_1990_2020.rds`, is read by that "
+        f"script from a pipeline output path and is **not shipped** - not on "
+        f"the default branch and not in the tagged v1.1 release archived on "
+        f"Zenodo (concept DOI 10.5281/zenodo.18158445, v1.1 "
+        f"10.5281/zenodo.18199013, CC BY 4.0). Checked 29 August 2026. "
+        f"No 2020-pulse share is reported, and the "
+        f"`0.0015 < share < 0.0020` assertion is **not** relaxed."
     )
     lines.append("")
     lines.append("### Not in paper (economic-value comparison dropped 26 August 2026)")

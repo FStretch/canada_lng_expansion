@@ -1,0 +1,6 @@
+item,value,unit,pulse_year,note
+canada_share_of_1gt_pulse_future_window,0.001704058023521432,fraction,1990,share_FD_% / 100 from burke_country_damage_shares.csv
+canada_P_dam_FD,0.41,fraction of Burke draws,1990,"share of Burke draws in which Canada's damage from that pulse is positive, future window. Report with the 0.17%."
+canada_P_dam_HD,0.3299999999999999,fraction of Burke draws,1990,"same, historical window"
+canada_share_of_1gt_pulse_historical_window,0.002018057831855765,fraction,1990,share_HD_% / 100
+pulse_year_availability,,-,1990,"1990 pulse only. The replication package (Zenodo concept DOI 10.5281/zenodo.18158445, release v1.1 10.5281/zenodo.18199013, CC BY 4.0; GitHub echolab-stanford/loss_damage) ships no country-level damages table by pulse year."
