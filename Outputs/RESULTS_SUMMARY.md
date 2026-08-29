@@ -1,6 +1,6 @@
 # Canada LNG lifecycle emissions — review summary
 
-Default scenario: `measurement_central`. Run at 2026-08-29 09:40 UTC. Numbers to one decimal. Inputs read-only. `calc_group` from `Asset Register:calc_group`.
+Default scenario: `measurement_central`. Run at 2026-08-29 09:44 UTC. Numbers to one decimal. Inputs read-only. `calc_group` from `Asset Register:calc_group`.
 
 Deck-facing tables (one sheet per table, 1-decimal): `Outputs/SLIDE_TABLES.xlsx`. Send that workbook to the PPT chat.
 
@@ -219,16 +219,22 @@ Implied average price is **$438/t** CAD 2025 (total damages / lifetime CO2e tonn
 - **Central sensitivity (ECCC 1.5%–2.5%, calendar year):** $2.7 trillion to $6.4 trillion
 - **ECCC 2% NPV to 2025 (sensitivity, not central):** $2.5 trillion (proposed $2.0 trillion)
 - **Burke upper bracket (whole CO2e at Burke SC-CO2, no SC-CH4; g = 0, year-by-year 2100 path, 1.5%–5%):** $4.5 trillion to $20.7 trillion; Figure 2e through-2300 at 2% fixed: **$50.9 trillion** (proposed $40.6 trillion)
+- **Canada Burke-channel victim share (sensitivity, not central):** **0.17%** of a 1990 1 Gt pulse, so it externalises 99.8% ($69 billion borne at the through-2300 2% price)
+
+### Not in paper (economic-value comparison dropped 26 August 2026)
+
+The bullets and the Conference Board paragraph under this heading compare global damages against a **Canadian economic-value denominator** (the one Burke sankey paragraph below is a Burke-channel diagnostic and is marked as such). That comparison was dropped from the paper on 26 August 2026. The code is retained, still runs, and is still asserted, so the figures below are live rather than frozen - but none of them is a paper result. The denominator is the Conference Board of Canada's *A Rising Tide* whole-chain GDP figure, which is industry-commissioned; the externality ratios, the Hatton comparison and the Burke national test all rest on it.
 - **Canadian value (proposed, CBoC scaled, 40 yr, 2025 CAD):** **$799 billion**
 - **Externality ratio, ECCC central (proposed):** **4.2x** global damages / Canadian value (Hatton UK range was 5.9x–16.8x; Burke through-2300 is 51x)
-- **Canada Burke-channel victim share (sensitivity, not central):** **0.17%** of a 1990 1 Gt pulse, so it externalises 99.8% ($69 billion borne at the through-2300 2% price)
 - **National test, Burke channel only (not the headline):** Canadian value is 11.5x the damages Canada itself bears. Reported as indeterminate.
 - **30-year denominator sensitivity (ECCC central, proposed):** $599 billion Canadian value, ratio **6x** (research sketch used 30 years; central uses 40).
 - **Operating + under construction only (ECCC central):** $749 billion global L&D / $192 billion value = **4x** (19.4 mtpa export).
 
-Burke Figure 4 sankey (`damages_and_benefits_k90.rds`) is emitter/recipient flows for 1990–2020 **all** emissions, not LNG. Canada as emitter caused **$1.33 trillion** (2.40% of global owing; USA $10.18T validates against the paper's $10.2T). Canada is **not** a plotted recipient, so CAN-on-CAN cannot be read from this file. Victim share stays 0.17% from the 1 Gt pulse.
+(Burke-channel diagnostic, not part of the dropped economic-value comparison.) Burke Figure 4 sankey (`damages_and_benefits_k90.rds`) is emitter/recipient flows for 1990–2020 **all** emissions, not LNG. Canada as emitter caused **$1.33 trillion** (2.40% of global owing; USA $10.18T validates against the paper's $10.2T). Canada is **not** a plotted recipient, so CAN-on-CAN cannot be read from this file. Victim share stays 0.17% from the 1 Gt pulse.
 
-Canada denominator: Conference Board *A Rising Tide* Table 1, Canada GDP at market prices **C$11.153bn/yr (2020 CAD)** at 56 mtpa, scaled linearly on proposed export nameplate (80.7 mtpa) over 40 years (Appendix A operating life). Whole-chain including upstream (76% of the GDP). Industry-commissioned. Inflated to 2025 CAD with FRED NGDPDIXCAA. Uninflated 2020 CAD value is $643 billion.
+Canada denominator (not in paper, dropped 26 August 2026): Conference Board *A Rising Tide* Table 1, Canada GDP at market prices **C$11.153bn/yr (2020 CAD)** at 56 mtpa, scaled linearly on proposed export nameplate (80.7 mtpa) over 40 years (Appendix A operating life). Whole-chain including upstream (76% of the GDP). Industry-commissioned. Inflated to 2025 CAD with FRED NGDPDIXCAA. Uninflated 2020 CAD value is $643 billion.
+
+### End of dropped economic-value comparison. What follows is a damages sensitivity and is in the SI.
 
 Burke horizon rows (whole GWP100 CO2e at Burke SC-CO2 — Burke has no SC-CH4; g = 0, proposed slate; upper bracket, not central). Global L&D and value in trillion 2025 CAD; Canada-borne in billion 2025 CAD. Bold is the Burke default horizon, not the paper central.
 
@@ -358,7 +364,7 @@ One row per headline-scope asset. Full machine-readable version, with capacity_b
 
 ## Monte Carlo (physics sampled, ECCC 2% per gas applied after)
 
-10,000 draws, seed `20260828`. Physics 0.22s; pricing 0.04s. Kernel vs published panel max abs 2.8e-14 Mt. Liquefaction held at 0.29. Howarth 0.55 is a named point, not a draw. Draws are on the headline scope (export chain). Each draw carries its own upstream and shipping factor, so its CH4 mass moves with it; damages are CO2 at SC-CO2 plus CH4 mass at SC-CH4, the same per-gas treatment as the central case.
+10,000 draws, seed `20260828`. Physics 0.18s; pricing 0.04s. Kernel vs published panel max abs 2.8e-14 Mt. Liquefaction held at 0.29. Howarth 0.55 is a named point, not a draw. Draws are on the headline scope (export chain). Each draw carries its own upstream and shipping factor, so its CH4 mass moves with it; damages are CO2 at SC-CO2 plus CH4 mass at SC-CH4, the same per-gas treatment as the central case.
 
 | build-out | lifetime median [p5, p95] Mt | peak-year median [p5, p95] Mt | ECCC 2% damage median [p5, p95] CAD bn |
 |---|---|---|---|

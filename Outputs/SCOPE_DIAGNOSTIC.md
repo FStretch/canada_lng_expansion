@@ -1,5 +1,16 @@
 # Task A diagnostic: legacy and non-export assets
 
+> **Superseded snapshot, 29 August 2026.** This is a dated diagnostic from the
+> all-assets scope. Every headline number in it — 9,558.2 Mt lifetime, 309.1 Mt
+> peak, the 268.1 Mt/yr life-average — was current when it was written and is
+> not current now. The headline has since been narrowed to the export chain and
+> shipping has been scaled by route distance. Current locked values are
+> **9,298.1 Mt lifetime, 298.2 Mt peak in 2037, 18.1 / 3.2 / 78.7 territorial**;
+> see `Outputs/STALE_FIGURE_INVENTORY.md` and the `EXPECTED_BUILD_OUT` lock in
+> `build_results.py`. The *reasoning* below — which asset set the peak and the
+> lifetime draw on, and why legacy plants are in the life-average but not the
+> panel — still holds. Retained as a record, not as a current figure.
+
 Diagnostic only. No scope change and no emission-factor change. Liquefaction remains 0.29.
 
 ## A1. Peak and lifetime use the same asset set

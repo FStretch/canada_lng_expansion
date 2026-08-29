@@ -1,39 +1,35 @@
-# Task B inventory — stale figures (before any edit)
+# Stale figure inventory
 
-Grep of the whole repository (md, py, txt, csv, both input workbooks including README/Chains sheets). Produced before any Task B edit.
+Regenerated 2026-08-29 by `python tools/stale_figure_inventory.py`, against the paper set locked as `EXPECTED_BUILD_OUT` in `build_results.py`.
 
-## Specified superseded values
+The previous version of this file was a hand-written snapshot and had itself gone stale: it treated 9,558.2 Mt, 309.1 Mt and 18.5 / 5.6 / 75.9 as current, two scope changes after they stopped being so. This one is generated, so it can be re-run after any re-lock.
 
-| Old value | Current | Hits | Action |
-|---|---|---|---|
-| 10,704.7 / 10,705 / ~10,700 | 9,558.2 Mt lifetime | **None** in md/py/xlsx. `Outputs/figure_data/mc_draws.csv` contains coincidental MC samples near 10,704 (e.g. draw 5855 full = 10704.679). Not a published figure. | Leave mc_draws. No text to update. |
-| 272.0 / ~272 | 309.1 Mt in 2037 | **None** | None |
-| 268.1 as unlabelled “annual emissions” | `life_average_annual_mt` | 268.1 appears only **with** the life-average label in `README.md` (L15, L27, L284), `Outputs/RESULTS_SUMMARY.md` (L10, L97). Related stale **label**: `src/figures_report.py` “40-year average” (comments, trajectory captions, fig 8 title) and fig 7 caption “40-year model lifecycle sum” (LNG bars are the calendar-panel sum). | Relabel to life-average / calendar-panel. Do not change 268.1. |
-| roughly 16 / 5 / 80 | 18.5 / 5.6 / 75.9 | **None** of the old split. README L21, Data Inputs README row 24, RESULTS_SUMMARY L22, and `EXPECTED_TERRITORIAL_SHARE_PCT` in `build_results.py` L94 already 18.5 / 5.6 / 75.9. Assertion already present L888–894 (Task 4). | Keep assertion. Do not change the expected dict. |
-| 200 GtCO2 | 170 / 525 / 1,055 | **None**. Parameters and README already GCB 2025. `canada_2030_overshoot_gap` = 200 is **MtCO2e** vs the 2030 target, not a GtCO2 carbon budget. | Leave the 200 Mt gap. Not the superseded budget. |
-| 8,367 Mt proposed-export lifetime | recompute | **None**. Current proposed lifetime in RESULTS_SUMMARY L31 is **7,646.6 Mt**. | None to update. |
+## Current locked values
 
-## Extra find (not in the search list; Inputs not edited)
+| quantity | value |
+|---|---|
+| lifetime CO2e | **9,298.1 Mt** |
+| lifetime CO2 only | **8,955.2 Mt (plus 11,505 kt CH4)** |
+| peak | **298.2 Mt in 2037** |
+| territorial CAN / BUNK / FOR | **18.1 / 3.2 / 78.7 %** |
+| ECCC 2% damages | **C$4,073 bn** |
+| committed | **1,869.5 Mt, C$749 bn** |
+| committed plus advanced | **3,805.7 Mt, C$1,579 bn** |
 
-`Inputs/Canada_LNG_Data_Inputs.xlsx` Chains sheet, export `applies_to`: **“45.4 mtpa active, 12.7 mtpa early stage”**. That is the pre-expansion 58.1 mtpa headline, not current 100.1 / 54.7 early. Flagged only. Workbook left untouched.
+## Superseded values, and where they still appear
 
-Chains export note “18 / 3 / 79 per cent” is the export-chain split (computed 18.0 / 3.4 / 78.6), not the old all-asset 16/5/80.
+| superseded | replaced by | when it moved | live hits | deliberate records |
+|---|---|---|---|---|
+| 9,558.2 Mt lifetime (all assets) | 9,298.1 Mt | export-scope filter, then route-scaled shipping | **none** | `build_results.py`, `Outputs/SCOPE_DIAGNOSTIC.md`, `Outputs/STALE_FIGURE_INVENTORY.md`, `tools/stale_figure_inventory.py` |
+| 309.1 Mt peak (all assets) | 298.2 Mt in 2037 | export-scope filter, then route-scaled shipping | **none** | `build_results.py`, `Outputs/SCOPE_DIAGNOSTIC.md`, `Outputs/STALE_FIGURE_INVENTORY.md`, `tools/stale_figure_inventory.py` |
+| 18.5 / 5.6 / 75.9 territorial | 18.1 / 3.2 / 78.7 | export-scope filter, then route-scaled shipping | **none** | `Outputs/STALE_FIGURE_INVENTORY.md`, `tools/stale_figure_inventory.py` |
+| 9,315.3 Mt lifetime (export scope, flat shipping) | 9,298.1 Mt | Task 4, route-scaled shipping | **none** | `build_results.py`, `Outputs/BASELINE_2026-08-29.md`, `Outputs/SCOPE_DIAGNOSTIC.md`, `Outputs/STALE_FIGURE_INVENTORY.md`, `tools/stale_figure_inventory.py` · data series (not published text): `Outputs/figure_data/mc_draws.csv` |
+| 298.7 Mt peak (flat shipping) | 298.2 Mt in 2037 | Task 4, route-scaled shipping | **none** | `build_results.py`, `Outputs/BASELINE_2026-08-29.md`, `Outputs/SCOPE_DIAGNOSTIC.md`, `Outputs/STALE_FIGURE_INVENTORY.md`, `tools/stale_figure_inventory.py` |
+| 18.0 / 3.4 / 78.6 territorial | 18.1 / 3.2 / 78.7 | Task 4, route-scaled shipping | **none** | `Outputs/BASELINE_2026-08-29.md`, `Outputs/STALE_FIGURE_INVENTORY.md`, `tools/stale_figure_inventory.py`, `tools/update_data_inputs_readme_task4.py` |
+| C$4,164bn ECCC 2% damages (whole CO2e at SC-CO2) | C$4,073bn | Task 3 per-gas pricing, then Task 4 | **none** | `Outputs/BASELINE_2026-08-29.md` · data series (not published text): `Outputs/figure_data/mc_draws.csv` |
+| 258.9 Mt/yr life-average | 258.5 Mt/yr | Task 4, route-scaled shipping | **none** | `Outputs/BASELINE_2026-08-29.md`, `Outputs/STALE_FIGURE_INVENTORY.md`, `tools/stale_figure_inventory.py` |
+| 10,704.7 Mt lifetime | 9,298.1 Mt | superseded before this task sequence | **none** | `Outputs/STALE_FIGURE_INVENTORY.md`, `tools/stale_figure_inventory.py` |
+| 272.0 Mt peak | 298.2 Mt in 2037 | superseded before this task sequence | **none** | `Outputs/STALE_FIGURE_INVENTORY.md`, `tools/stale_figure_inventory.py` |
 
-## External-circulation surfaces
+**No live hits.** Every remaining occurrence is a deliberate record of what a number used to be: the lock history comment in `build_results.py`, the baseline record, the change report, or this script's own value table. Monte Carlo draw files may contain coincidental samples near a superseded figure; those are data, not published text.
 
-These are the files a non-technical reader would see. Numbers on them **already match** 9,558.2 / 309.1 / 18.5–5.6–75.9 / GCB 170–525–1055:
-
-- `README.md`
-- `Outputs/RESULTS_SUMMARY.md`
-- `Outputs/SLIDE_TABLES.xlsx` (regenerated)
-- Figure **captions** in `src/figures_report.py` (except the “40-year average” wording)
-- Data Inputs README row 24 (18.5 / 5.6 / 75.9)
-
-**Still circulating under the old label** if fig 8 was already shared: PNG title “40-year average” (`fig08_electrification_canada_territorial.png`). Relabel on regenerate.
-
-`Outputs/OIL_COMPARATOR_AUDIT.md`: no hits; left as a dated audit.
-
-## Assertions
-
-- Territorial split: **already present**, expected {CAN: 18.5, BUNK: 5.6, FOR: 75.9}. Unchanged.
-- Lifetime 9,558.2 and peak 2037 / 309.1: **not yet asserted**. To be added. These are new locks, not silent updates of an existing expected value.

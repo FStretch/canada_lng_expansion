@@ -1075,6 +1075,29 @@ def format_ld_markdown(ld: dict) -> list[str]:
         f"**{_money_cad(burke['total_cad_billion'])}** "
         f"(proposed {_money_cad(burke['proposed_cad_billion'])})"
     )
+    lines.append(
+        f"- **Canada Burke-channel victim share (sensitivity, not central):** "
+        f"**{share_pct:.2f}%** of a 1990 1 Gt pulse, so it externalises "
+        f"{100*(1-ld['canada_share']):.1f}% "
+        f"({_money_cad(burke['canada_borne_proposed_cad_billion'])} borne at "
+        f"the through-2300 2% price)"
+    )
+    lines.append("")
+    lines.append("### Not in paper (economic-value comparison dropped 26 August 2026)")
+    lines.append("")
+    lines.append(
+        "The bullets and the Conference Board paragraph under this heading "
+        "compare global damages against a **Canadian economic-value "
+        "denominator** (the one Burke sankey paragraph below is a "
+        "Burke-channel diagnostic and is marked as such). That comparison was "
+        "dropped "
+        "from the paper on 26 August 2026. The code is retained, still runs, "
+        "and is still asserted, so the figures below are live rather than "
+        "frozen - but none of them is a paper result. The denominator is the "
+        "Conference Board of Canada's *A Rising Tide* whole-chain GDP figure, "
+        "which is industry-commissioned; the externality ratios, the Hatton "
+        "comparison and the Burke national test all rest on it."
+    )
     v_prop = float(burke["canada_value_proposed_cad_billion"])
     lines.append(
         f"- **Canadian value (proposed, CBoC scaled, 40 yr, 2025 CAD):** "
@@ -1088,13 +1111,6 @@ def format_ld_markdown(ld: dict) -> list[str]:
         f"**{eccc_ratio:.1f}x** global damages / Canadian value "
         f"(Hatton UK range was 5.9x–16.8x; Burke through-2300 is "
         f"{burke['externality_ratio_proposed']:.0f}x)"
-    )
-    lines.append(
-        f"- **Canada Burke-channel victim share (sensitivity, not central):** "
-        f"**{share_pct:.2f}%** of a 1990 1 Gt pulse, so it externalises "
-        f"{100*(1-ld['canada_share']):.1f}% "
-        f"({_money_cad(burke['canada_borne_proposed_cad_billion'])} borne at "
-        f"the through-2300 2% price)"
     )
     lines.append(
         f"- **National test, Burke channel only (not the headline):** "
@@ -1122,7 +1138,9 @@ def format_ld_markdown(ld: dict) -> list[str]:
     lines.append("")
     f4 = ld["fig4"]
     lines.append(
-        f"Burke Figure 4 sankey (`damages_and_benefits_k90.rds`) is emitter/"
+        f"(Burke-channel diagnostic, not part of the dropped economic-value "
+        f"comparison.) Burke Figure 4 sankey "
+        f"(`damages_and_benefits_k90.rds`) is emitter/"
         f"recipient flows for 1990–2020 **all** emissions, not LNG. Canada as "
         f"emitter caused **${f4['canada_owing_usd']/1e12:.2f} trillion** "
         f"({100*f4['canada_emitter_share']:.2f}% of global owing; USA "
@@ -1134,13 +1152,19 @@ def format_ld_markdown(ld: dict) -> list[str]:
     lines.append("")
     pub = ld["gva_proposed_as_published"] / 1e9
     lines.append(
-        f"Canada denominator: Conference Board *A Rising Tide* Table 1, "
+        f"Canada denominator (not in paper, dropped 26 August 2026): "
+        f"Conference Board *A Rising Tide* Table 1, "
         f"Canada GDP at market prices **C$11.153bn/yr (2020 CAD)** at 56 mtpa, "
         f"scaled linearly on proposed export nameplate "
         f"({ld['proposed_export_mtpa']:.1f} mtpa) over 40 years (Appendix A "
         f"operating life). Whole-chain including upstream (76% of the GDP). "
         f"Industry-commissioned. Inflated to 2025 CAD with FRED NGDPDIXCAA. "
         f"Uninflated 2020 CAD value is {_money_cad(pub)}."
+    )
+    lines.append("")
+    lines.append(
+        "### End of dropped economic-value comparison. What follows is a "
+        "damages sensitivity and is in the SI."
     )
     lines.append("")
     lines.append(
