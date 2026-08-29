@@ -12,15 +12,16 @@ At full export buildout (ten projects, 100.1 mtpa):
 
 | | |
 |---|---|
-| Headline annual (panel peak) | **298.7 MtCO2e** in 2037 |
-| life_average_annual_mt | **258.9 MtCO2e/yr** (not a calendar year) |
-| Lifetime emissions | **9,315.3 MtCO2e** (calendar panel 2025–2069) |
+| Headline annual (panel peak) | **298.2 MtCO2e** in 2037 |
+| life_average_annual_mt | **258.5 MtCO2e/yr** (not a calendar year) |
+| Lifetime emissions | **9,298.1 MtCO2e** (calendar panel 2025–2069) |
+| Lifetime, CO2 only | **8,955.2 MtCO2** (plus 11,505 kt CH4) |
 | Export capacity | 100.1 mtpa across ten projects |
-| Scope 1 and 2 | 46.7 Mt/yr, 18.0% |
-| Scope 3 | 212.2 Mt/yr, 82.0% |
+| Scope 1 and 2 | 46.7 Mt/yr, 18.1% |
+| Scope 3 | 211.8 Mt/yr, 81.9% |
 
-Split by where the emissions are counted: **18.0% Canada, 3.4% international marine bunkers,
-78.6% foreign**.
+Split by where the emissions are counted: **18.1% Canada, 3.2% international marine bunkers,
+78.7% foreign**.
 
 Headline results include assets whose chain is in `headline_scope_chains` (export) and whose
 calc_group is in `headline_scope_calc_groups` (operating, under construction, proposed). Eight
@@ -28,8 +29,8 @@ non-export assets totalling 242.9 MtCO2e stay in the register as a stated exclus
 
 The published lifetime total is the sum of a per-asset, per-calendar-year panel from 2025
 through each asset's last emitting year (currently 2069). It is not duration × life-average.
-The headline annual figure is the panel peak (298.7 MtCO2e in 2037). `life_average_annual_mt`
-(258.9 MtCO2e/yr) is a life-average of utilisation over each facility's operating window,
+The headline annual figure is the panel peak (298.2 MtCO2e in 2037). `life_average_annual_mt`
+(258.5 MtCO2e/yr) is a life-average of utilisation over each facility's operating window,
 including start-up years; it is not a calendar year.
 
 ---
@@ -129,9 +130,20 @@ are not correlated.
 | Upstream production | 0.25 | Canada Energy Regulator British Columbia oil and gas emissions, corrected for measured methane |
 | Pipeline transport | 0.10 | Literature band, validated against the BC assessment of Coastal GasLink |
 | Liquefaction | 0.29 | Gas turbine drive, applied to every terminal for its whole operating life. 0.12 is retained as the low bound and applies only if electrification is contracted and delivered |
-| Shipping | 0.12 | Howarth (2024), validated against IMO carrier data |
+| Shipping | 0.12 | Howarth (2024), validated against IMO carrier data. Derived on the British Columbia to north-east Asia route and **scaled per asset by route distance** |
 | Regasification | 0.04 | RMI Oil Climate Index |
 | Combustion | 2.75 | IPCC 2006 Guidelines, default factor for natural gas |
+
+**Shipping is scaled by route distance per asset.** The 0.12 central factor is derived on the
+British Columbia to north-east Asia route (`route_bc_to_northeast_asia_nm` = 3,800 nm). Each
+asset's shipping intensity is `0.12 × route_distance_nm / 3,800`. Eight British Columbia
+terminals sit at the 3,800 nm basis; Kino Aski is 2,980 nm and Fermeuse 2,470 nm to Rotterdam,
+so the two Atlantic projects carry proportionally less shipping. An asset on a chain that
+includes the shipping stage with a blank `route_distance_nm` raises rather than defaulting to
+the BC basis; bunkering has no shipping stage. This is worth about −0.2% on the lifetime total
+and takes the international-bunkers share from 3.4% to 3.2%. The lifecycle-intensity
+comparison in `src/lca_comparison.py` deliberately stays on the unscaled BC basis, because the
+comparator studies are single-route figures.
 
 **Canadian sources are used wherever the stage occurs in Canada.** Upstream, pipeline and
 liquefaction all happen here and draw on Canadian regulatory and inventory data. Shipping,
@@ -210,11 +222,15 @@ Board whole-chain GDP figure (Table 1: C$11.153bn/yr in 2020 CAD at 56 mtpa),
 scaled on proposed export nameplate and inflated to 2025 CAD, is the Canada
 denominator.
 
-Pricing the full CO2e total at SC-CO2 **overstates** the methane contribution:
-the CH4-derived share of CO2e (central upstream 0.25 minus inventory CO2 0.154)
-is charged at SC-CO2 rather than at ECCC SC-CH4. There is no native per-gas
-split; the bound is reported as a percentage of the damage bill. This
-treatment is not conservative in that direction.
+Damages are priced **per gas**. Each calendar year contributes
+`co2_t × SC-CO2_t + ch4_mass_t × SC-CH4_t`, both official ECCC schedules, both
+at the same discount rate, both inflated CAD 2021 to CAD 2025 exactly once.
+The CO2 and CH4 series come from the panel's explicit split (upstream excess
+over inventory CO2, plus shipping methane slip). Methane is about 1.7% of the
+central damage bill. Burke has no SC-CH4, so the Burke family still prices the
+whole GWP100 CO2e total at Burke's SC-CO2; that is stated in its labels.
+Pricing the whole CO2e at SC-CO2, the retired treatment, would raise the
+central figure by about 2%; that is reported as a one-line reconciliation.
 
 Lifespan comes from each project's CER export licence term where one exists, then
 is cut at `authorised_export_end_year` when that field is populated (inclusive:
@@ -294,10 +310,16 @@ places it on the bunkering chain and records the disagreement rather than resolv
 **Capacity is never summed across chains.** Export and bunkering capacity is liquefaction; import
 capacity is regasification. They measure opposite operations.
 
-**Annual figures come in two forms.** The headline annual is the panel peak (298.7 MtCO2e in
-2037). `life_average_annual_mt` (258.9 MtCO2e/yr) is a life-average across each facility's
-operating window. The published lifetime (9,315.3 MtCO2e) is the sum of the calendar panel
+**Annual figures come in two forms.** The headline annual is the panel peak (298.2 MtCO2e in
+2037). `life_average_annual_mt` (258.5 MtCO2e/yr) is a life-average across each facility's
+operating window. The published lifetime (9,298.1 MtCO2e) is the sum of the calendar panel
 from 2025 through 2069. Duration × life-average is no longer published.
+
+**Two route distances are the west-coast basis rather than a port-specific figure.** Discovery
+LNG (Campbell River) and Kanata LNG (Prince Rupert) have no published port-to-port sailing
+distance, so both take the cited west-coast Canada figure of 3,800 nm used for the other BC
+export assets. Prince Rupert is nearer north Asia and Campbell River further, so the two
+errors point in opposite directions. Recorded in the register's Data Gaps sheet.
 
 ---
 

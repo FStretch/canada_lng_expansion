@@ -194,7 +194,49 @@ def _stage_intensity(stage: str, row, scenario: str, inputs: dict) -> tuple[floa
             f"Emission Factors: stage '{stage}' has a blank central value on "
             f"sheet 'Emission Factors'."
         )
+    if stage == "shipping":
+        scaled, note = scale_shipping_to_route(float(val), row, params)
+        return scaled, f"Emission Factors:central:shipping x {note}"
     return float(val), f"Emission Factors:central:{stage}"
+
+
+def route_scale_factor(row, params) -> tuple[float, str]:
+    """Per-asset shipping distance multiplier against the BC basis.
+
+    The shipping factor on the Emission Factors sheet is derived on the
+    British Columbia to north-east Asia route (`route_bc_to_northeast_asia_nm`,
+    3,800 nm). An asset shipping a shorter distance burns less. The multiplier
+    is `route_distance_nm / route_bc_to_northeast_asia_nm`.
+
+    Raises rather than defaulting when `route_distance_nm` is blank. Callers
+    only reach this for assets whose chain includes the shipping stage;
+    bunkering has no shipping stage and never gets here.
+    """
+    basis = float(get_param(params, "route_bc_to_northeast_asia_nm"))
+    if basis <= 0:
+        raise MissingInputError(
+            f"Parameter 'route_bc_to_northeast_asia_nm' must be positive; got {basis}."
+        )
+    dist = row.get("route_distance_nm")
+    if dist is None or pd.isna(dist) or str(dist).strip() == "":
+        raise MissingInputError(
+            f"Project '{row['project_id']}' is on a chain that includes the "
+            f"shipping stage but has a blank route_distance_nm on sheet "
+            f"'Asset Register'. Shipping is scaled by route distance; a "
+            f"missing distance must not be treated as the BC basis."
+        )
+    dist = float(dist)
+    if dist <= 0:
+        raise MissingInputError(
+            f"Project '{row['project_id']}' has route_distance_nm={dist}; "
+            f"expected a positive one-way marine distance."
+        )
+    return dist / basis, f"route {dist:g}nm / basis {basis:g}nm"
+
+
+def scale_shipping_to_route(central: float, row, params) -> tuple[float, str]:
+    scale, note = route_scale_factor(row, params)
+    return central * scale, note
 
 
 def stage_ch4_co2e_intensity(

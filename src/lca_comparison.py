@@ -35,6 +35,14 @@ HHV_MJ_PER_KG = 55.0  # Balcombe reports HHV; not this model's lng_energy_conten
 
 
 def export_stage_intensity(inputs: dict) -> dict[str, float]:
+    """Central stage intensities on the **British Columbia shipping basis**.
+
+    The headline model scales shipping per asset by `route_distance_nm /
+    route_bc_to_northeast_asia_nm`. This comparison deliberately does not: the
+    published studies are single-route figures, so comparing them against a
+    fleet-average of Pacific and Atlantic routes would not be like for like.
+    Shipping here is the unscaled 0.12 BC-to-north-east-Asia factor.
+    """
     factors = inputs["factors"]
     return {stage: float(factors.loc[stage, "central"]) for stage in ALL_STAGES}
 
@@ -371,6 +379,9 @@ def format_lca_markdown(tables: dict) -> list[str]:
         f"{tables['model_full']:.2f} t/t "
         f"(well-to-regas {tables['model_w2r']:.2f}; "
         f"liquefaction+shipping+regas {tables['model_lng']:.2f}). "
+        "**Shipping here is the unscaled 0.12 British Columbia to "
+        "north-east Asia factor**, not the per-asset route-scaled figure the "
+        "headline model uses, because the comparator studies are single-route. "
         "Liquefaction remains 0.29. Howarth's GWP100 totals are only in "
         "supplemental figures and are not converted here. Howarth also includes "
         "destination transmission methane that this model does not."

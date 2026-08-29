@@ -103,12 +103,18 @@ EXPECTED_EARLY_EXPORT = 54.7
 EXPECTED_ADVANCED_EXPORT = 26.0
 # Life-average territorial shares, one decimal. Tied to the Data Inputs README
 # and the repo README so those documents cannot drift from the model.
-# Previous all-assets lock: CAN 18.5 / BUNK 5.6 / FOR 75.9; lifetime 9558.2;
-# peak 309.1 in 2037. Re-locked after the export-scope filter (Task C).
-EXPECTED_TERRITORIAL_SHARE_PCT = {"CAN": 18.0, "BUNK": 3.4, "FOR": 78.6}
-EXPECTED_LIFETIME_MT = 9315.3
+# Lock history:
+#   all assets:          CAN 18.5 / BUNK 5.6 / FOR 75.9; lifetime 9558.2; peak 309.1 (2037)
+#   export-scope filter: CAN 18.0 / BUNK 3.4 / FOR 78.6; lifetime 9315.3; peak 298.7 (2037)
+#   route-scaled shipping (Task 4): the values below. Shipping intensity is now
+#   shipping.central x route_distance_nm / route_bc_to_northeast_asia_nm, so the
+#   two Atlantic assets (Kino Aski 2,980 nm, Fermeuse 2,470 nm) carry less
+#   shipping than the eight BC assets at the 3,800 nm basis. BUNK falls, the
+#   other two shares rise slightly on the smaller total.
+EXPECTED_TERRITORIAL_SHARE_PCT = {"CAN": 18.1, "BUNK": 3.2, "FOR": 78.7}
+EXPECTED_LIFETIME_MT = 9298.1
 EXPECTED_PEAK_YEAR = 2037
-EXPECTED_PEAK_MT = 298.7
+EXPECTED_PEAK_MT = 298.2
 
 
 def gas_split_table(panel: pd.DataFrame, inputs: dict) -> pd.DataFrame:

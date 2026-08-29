@@ -27,6 +27,7 @@ from src.model import (
     _is_legacy,
     _licence_end_year,
     _lifespan,
+    route_scale_factor,
     stage_ch4_co2e_intensity,
 )
 from src.scope import headline_scope_sets, row_in_headline_scope
@@ -75,6 +76,7 @@ class AssetSpec:
     steady: float
     ramp: int
     stages: tuple[str, ...]
+    route_scale: float
     committed: bool
     committed_plus_advanced: bool
     full: bool
@@ -129,6 +131,12 @@ def _compile_assets(inputs: dict) -> list[AssetSpec]:
             a, b, c = ph1_y1, ph1_y2, ph1_ss
         else:
             a, b, c = y1, y2, steady
+        stages = tuple(s for s, _ in inputs["chains"][chain])
+        # Shipping is drawn on the BC basis and then scaled per asset, exactly
+        # as the central case does. Assets with no shipping stage keep 1.0.
+        route_scale = (
+            route_scale_factor(row, params)[0] if "shipping" in stages else 1.0
+        )
         cg = str(row["calc_group"])
         tier = "" if pd.isna(row["tier"]) else str(row["tier"]).strip()
         committed = cg in ("operating", "under_construction")
@@ -149,7 +157,8 @@ def _compile_assets(inputs: dict) -> list[AssetSpec]:
                 y2=b,
                 steady=c,
                 ramp=ramp,
-                stages=tuple(s for s, _ in inputs["chains"][chain]),
+                stages=stages,
+                route_scale=route_scale,
                 committed=committed,
                 committed_plus_advanced=advanced,
                 full=True,
@@ -213,6 +222,8 @@ def _intensity_by_draw(
                 draw = upstream
             elif stage == "liquefaction":
                 draw = np.full(n_draws, liquefaction)
+            elif stage == "shipping":
+                draw = stage_draws[stage] * spec.route_scale
             elif stage in stage_draws:
                 draw = stage_draws[stage]
             else:
@@ -560,6 +571,20 @@ def run_monte_carlo(
             }
             for stage in SAMPLED_STAGES
         ],
+        {
+            "parameter": "shipping_route_scale",
+            "distribution": "fixed per asset",
+            "source": (
+                "route_distance_nm / route_bc_to_northeast_asia_nm; the "
+                "shipping triangle is drawn on the BC basis and then scaled. "
+                + ", ".join(
+                    f"{s.project_id}={s.route_scale:.3f}"
+                    for s in specs
+                    if "shipping" in s.stages
+                )
+            ),
+            "sampled": False,
+        },
         {
             "parameter": "fid_delay_mid",
             "distribution": f"triangular{FID_TRI}, rounded to int",
