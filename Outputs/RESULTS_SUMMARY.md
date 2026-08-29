@@ -1,6 +1,6 @@
 # Canada LNG lifecycle emissions — review summary
 
-Default scenario: `measurement_central`. Run at 2026-08-29 09:38 UTC. Numbers to one decimal. Inputs read-only. `calc_group` from `Asset Register:calc_group`.
+Default scenario: `measurement_central`. Run at 2026-08-29 09:40 UTC. Numbers to one decimal. Inputs read-only. `calc_group` from `Asset Register:calc_group`.
 
 Deck-facing tables (one sheet per table, 1-decimal): `Outputs/SLIDE_TABLES.xlsx`. Send that workbook to the PPT chat.
 
@@ -335,9 +335,30 @@ Scope: **Ksi Lisims**, where the figures are sourced, and **Cedar**, on the stat
 
 Liquefaction is CAN-tagged on every chain that includes it, so the whole delta lands in the Canada-territorial column: the total and the Canada figure move by the same amount. Per-asset split: `Outputs/figure_data/sens_liquefaction_drive.csv`.
 
+## SI table: per-asset detail
+
+One row per headline-scope asset. Full machine-readable version, with capacity_basis and life_source in full, at `Outputs/si_table_assets.csv` and on the `SI Assets` sheet of the results workbook.
+
+| project | coast | tier | calc_group | mtpa | first export | life (basis) | lifetime Mt | share | CAN / BUNK / FOR Mt per year | FID | GEM status (date) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Discovery LNG Terminal | Pacific | early_proposed | proposed | 20 | 2030 * | 40 (parameters default) | 2,043.9 | 22.0% | 10.5 / 2.0 / 45.9 | no | cancelled (inferred 4 y) (2026-08-29) |
+| Kino Aski LNG (formerly Marinvest Energy, Baie-Comeau) | Atlantic | early_proposed | proposed | 15 | 2030 * | 40 (parameters default) | 1,521.7 | 16.4% | 7.9 / 1.2 / 34.4 | no | not available (not available) |
+| LNG Canada Terminal | Pacific | operating | operating | 14 | 2025 | 32 (licence end) | 1,309.6 | 14.1% | 7.4 / 1.4 / 32.2 | yes | operating (2026-08-28) |
+| Kanata LNG | Pacific | early_proposed | proposed | 12 | 2030 * | 40 (parameters default) | 1,226.3 | 13.2% | 6.3 / 1.2 / 27.5 | no | not available (not available) |
+| Ksi Lisims FLNG Terminal | Pacific | advanced_proposed | proposed | 12 | 2029 | 35 (licence end) | 1,047.6 | 11.3% | 6.3 / 1.2 / 27.4 | no | proposed (2026-08-28) |
+| LNG Canada Terminal | Pacific | advanced_proposed | proposed | 14 | 2030 | 27 (licence end) | 888.6 | 9.6% | 7.3 / 1.4 / 31.7 | no | proposed (2026-08-28) |
+| Fermeuse Energy FLNG Terminal | Atlantic | early_proposed | proposed | 5 | 2030 * | 40 (parameters default) | 504.9 | 5.4% | 2.6 / 0.3 / 11.5 | no | proposed (2026-08-28) |
+| Cedar FLNG Terminal | Pacific | under_construction | under_construction | 3.3 | 2028 | 39 (licence end) | 376.6 | 4.0% | 1.7 / 0.3 / 7.6 | yes | construction (2026-08-28) |
+| Summit Lake PG LNG | Pacific | early_proposed | proposed | 2.7 | 2030 * | 30 (proponent) | 195.5 | 2.1% | 1.4 / 0.3 / 6.1 | no | not available (not available) |
+| Woodfibre LNG Terminal | Pacific | under_construction | under_construction | 2.1 | 2028 | 30 (licence end) | 183.3 | 2.0% | 1.1 / 0.2 / 4.8 | yes | construction (2026-08-28) |
+
+\* first export year is the `assumed_first_export_year_if_missing` placeholder, not a register value (5 of 10 assets). Per-year territorial figures are the asset's lifetime split over its own emitting years, not calendar-panel years.
+
+**GEM disagrees with the register on Discovery LNG Terminal.** GEM has Discovery LNG Terminal as "cancelled (inferred 4 y)" (2026-08-29); the register has "proposed", worth 2,043.9 MtCO2e (22.0% of the headline lifetime). The verbatim status is recorded and a Data Gaps row is open; the classification has not been changed, because that is a scope decision rather than a data-capture one. It should be resolved before publication.
+
 ## Monte Carlo (physics sampled, ECCC 2% per gas applied after)
 
-10,000 draws, seed `20260828`. Physics 0.18s; pricing 0.03s. Kernel vs published panel max abs 2.8e-14 Mt. Liquefaction held at 0.29. Howarth 0.55 is a named point, not a draw. Draws are on the headline scope (export chain). Each draw carries its own upstream and shipping factor, so its CH4 mass moves with it; damages are CO2 at SC-CO2 plus CH4 mass at SC-CH4, the same per-gas treatment as the central case.
+10,000 draws, seed `20260828`. Physics 0.22s; pricing 0.04s. Kernel vs published panel max abs 2.8e-14 Mt. Liquefaction held at 0.29. Howarth 0.55 is a named point, not a draw. Draws are on the headline scope (export chain). Each draw carries its own upstream and shipping factor, so its CH4 mass moves with it; damages are CO2 at SC-CO2 plus CH4 mass at SC-CH4, the same per-gas treatment as the central case.
 
 | build-out | lifetime median [p5, p95] Mt | peak-year median [p5, p95] Mt | ECCC 2% damage median [p5, p95] CAD bn |
 |---|---|---|---|

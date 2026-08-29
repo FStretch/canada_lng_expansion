@@ -19,6 +19,7 @@ from src.inputs import (
 )
 from src.figures_report import build_all_report_figures
 from src.slide_tables import build_slide_tables, write_slide_tables_xlsx
+from src.si_table import build_si_asset_table, format_si_table_markdown
 from src.drive_sensitivity import (
     format_drive_markdown,
     run_drive_sensitivity,
@@ -81,6 +82,7 @@ INPUTS_DIR = ROOT / "Inputs"
 OUT = ROOT / "Outputs"
 RESULTS = OUT / "Canada_LNG_Emissions_Results.xlsx"
 SLIDE_TABLES = OUT / "SLIDE_TABLES.xlsx"
+SI_TABLE_CSV = OUT / "si_table_assets.csv"
 SUMMARY_MD = OUT / "RESULTS_SUMMARY.md"
 FIGURE = OUT / "figures" / "operating_vs_proposed.png"
 FIGURE_DIR = OUT / "figures"
@@ -355,6 +357,7 @@ def write_review_summary(
     uniform_life: dict | None = None,
     feedgas: dict | None = None,
     drive_sens: dict | None = None,
+    si_assets: pd.DataFrame | None = None,
 ) -> None:
     sample = headline_sample(by_project, DEFAULT_SCENARIO)
     params = inputs["params"]
@@ -1073,6 +1076,8 @@ def write_review_summary(
         lines.extend(format_feedgas_markdown(feedgas, inputs))
     if drive_sens is not None:
         lines.extend(format_drive_markdown(drive_sens))
+    if si_assets is not None:
+        lines.extend(format_si_table_markdown(si_assets))
     if mc is not None:
         published_vs_mc = None
         if ld is not None:
@@ -1532,6 +1537,25 @@ def main() -> None:
         + " PASS"
     )
 
+    si_assets = build_si_asset_table(inputs, panel)
+    assert len(si_assets) == int(sample["project_id"].nunique()), len(si_assets)
+    assert abs(float(si_assets["lifetime_mtco2e"].sum()) - panel_life_mt) < 1e-6
+    assert abs(float(si_assets["share_of_full_buildout_pct"].sum()) - 100.0) < 1e-6
+    gem_dis = si_assets.loc[si_assets["gem_disagrees_with_register"]]
+    print(
+        f"[validate] SI asset table {len(si_assets)} rows, shares sum to 100% "
+        f"PASS"
+    )
+    for _, r in gem_dis.iterrows():
+        print(
+            f"  FINDING: GEM has {r['project_id']} as "
+            f"{r['gem_status_verbatim']!r} ({r['gem_status_date']}); register "
+            f"has {r['register_status']!r}. "
+            f"{r['lifetime_mtco2e']:.1f} Mt, "
+            f"{r['share_of_full_buildout_pct']:.1f}% of lifetime. "
+            f"Recorded, not resolved."
+        )
+
     mc = run_monte_carlo(inputs, INPUTS_DIR, panel)
     print(
         f"[validate] Monte Carlo {mc['n_draws']} draws seed {mc['seed']} "
@@ -1726,6 +1750,7 @@ def main() -> None:
         budgets.to_excel(writer, sheet_name="Carbon Budgets", index=False)
         gas_split.to_excel(writer, sheet_name="Gas Split", index=False)
         paper_set.to_excel(writer, sheet_name="Paper Set", index=False)
+        si_assets.to_excel(writer, sheet_name="SI Assets", index=False)
         by_chain.to_excel(writer, sheet_name="By Chain", index=False)
         exclusion["table"].to_excel(writer, sheet_name="Headline Exclusion", index=False)
         panel.to_excel(writer, sheet_name="Calendar Panel", index=False)
@@ -1767,6 +1792,7 @@ def main() -> None:
         uniform_life=uniform_life,
         feedgas=feedgas,
         drive_sens=drive_sens,
+        si_assets=si_assets,
     )
     fig_results = build_all_report_figures(
         inputs, by_project, stages, FIGURE_DIR, FIGURE_DATA, panel=panel
@@ -1819,6 +1845,7 @@ def main() -> None:
     drive_sens["by_asset"].to_csv(
         FIGURE_DATA / "sens_liquefaction_drive_by_asset.csv", index=False
     )
+    si_assets.to_csv(SI_TABLE_CSV, index=False)
     slide_tables = build_slide_tables(
         inputs, by_project, summary, by_chain, stages, panel, ld=ld, mc=mc
     )
