@@ -1,5 +1,5 @@
 year,canada_pathway_mtco2e_yr,milestone_years,total_lng_mtco2e_yr,scenario,value_kind
-2025,636.0,"2023,2026,2030,2035,2050",12.425,measurement_central,calendar-year annual
+2025,636.0,"2023,2026,2030,2035,2050",12.424999999999999,measurement_central,calendar-year annual
 2026,607.0,"2023,2026,2030,2035,2050",29.82,measurement_central,calendar-year annual
 2027,569.0,"2023,2026,2030,2035,2050",42.245,measurement_central,calendar-year annual
 2028,531.0,"2023,2026,2030,2035,2050",49.913,measurement_central,calendar-year annual
@@ -9,7 +9,7 @@ year,canada_pathway_mtco2e_yr,milestone_years,total_lng_mtco2e_yr,scenario,value
 2032,439.8,"2023,2026,2030,2035,2050",58.32863,measurement_central,calendar-year annual
 2033,432.2,"2023,2026,2030,2035,2050",58.32863,measurement_central,calendar-year annual
 2034,424.6,"2023,2026,2030,2035,2050",75.36863,measurement_central,calendar-year annual
-2035,417.0,"2023,2026,2030,2035,2050",185.70263,measurement_central,calendar-year annual
+2035,417.0,"2023,2026,2030,2035,2050",185.70262999999997,measurement_central,calendar-year annual
 2036,389.2,"2023,2026,2030,2035,2050",264.78953,measurement_central,calendar-year annual
 2037,361.4,"2023,2026,2030,2035,2050",298.689545,measurement_central,calendar-year annual
 2038,333.6,"2023,2026,2030,2035,2050",298.689545,measurement_central,calendar-year annual

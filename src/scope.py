@@ -76,6 +76,43 @@ def headline_sample(
     ].copy()
 
 
+BUILD_OUTS = ("committed", "committed_plus_advanced", "full")
+BUILD_OUT_LABEL = {
+    "committed": "committed (operating + under construction)",
+    "committed_plus_advanced": "committed plus advanced (+ tier advanced_proposed)",
+    "full": "full (every headline-scope asset)",
+}
+
+
+def build_out_project_ids(inputs: dict) -> dict[str, list[str]]:
+    """Headline-scope project ids for each build-out.
+
+    Same membership as `src.monte_carlo.BUILD_OUTS`, kept here so the
+    central case and the Monte Carlo cannot drift apart.
+    """
+    chains, groups = headline_scope_sets(inputs)
+    committed, advanced, full = [], [], []
+    for _, row in inputs["assets"].iterrows():
+        if pd.isna(row["capacity_mtpa"]):
+            continue
+        if not row_in_headline_scope(row, chains, groups):
+            continue
+        pid = str(row["project_id"])
+        cg = str(row["calc_group"]).strip().lower()
+        tier = "" if pd.isna(row["tier"]) else str(row["tier"]).strip()
+        full.append(pid)
+        if cg in ("operating", "under_construction"):
+            committed.append(pid)
+            advanced.append(pid)
+        elif tier == "advanced_proposed":
+            advanced.append(pid)
+    return {
+        "committed": committed,
+        "committed_plus_advanced": advanced,
+        "full": full,
+    }
+
+
 def exclusion_report(
     by_project: pd.DataFrame,
     panel_all: pd.DataFrame,

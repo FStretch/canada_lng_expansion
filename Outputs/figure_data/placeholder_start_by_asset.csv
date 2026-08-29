@@ -1,6 +1,6 @@
-scenario,project_id,project_name,calc_group,chain,start_year,lifespan_years,start_was_placeholder,lifetime_mtco2e,capacity_mtpa,share_of_lifetime_pct,last_emitting_year
-measurement_central,discovery_t1t4,Discovery LNG Terminal,proposed,export,2030,40,True,2043.8770000000002,20.0,21.94101831720995,2069
-measurement_central,marinvest_baie_comeau,"Kino Aski LNG (formerly Marinvest Energy, Baie-Comeau)",proposed,export,2030,40,True,1532.9077499999999,15.0,16.45576373790746,2069
-measurement_central,kanata_lng,Kanata LNG,proposed,export,2030,40,True,1226.3262,12.0,13.164610990325967,2069
-measurement_central,fermeuse_energy_flng,Fermeuse Energy FLNG Terminal,proposed,export,2030,40,True,510.96925000000005,5.0,5.485254579302487,2069
-measurement_central,summit_lake_pg_lng,Summit Lake PG LNG,proposed,export,2030,30,True,195.505245,2.7,2.0987486828491235,2059
+scenario,project_id,project_name,calc_group,chain,start_year,lifespan_years,start_was_placeholder,lifetime_mtco2e,lifetime_co2_only_mt,lifetime_ch4_derived_co2e_mt,lifetime_ch4_kt,capacity_mtpa,share_of_lifetime_pct,last_emitting_year
+measurement_central,discovery_t1t4,Discovery LNG Terminal,proposed,export,2030,40,True,2043.8770000000002,1967.4954933333333,76.38150666666667,2563.137807606264,20.0,21.94101831720995,2069
+measurement_central,marinvest_baie_comeau,"Kino Aski LNG (formerly Marinvest Energy, Baie-Comeau)",proposed,export,2030,40,True,1532.9077499999999,1475.62162,57.28613,1922.3533557046983,15.0,16.45576373790746,2069
+measurement_central,kanata_lng,Kanata LNG,proposed,export,2030,40,True,1226.3262,1180.4972959999998,45.828903999999994,1537.882684563758,12.0,13.164610990325967,2069
+measurement_central,fermeuse_energy_flng,Fermeuse Energy FLNG Terminal,proposed,export,2030,40,True,510.96925000000005,491.87387333333334,19.095376666666667,640.784451901566,5.0,5.485254579302487,2069
+measurement_central,summit_lake_pg_lng,Summit Lake PG LNG,proposed,export,2030,30,True,195.505245,188.1990396,7.306205399999999,245.17467785234896,2.7,2.0987486828491235,2059

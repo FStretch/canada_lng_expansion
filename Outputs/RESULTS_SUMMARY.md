@@ -1,6 +1,6 @@
 # Canada LNG lifecycle emissions — review summary
 
-Default scenario: `measurement_central`. Run at 2026-08-28 16:45 UTC. Numbers to one decimal. Inputs read-only. `calc_group` from `Asset Register:calc_group`.
+Default scenario: `measurement_central`. Run at 2026-08-29 09:12 UTC. Numbers to one decimal. Inputs read-only. `calc_group` from `Asset Register:calc_group`.
 
 Deck-facing tables (one sheet per table, 1-decimal): `Outputs/SLIDE_TABLES.xlsx`. Send that workbook to the PPT chat.
 
@@ -96,6 +96,30 @@ Headline results include assets whose chain is in headline_scope_chains and whos
 | regasification | FOR | 2.9 | 1.1% |
 | combustion | FOR | 200.6 | 77.5% |
 
+## 5a. Carbon dioxide and methane split
+
+Every asset-year in the panel now carries `co2_mt`, `ch4_derived_co2e_mt` and `ch4_mass_kt`, with `emissions_mtco2e = co2_mt + ch4_derived_co2e_mt` exactly. The split uses only parameters already on the workbook. **Upstream:** CH4-derived CO2e per tonne LNG is the scenario upstream factor less the CO2 part of the official inventory (`inventory_as_reported x (1 - upstream_ch4_share)` = 0.154), i.e. 0.096 tCO2e/t at central. **Shipping:** the 1.44 carrier uplift is entirely measured methane slip, so `1 - 1/1.44` = 0.306 of the shipping CO2e is CH4-derived (0.037 tCO2e/t). **Pipeline transport, liquefaction, regasification and combustion are treated as CO2; pipeline fugitive methane is not split**, because the workbook carries a single pipeline factor with no methane share behind it. CO2e totals are unchanged by this task.
+
+| slice | lifetime CO2e Mt | lifetime CO2-only Mt | CH4-derived CO2e Mt | CH4 mass kt | CH4 share of CO2e |
+|---|---|---|---|---|---|
+| committed (build_out) | 1,869.5 | 1,799.6 | 69.9 | 2,344 | 3.7% |
+| committed_plus_advanced (build_out) | 3,805.7 | 3,663.5 | 142.2 | 4,773 | 3.7% |
+| full (build_out) | 9,315.3 | 8,967.2 | 348.1 | 11,682 | 3.7% |
+| operating (calc_group) | 1,309.6 | 1,260.7 | 48.9 | 1,642 | 3.7% |
+| under_construction (calc_group) | 559.9 | 539.0 | 20.9 | 702 | 3.7% |
+| proposed (calc_group) | 7,445.8 | 7,167.6 | 278.3 | 9,338 | 3.7% |
+
+CH4 mass is CH4-derived CO2e divided by `gwp100_ch4` = 29.8. It is left blank for the `near_term_methane_gwp20` scenario, whose upstream factor is not a GWP100 CO2e figure (see below).
+
+### Reconciliation with `near_term_methane_gwp20`
+
+That scenario's lifetime is **9,525.2 Mt** with upstream at 0.33 and every other stage central. Rebuilding it from the Task 1 CH4 mass (`co2_mt + ch4_mass_kt/1000 x gwp20_ch4`, gwp20 = 82.5) gives **9,931.0 Mt**, **+4.3%** apart. That is well over 0.1%, so the two routes are reported rather than forced together. Two reasons, in order of size:
+
+1. **The workbook's 0.33 is not a GWP20 re-weighting.** It is `inventory_as_reported x 1.5` = 0.22 x 1.5, the whole factor scaled. Re-weighting only the methane portion at GWP20 gives an upstream factor of 0.420, worth 445.5 Mt over the central case against the scenario's 209.9 the mass route lands at 9,760.8 Mt, still +2.5% apart.
+2. **The scenario does not touch shipping.** The mass route re-weights shipping methane slip too, worth a further 170.2 Mt.
+
+The repository README describes the GWP20 uplift as applying to "the methane portion of upstream and pipeline emissions only". **No pipeline methane portion is defined anywhere in the workbook**, and the code changes only the upstream factor, so the pipeline half of that sentence is not implemented. It is recorded here rather than invented. `near_term_methane_gwp20` remains a named scenario as the workbook defines it; the CH4-mass route is not substituted for it.
+
 ## 6. Scenario range
 
 | scenario | upstream | life_average_annual_mt | Lifecycle Mt | CAN Mt/yr |
@@ -159,7 +183,7 @@ Figure: `Outputs/figures/fig08_electrification_canada_territorial.png`.
 
 Monetised economic damages from the modelled lifecycle emissions. The **central case** is ECCC official SC-CO2 at the **2%** discount rate, applied per calendar year of emissions, in 2025 CAD (named parameters `central_price_family=eccc`, `central_aggregation=calendar_year`). ECCC 1.5% and 2.5% are the central case's sensitivity range. Burke et al. (2026) is an **upper-bracket sensitivity** across discount rates and Figure 2e horizons (default g = 0; Hatton +2% is not used). Damages are **global**. They are not a legal bill. ECCC SC-CO2 is applied to the full GWP100 CO2e total. That **overstates** the methane contribution (CH4-derived CO2e is charged at SC-CO2 rather than at SC-CH4) and is not conservative in that direction. Construction, sea-level rise, extremes, and mortality outside GDP are omitted.
 
-Methane share of the CO2e total is **2.7%** (252 of 9,315 MtCO2e). That is the excess of the central upstream factor (0.25) over inventory CO2 (0.154), i.e. 0.096 tCO2e per t LNG, as a share of the chain total. Pipeline and shipping methane stay inside CO2e as CO2 and are not in this share. GWP100 = 29.8; ECCC SC-CH4/SC-CO2 is 9.6 in 2025 and 16.7 by 2080. Pricing that methane CO2e as CO2 therefore charges it at roughly 3.1× the ECCC CH4 price in 2025. The resulting overstatement is **1.5%** of the central damage bill. This treatment overstates methane and is not conservative in that direction.
+Methane share of the CO2e total is **3.7%** (348 of 9,315 MtCO2e). That is the excess of the central upstream factor (0.25) over inventory CO2 (0.154), i.e. 0.096 tCO2e per t LNG, as a share of the chain total. Pipeline and shipping methane stay inside CO2e as CO2 and are not in this share. GWP100 = 29.8; ECCC SC-CH4/SC-CO2 is 9.6 in 2025 and 16.7 by 2080. Pricing that methane CO2e as CO2 therefore charges it at roughly 3.1× the ECCC CH4 price in 2025. The resulting overstatement is **2.0%** of the central damage bill. This treatment overstates methane and is not conservative in that direction.
 
 Implied average price is **$447/t** CAD 2025 (total damages / lifetime tonnes). That is the emissions-weighted mean of the ECCC 2% schedule after a **single** CAD 2021→2025 inflation of 1.1535 (deflators 124.81689 / 143.98050). The unweighted mean of the same series over panel years is $434/t. In CAD 2021 the weighted mean is $387/t (2025 official schedule value is $271/t). Prices are looked up on the **calendar year of emission**. 45% of lifetime tonnes are after 2050, so the weighted mean sits above the 2037 peak-year price. Year table: `Outputs/figure_data/ld_price_by_year.csv`.
 
@@ -222,7 +246,7 @@ Placeholder-start assets account for **5509.6 MtCO2e** (59.1% of the 9315.3 Mt l
 
 ## Monte Carlo (physics sampled, ECCC 2% applied after)
 
-10,000 draws, seed `20260828`. Physics 0.14s; pricing 0.02s. Kernel vs published panel max abs 0.0e+00 Mt. Liquefaction held at 0.29. Howarth 0.55 is a named point, not a draw. Draws are on the headline scope (export chain).
+10,000 draws, seed `20260828`. Physics 0.12s; pricing 0.02s. Kernel vs published panel max abs 1.8e-15 Mt. Liquefaction held at 0.29. Howarth 0.55 is a named point, not a draw. Draws are on the headline scope (export chain).
 
 | build-out | lifetime median [p5, p95] Mt | peak-year median [p5, p95] Mt | ECCC 2% damage median [p5, p95] CAD bn |
 |---|---|---|---|

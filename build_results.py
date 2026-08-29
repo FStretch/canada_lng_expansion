@@ -27,7 +27,10 @@ from src.loss_damage import compute_loss_damage, format_ld_markdown, write_ld_fi
 from src.monte_carlo import format_mc_markdown, run_monte_carlo
 from src.lca_comparison import figure_10_lca_comparison, format_lca_markdown
 from src.scope import (
+    BUILD_OUT_LABEL,
+    BUILD_OUTS,
     SCOPE_RULE_ONE_LINE,
+    build_out_project_ids,
     exclusion_report,
     filter_panel,
     headline_sample,
@@ -36,7 +39,9 @@ from src.scope import (
 from src.trajectories import (
     PANEL_START_YEAR,
     build_emissions_panel,
+    gwp20_reconciliation,
     panel_by_project,
+    panel_gas_totals,
     panel_lifetime_mt,
     panel_n_emitting,
     panel_peak,
@@ -106,6 +111,42 @@ EXPECTED_PEAK_YEAR = 2037
 EXPECTED_PEAK_MT = 298.7
 
 
+def gas_split_table(panel: pd.DataFrame, inputs: dict) -> pd.DataFrame:
+    """Lifetime CO2e, CO2-only and CH4 mass by build-out and by calc_group."""
+    ids = build_out_project_ids(inputs)
+    rows = []
+    for name in BUILD_OUTS:
+        rows.append({
+            "slice": "build_out",
+            "key": name,
+            "membership": BUILD_OUT_LABEL[name],
+            "n_assets": len(ids[name]),
+            **panel_gas_totals(panel, DEFAULT_SCENARIO, project_ids=ids[name]),
+        })
+    for group in GROUPS:
+        sl = panel.loc[
+            (panel["scenario"] == DEFAULT_SCENARIO) & (panel["calc_group"] == group)
+        ]
+        rows.append({
+            "slice": "calc_group",
+            "key": group,
+            "membership": f"calc_group={group}",
+            "n_assets": int(sl["project_id"].nunique()),
+            **panel_gas_totals(panel, DEFAULT_SCENARIO, calc_group=group),
+        })
+    df = pd.DataFrame(rows)
+    df["ch4_share_of_co2e_pct"] = (
+        100.0 * df["lifetime_ch4_derived_co2e_mt"] / df["lifetime_mtco2e"]
+    )
+    df["scenario"] = DEFAULT_SCENARIO
+    df["split_note"] = (
+        "CH4-derived CO2e is upstream (scenario factor less inventory CO2) plus "
+        "shipping methane slip (1 - 1/1.44). Pipeline fugitives are not split; "
+        "liquefaction, regasification and combustion are treated as CO2."
+    )
+    return df
+
+
 def write_figure(by_project: pd.DataFrame, path: Path) -> None:
     """Export-chain operating / under construction / proposed (early inside proposed)."""
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -163,6 +204,8 @@ def write_review_summary(
     mc: dict | None = None,
     lca: dict | None = None,
     exclusion: dict | None = None,
+    gas_split: pd.DataFrame | None = None,
+    gwp20_rec: dict | None = None,
 ) -> None:
     sample = headline_sample(by_project, DEFAULT_SCENARIO)
     params = inputs["params"]
@@ -436,6 +479,94 @@ def write_review_summary(
             f"{r['annual_mtco2e_yr']:.1f} | {share:.1f}% |"
         )
     lines.append("")
+
+    # 5a CO2 / CH4 split
+    if gas_split is not None:
+        lines.append("## 5a. Carbon dioxide and methane split")
+        lines.append("")
+        lines.append(
+            "Every asset-year in the panel now carries `co2_mt`, "
+            "`ch4_derived_co2e_mt` and `ch4_mass_kt`, with "
+            "`emissions_mtco2e = co2_mt + ch4_derived_co2e_mt` exactly. "
+            "The split uses only parameters already on the workbook. "
+            "**Upstream:** CH4-derived CO2e per tonne LNG is the scenario "
+            "upstream factor less the CO2 part of the official inventory "
+            "(`inventory_as_reported x (1 - upstream_ch4_share)` = 0.154), i.e. "
+            "0.096 tCO2e/t at central. **Shipping:** the 1.44 carrier uplift is "
+            "entirely measured methane slip, so `1 - 1/1.44` = 0.306 of the "
+            "shipping CO2e is CH4-derived (0.037 tCO2e/t). **Pipeline "
+            "transport, liquefaction, regasification and combustion are treated "
+            "as CO2; pipeline fugitive methane is not split**, because the "
+            "workbook carries a single pipeline factor with no methane share "
+            "behind it. CO2e totals are unchanged by this task."
+        )
+        lines.append("")
+        lines.append(
+            "| slice | lifetime CO2e Mt | lifetime CO2-only Mt | "
+            "CH4-derived CO2e Mt | CH4 mass kt | CH4 share of CO2e |"
+        )
+        lines.append("|---|---|---|---|---|---|")
+        for _, r in gas_split.iterrows():
+            lines.append(
+                f"| {r['key']} ({r['slice']}) | {r['lifetime_mtco2e']:,.1f} | "
+                f"{r['lifetime_co2_only_mt']:,.1f} | "
+                f"{r['lifetime_ch4_derived_co2e_mt']:,.1f} | "
+                f"{r['lifetime_ch4_kt']:,.0f} | "
+                f"{r['ch4_share_of_co2e_pct']:.1f}% |"
+            )
+        lines.append("")
+        lines.append(
+            "CH4 mass is CH4-derived CO2e divided by `gwp100_ch4` = 29.8. It is "
+            "left blank for the `near_term_methane_gwp20` scenario, whose "
+            "upstream factor is not a GWP100 CO2e figure (see below)."
+        )
+        lines.append("")
+    if gwp20_rec is not None:
+        lines.append("### Reconciliation with `near_term_methane_gwp20`")
+        lines.append("")
+        lines.append(
+            f"That scenario's lifetime is "
+            f"**{gwp20_rec['scenario_route_mt']:,.1f} Mt** with upstream at "
+            f"{gwp20_rec['scenario_upstream_factor']:.2f} and every other stage "
+            f"central. Rebuilding it from the Task 1 CH4 mass "
+            f"(`co2_mt + ch4_mass_kt/1000 x gwp20_ch4`, "
+            f"gwp20 = {gwp20_rec['gwp20_ch4']:g}) gives "
+            f"**{gwp20_rec['ch4_mass_route_mt']:,.1f} Mt**, "
+            f"**{gwp20_rec['difference_pct']:+.1f}%** apart. That is well over "
+            f"0.1%, so the two routes are reported rather than forced together. "
+            f"Two reasons, in order of size:"
+        )
+        lines.append("")
+        lines.append(
+            f"1. **The workbook's 0.33 is not a GWP20 re-weighting.** It is "
+            f"`inventory_as_reported x 1.5` = "
+            f"{gwp20_rec['inventory_upstream_factor']:.2f} x 1.5, the whole "
+            f"factor scaled. Re-weighting only the methane portion at GWP20 "
+            f"gives an upstream factor of "
+            f"{gwp20_rec['mass_route_upstream_factor']:.3f}, worth "
+            f"{gwp20_rec['upstream_uplift_mt']:,.1f} Mt over the central case "
+            f"against the scenario's "
+            f"{gwp20_rec['scenario_route_mt'] - gwp20_rec['central_route_mt']:,.1f} "
+            f"the mass route lands at "
+            f"{gwp20_rec['upstream_only_mass_route_mt']:,.1f} Mt, still "
+            f"{gwp20_rec['upstream_only_difference_pct']:+.1f}% apart."
+        )
+        lines.append(
+            f"2. **The scenario does not touch shipping.** The mass route "
+            f"re-weights shipping methane slip too, worth a further "
+            f"{gwp20_rec['shipping_uplift_mt']:,.1f} Mt."
+        )
+        lines.append("")
+        lines.append(
+            "The repository README describes the GWP20 uplift as applying to "
+            "\"the methane portion of upstream and pipeline emissions only\". "
+            "**No pipeline methane portion is defined anywhere in the workbook**, "
+            "and the code changes only the upstream factor, so the pipeline half "
+            "of that sentence is not implemented. It is recorded here rather than "
+            "invented. `near_term_methane_gwp20` remains a named scenario as the "
+            "workbook defines it; the CH4-mass route is not substituted for it."
+        )
+        lines.append("")
 
     # 6 Scenario range
     lines.append("## 6. Scenario range")
@@ -1084,6 +1215,30 @@ def main() -> None:
         f"physics {mc['physics_seconds']:.2f}s price {mc['price_seconds']:.2f}s "
         f"kernel max abs {mc['kernel_panel_max_abs_mt']:.1e} Mt PASS"
     )
+    gas_split = gas_split_table(panel, inputs)
+    gwp20_rec = gwp20_reconciliation(panel, inputs)
+    full_split = gas_split.loc[
+        (gas_split["slice"] == "build_out") & (gas_split["key"] == "full")
+    ].iloc[0]
+    resid = abs(
+        float(full_split["lifetime_co2_only_mt"])
+        + float(full_split["lifetime_ch4_derived_co2e_mt"])
+        - float(full_split["lifetime_mtco2e"])
+    )
+    assert resid < 1e-6, resid
+    assert abs(float(full_split["lifetime_mtco2e"]) - panel_life_mt) < 1e-9
+    print(
+        f"[validate] gas split CO2 {full_split['lifetime_co2_only_mt']:.1f} Mt + "
+        f"CH4-derived {full_split['lifetime_ch4_derived_co2e_mt']:.1f} MtCO2e "
+        f"= CO2e {full_split['lifetime_mtco2e']:.1f} Mt exactly; "
+        f"CH4 mass {full_split['lifetime_ch4_kt']:,.0f} kt PASS"
+    )
+    print(
+        f"[reconcile] GWP20 scenario route {gwp20_rec['scenario_route_mt']:.1f} Mt vs "
+        f"CH4-mass route {gwp20_rec['ch4_mass_route_mt']:.1f} Mt "
+        f"({gwp20_rec['difference_pct']:+.2f}%) - reported, not forced"
+    )
+
     budgets = carbon_budget_shares(panel_life_mt, inputs["params"])
     b15 = budgets.loc[budgets["parameter"] == "remaining_15c_budget"].iloc[0]
     print(
@@ -1207,6 +1362,7 @@ def main() -> None:
         territorial.to_excel(writer, sheet_name="Territorial", index=False)
         assumptions.to_excel(writer, sheet_name="Assumptions", index=False)
         budgets.to_excel(writer, sheet_name="Carbon Budgets", index=False)
+        gas_split.to_excel(writer, sheet_name="Gas Split", index=False)
         by_chain.to_excel(writer, sheet_name="By Chain", index=False)
         exclusion["table"].to_excel(writer, sheet_name="Headline Exclusion", index=False)
         panel.to_excel(writer, sheet_name="Calendar Panel", index=False)
@@ -1242,6 +1398,8 @@ def main() -> None:
         mc=mc,
         lca=fig10,
         exclusion=exclusion,
+        gas_split=gas_split,
+        gwp20_rec=gwp20_rec,
     )
     fig_results = build_all_report_figures(
         inputs, by_project, stages, FIGURE_DIR, FIGURE_DATA, panel=panel
@@ -1277,6 +1435,7 @@ def main() -> None:
     mc["parameters"].to_csv(FIGURE_DATA / "mc_parameters.csv", index=False)
     mc["draws"].to_csv(FIGURE_DATA / "mc_draws.csv", index=False)
     panel.to_csv(FIGURE_DATA / "emissions_panel.csv", index=False)
+    gas_split.to_csv(FIGURE_DATA / "gas_split.csv", index=False)
     slide_tables = build_slide_tables(
         inputs, by_project, summary, by_chain, stages, panel, ld=ld, mc=mc
     )

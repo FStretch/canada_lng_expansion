@@ -196,6 +196,45 @@ def _stage_intensity(stage: str, row, scenario: str, inputs: dict) -> tuple[floa
     return float(val), f"Emission Factors:central:{stage}"
 
 
+def stage_ch4_co2e_intensity(
+    stage: str,
+    intensity: float,
+    inputs: dict,
+) -> float:
+    """CH4-derived part of one stage's CO2e intensity, tCO2e per t LNG.
+
+    Two stages carry an identified methane portion, both from parameters
+    already on the workbook:
+
+    - `upstream_production`: the scenario factor less the part of the official
+      inventory that is CO2, i.e. `inventory_as_reported x (1 - upstream_ch4_share)`
+      (0.154 at default parameters). Any excess is CH4-derived CO2e. This is
+      the construction the upstream factor is built from, so the split is not
+      an extra assumption.
+    - `shipping`: the 1.44 carrier uplift is entirely measured methane slip,
+      so `1 - 1/1.44` = 0.306 of the shipping CO2e is CH4-derived.
+
+    Pipeline transport, liquefaction, regasification and combustion are treated
+    as CO2. **Pipeline fugitive methane is not split**: the workbook carries a
+    single pipeline factor with no methane share behind it, so there is nothing
+    to split it on. Blank beats wrong.
+    """
+    if stage == "upstream_production":
+        params = inputs["params"]
+        share = float(get_param(params, "upstream_ch4_share"))
+        inv = float(inputs["upstream_by_scenario"]["inventory_as_reported"])
+        return max(float(intensity) - inv * (1.0 - share), 0.0)
+    if stage == "shipping":
+        uplift = float(get_param(inputs["params"], "lng_carrier_methane_slip_uplift"))
+        if uplift <= 0:
+            raise MissingInputError(
+                "Parameter 'lng_carrier_methane_slip_uplift' must be positive; "
+                f"got {uplift}."
+            )
+        return float(intensity) * (1.0 - 1.0 / uplift)
+    return 0.0
+
+
 def previously_classified_electric(note) -> bool:
     """True when liquefaction_drive_note records a prior electric classification."""
     if note is None or (isinstance(note, float) and pd.isna(note)):

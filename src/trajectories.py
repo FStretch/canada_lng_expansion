@@ -22,10 +22,21 @@ from src.model import (
     _lifespan,
     _stage_intensity,
     previously_classified_electric,
+    stage_ch4_co2e_intensity,
 )
 from src.scope import headline_scope_sets, row_in_headline_scope
 
 TRAJECTORY_YEARS = tuple(range(2025, 2051))
+# Scenarios whose CO2e is on a GWP100 basis, so CH4 mass = CH4-derived CO2e /
+# gwp100_ch4. near_term_methane_gwp20 is excluded: its 0.33 upstream factor is
+# the inventory factor scaled whole (0.22 x 1.5), not a GWP100 CO2e figure that
+# can be divided back to a mass. Its ch4_mass_kt is left blank rather than wrong.
+GWP100_SCENARIOS = (
+    "inventory_as_reported",
+    "measurement_central",
+    "measurement_high",
+    "howarth_high",
+)
 # First calendar year of the published panel (remaining life from this year).
 PANEL_START_YEAR = 2025
 CUMULATIVE_CASES = (
@@ -99,15 +110,21 @@ def _liquefaction_intensity_for_mode(row, inputs: dict, mode: str | None) -> flo
     raise ValueError(f"Unknown liquefaction mode {mode!r}")
 
 
-def _chain_intensity(
+def _chain_intensity_split(
     row,
     scenario: str,
     inputs: dict,
     *,
     canada_only: bool,
     liquefaction_mode: str | None = None,
-) -> float:
+) -> tuple[float, float, float]:
+    """(total, CO2, CH4-derived CO2e) chain intensity in tCO2e per t LNG.
+
+    total == co2 + ch4_co2e exactly. See `stage_ch4_co2e_intensity` for which
+    stages carry an identified methane portion; pipeline fugitives are not split.
+    """
     total = 0.0
+    ch4 = 0.0
     override = _liquefaction_intensity_for_mode(row, inputs, liquefaction_mode)
     for stage, where in inputs["chains"][row["chain"]]:
         if canada_only and where != "CAN":
@@ -117,6 +134,25 @@ def _chain_intensity(
             continue
         intensity, _ = _stage_intensity(stage, row, scenario, inputs)
         total += intensity
+        ch4 += stage_ch4_co2e_intensity(stage, intensity, inputs)
+    return total, total - ch4, ch4
+
+
+def _chain_intensity(
+    row,
+    scenario: str,
+    inputs: dict,
+    *,
+    canada_only: bool,
+    liquefaction_mode: str | None = None,
+) -> float:
+    total, _co2, _ch4 = _chain_intensity_split(
+        row,
+        scenario,
+        inputs,
+        canada_only=canada_only,
+        liquefaction_mode=liquefaction_mode,
+    )
     return total
 
 
@@ -139,6 +175,39 @@ def util_in_calendar_year(
     return sched[idx]
 
 
+def project_annual_split_mt(
+    row,
+    year: int,
+    inputs: dict,
+    scenario: str,
+    assumed_start: int,
+    *,
+    canada_only: bool = False,
+    liquefaction_mode: str | None = None,
+) -> tuple[float, float, float] | None:
+    """(MtCO2e, MtCO2, Mt CH4-derived CO2e) for one asset-year, or None if excluded."""
+    if pd.isna(row["capacity_mtpa"]):
+        return None
+    params = inputs["params"]
+    life, _ = _lifespan(row, params)
+    legacy = _is_legacy(row, life)
+    start, _ = _start_year(row, assumed_start)
+    sched = _util_schedule(row, life, params)
+    util = util_in_calendar_year(row, year, life, sched, start, legacy)
+    if util == 0.0:
+        return 0.0, 0.0, 0.0
+    mtpa_to_t = float(get_param(params, "mtpa_to_tonnes"))
+    total_i, co2_i, ch4_i = _chain_intensity_split(
+        row,
+        scenario,
+        inputs,
+        canada_only=canada_only,
+        liquefaction_mode=liquefaction_mode,
+    )
+    scale = float(row["capacity_mtpa"]) * mtpa_to_t * util / 1e6
+    return scale * total_i, scale * co2_i, scale * ch4_i
+
+
 def project_annual_mt(
     row,
     year: int,
@@ -150,25 +219,16 @@ def project_annual_mt(
     liquefaction_mode: str | None = None,
 ) -> float | None:
     """MtCO2e in a calendar year for one asset, or None if excluded (no capacity)."""
-    if pd.isna(row["capacity_mtpa"]):
-        return None
-    params = inputs["params"]
-    life, _ = _lifespan(row, params)
-    legacy = _is_legacy(row, life)
-    start, _ = _start_year(row, assumed_start)
-    sched = _util_schedule(row, life, params)
-    util = util_in_calendar_year(row, year, life, sched, start, legacy)
-    if util == 0.0:
-        return 0.0
-    mtpa_to_t = float(get_param(params, "mtpa_to_tonnes"))
-    intensity = _chain_intensity(
+    split = project_annual_split_mt(
         row,
-        scenario,
+        year,
         inputs,
+        scenario,
+        assumed_start,
         canada_only=canada_only,
         liquefaction_mode=liquefaction_mode,
     )
-    return float(row["capacity_mtpa"]) * mtpa_to_t * util * intensity / 1e6
+    return None if split is None else split[0]
 
 
 def calendar_bounds(inputs: dict, assumed_start: int) -> tuple[int, int]:
@@ -208,8 +268,10 @@ def build_emissions_panel(
     scen_list = tuple(scenarios) if scenarios is not None else INTENSITY_SCENARIOS
     year0, year1 = calendar_bounds(inputs, assumed_start)
     years = range(year0, year1 + 1)
+    gwp100 = float(get_param(inputs["params"], "gwp100_ch4"))
     rows = []
     for scenario in scen_list:
+        on_gwp100 = scenario in GWP100_SCENARIOS
         for _, row in inputs["assets"].iterrows():
             if pd.isna(row["capacity_mtpa"]):
                 continue
@@ -218,7 +280,7 @@ def build_emissions_panel(
                 continue
             start, placeholder = _start_year(row, assumed_start)
             for year in years:
-                mt = project_annual_mt(
+                split = project_annual_split_mt(
                     row,
                     year,
                     inputs,
@@ -227,7 +289,10 @@ def build_emissions_panel(
                     canada_only=canada_only,
                     liquefaction_mode=liquefaction_mode,
                 )
-                if mt is None or mt == 0.0:
+                if split is None:
+                    continue
+                mt, co2_mt, ch4_mt = split
+                if mt == 0.0:
                     continue
                 rows.append({
                     "year": year,
@@ -237,6 +302,12 @@ def build_emissions_panel(
                     "calc_group": row["calc_group"],
                     "chain": row["chain"],
                     "emissions_mtco2e": float(mt),
+                    "co2_mt": float(co2_mt),
+                    "ch4_derived_co2e_mt": float(ch4_mt),
+                    "ch4_mass_kt": (
+                        float(ch4_mt) / gwp100 * 1000.0 if on_gwp100 else float("nan")
+                    ),
+                    "ch4_gwp_basis": gwp100 if on_gwp100 else float("nan"),
                     "start_year": start,
                     "lifespan_years": life,
                     "lifespan_source": life_src,
@@ -246,6 +317,14 @@ def build_emissions_panel(
     panel = pd.DataFrame(rows)
     if not len(panel):
         raise ValueError("Emissions panel is empty.")
+    resid = (
+        panel["emissions_mtco2e"] - panel["co2_mt"] - panel["ch4_derived_co2e_mt"]
+    ).abs().max()
+    if resid > 1e-9:
+        raise AssertionError(
+            f"Panel CO2 + CH4-derived CO2e does not reconstruct CO2e "
+            f"(max residual {resid} Mt)."
+        )
     return panel
 
 
@@ -268,6 +347,94 @@ def panel_lifetime_mt(
     return float(panel.loc[q, "emissions_mtco2e"].sum())
 
 
+def panel_gas_totals(
+    panel: pd.DataFrame,
+    scenario: str = DEFAULT_SCENARIO,
+    *,
+    calc_group: str | None = None,
+    calc_groups: Iterable[str] | None = None,
+    project_ids: Iterable[str] | None = None,
+) -> dict:
+    """Lifetime CO2e Mt, CO2-only Mt and CH4 kt for a panel slice."""
+    q = panel["scenario"] == scenario
+    if calc_group is not None:
+        q = q & (panel["calc_group"] == calc_group)
+    if calc_groups is not None:
+        q = q & panel["calc_group"].isin(list(calc_groups))
+    if project_ids is not None:
+        q = q & panel["project_id"].isin(list(project_ids))
+    sl = panel.loc[q]
+    return {
+        "lifetime_mtco2e": float(sl["emissions_mtco2e"].sum()),
+        "lifetime_co2_only_mt": float(sl["co2_mt"].sum()),
+        "lifetime_ch4_derived_co2e_mt": float(sl["ch4_derived_co2e_mt"].sum()),
+        "lifetime_ch4_kt": float(sl["ch4_mass_kt"].sum()),
+    }
+
+
+def gwp20_reconciliation(panel: pd.DataFrame, inputs: dict) -> dict:
+    """Reconcile the `near_term_methane_gwp20` scenario against the CH4-mass route.
+
+    Route A is the scenario as the workbook defines it: upstream 0.33, every
+    other stage at its central value.
+
+    Route B re-weights the Task 1 CH4 mass at `gwp20_ch4`:
+    `co2_mt + ch4_mass_kt/1000 x gwp20`.
+
+    The two are not expected to agree, and are not forced to. The decomposition
+    below is reported instead.
+    """
+    gwp100 = float(get_param(inputs["params"], "gwp100_ch4"))
+    gwp20 = float(get_param(inputs["params"], "gwp20_ch4"))
+    inv = float(inputs["upstream_by_scenario"]["inventory_as_reported"])
+    share = float(get_param(inputs["params"], "upstream_ch4_share"))
+    central_up = float(inputs["upstream_by_scenario"][DEFAULT_SCENARIO])
+    scen_up = float(inputs["upstream_by_scenario"]["near_term_methane_gwp20"])
+
+    central = panel_gas_totals(panel, DEFAULT_SCENARIO)
+    scen_total = panel_lifetime_mt(panel, "near_term_methane_gwp20")
+    mass_route = central["lifetime_co2_only_mt"] + (
+        central["lifetime_ch4_kt"] / 1000.0 * gwp20
+    )
+
+    # Split route B's uplift into the upstream and shipping parts, so the gap
+    # can be attributed rather than just stated.
+    ch4_up_per_t = max(central_up - inv * (1.0 - share), 0.0)
+    ship_i = float(inputs["factors"].loc["shipping", "central"])
+    uplift = float(get_param(inputs["params"], "lng_carrier_methane_slip_uplift"))
+    ch4_ship_per_t = ship_i * (1.0 - 1.0 / uplift)
+    ch4_total_per_t = ch4_up_per_t + ch4_ship_per_t
+    uplift_mt = mass_route - central["lifetime_mtco2e"]
+    ship_uplift_mt = (
+        uplift_mt * ch4_ship_per_t / ch4_total_per_t if ch4_total_per_t else 0.0
+    )
+    up_uplift_mt = uplift_mt - ship_uplift_mt
+
+    diff_pct = 100.0 * (mass_route - scen_total) / scen_total if scen_total else 0.0
+    up_only_route = central["lifetime_mtco2e"] + up_uplift_mt
+    up_only_diff_pct = (
+        100.0 * (up_only_route - scen_total) / scen_total if scen_total else 0.0
+    )
+    return {
+        "central_route_mt": central["lifetime_mtco2e"],
+        "scenario_route_mt": scen_total,
+        "ch4_mass_route_mt": mass_route,
+        "difference_pct": diff_pct,
+        "upstream_only_mass_route_mt": up_only_route,
+        "upstream_only_difference_pct": up_only_diff_pct,
+        "upstream_uplift_mt": up_uplift_mt,
+        "shipping_uplift_mt": ship_uplift_mt,
+        "scenario_upstream_factor": scen_up,
+        "mass_route_upstream_factor": (
+            inv * (1.0 - share) + ch4_up_per_t / gwp100 * gwp20
+        ),
+        "inventory_upstream_factor": inv,
+        "gwp100_ch4": gwp100,
+        "gwp20_ch4": gwp20,
+        "agrees_within_0_1_pct": abs(diff_pct) <= 0.1,
+    }
+
+
 def panel_by_project(panel: pd.DataFrame) -> pd.DataFrame:
     """One row per scenario × project: lifetime MtCO2e from the panel."""
     keys = [
@@ -281,21 +448,37 @@ def panel_by_project(panel: pd.DataFrame) -> pd.DataFrame:
         "start_was_placeholder",
     ]
     return (
-        panel.groupby(keys, dropna=False, sort=False)["emissions_mtco2e"]
+        panel.groupby(keys, dropna=False, sort=False)[
+            ["emissions_mtco2e", "co2_mt", "ch4_derived_co2e_mt", "ch4_mass_kt"]
+        ]
         .sum()
         .reset_index()
-        .rename(columns={"emissions_mtco2e": "lifetime_mtco2e"})
+        .rename(
+            columns={
+                "emissions_mtco2e": "lifetime_mtco2e",
+                "co2_mt": "lifetime_co2_only_mt",
+                "ch4_derived_co2e_mt": "lifetime_ch4_derived_co2e_mt",
+                "ch4_mass_kt": "lifetime_ch4_kt",
+            }
+        )
     )
 
 
 def panel_by_group(panel: pd.DataFrame) -> pd.DataFrame:
     return (
         panel.groupby(["scenario", "calc_group"], dropna=False, sort=False)[
-            "emissions_mtco2e"
+            ["emissions_mtco2e", "co2_mt", "ch4_derived_co2e_mt", "ch4_mass_kt"]
         ]
         .sum()
         .reset_index()
-        .rename(columns={"emissions_mtco2e": "lifetime_mtco2e"})
+        .rename(
+            columns={
+                "emissions_mtco2e": "lifetime_mtco2e",
+                "co2_mt": "lifetime_co2_only_mt",
+                "ch4_derived_co2e_mt": "lifetime_ch4_derived_co2e_mt",
+                "ch4_mass_kt": "lifetime_ch4_kt",
+            }
+        )
     )
 
 

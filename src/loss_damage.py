@@ -33,7 +33,12 @@ import pandas as pd
 from src.inputs import DEFAULT_SCENARIO, INTENSITY_SCENARIOS, MissingInputError, get_param
 from src.model import GROUPS, _stage_intensity
 from src.scope import filter_panel
-from src.trajectories import build_emissions_panel, calendar_bounds, project_annual_mt
+from src.trajectories import (
+    _chain_intensity_split,
+    build_emissions_panel,
+    calendar_bounds,
+    project_annual_mt,
+)
 
 BURKE_RATES = (1.5, 2.0, 3.0, 5.0)
 GROWTH_RATES = (-0.02, 0.0, 0.02)
@@ -223,37 +228,22 @@ def cad_vintage_to_cad2025(cad: float, vintage_year: int, params: dict) -> float
 
 
 def methane_co2e_fraction_from_upstream(row, scenario: str, inputs: dict) -> float:
-    """CH4-derived share of this asset's CO2e from the upstream factor construction.
+    """CH4-derived share of this asset's chain CO2e.
 
-    Inventory upstream × (1 − upstream_ch4_share) is treated as CO2 (0.154 t/t
-    at default parameters: 0.22 × 0.7). Any excess of the scenario upstream
-    factor over that portion is CH4-derived CO2e. Pipeline and shipping
-    methane stay inside the CO2e total as CO2 and are not identified here.
-
-    This fraction is used only to bound the overstatement from pricing that
-    CH4-derived CO2e at SC-CO2 rather than at SC-CH4. It is not a native
-    per-gas split and is not used to construct published damages.
+    Thin wrapper over the physics split (`src.trajectories._chain_intensity_split`,
+    built on `src.model.stage_ch4_co2e_intensity`), kept so the old call sites
+    read unchanged. The split now covers upstream **and** shipping methane
+    slip; pipeline fugitives are still not split.
     """
     chain = row["chain"]
     if chain not in inputs["chains"]:
         return 0.0
-    stages = inputs["chains"][chain]
-    if not any(stage == "upstream_production" for stage, _ in stages):
+    total, _co2, ch4 = _chain_intensity_split(
+        row, scenario, inputs, canada_only=False
+    )
+    if total <= 0:
         return 0.0
-    params = inputs["params"]
-    share = float(get_param(params, "upstream_ch4_share"))
-    inv = float(inputs["upstream_by_scenario"]["inventory_as_reported"])
-    co2_up = inv * (1.0 - share)
-    tco2e = 0.0
-    up = 0.0
-    for stage, _ in stages:
-        intensity, _ = _stage_intensity(stage, row, scenario, inputs)
-        tco2e += intensity
-        if stage == "upstream_production":
-            up = intensity
-    if tco2e <= 0:
-        return 0.0
-    return max(up - co2_up, 0.0) / tco2e
+    return ch4 / total
 
 
 def usd2020_to_cad2025(usd_2020: float, params: dict) -> float:

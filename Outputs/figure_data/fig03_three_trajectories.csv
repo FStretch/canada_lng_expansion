@@ -1,5 +1,5 @@
 year,operating,plus_under_construction,plus_proposed,scenario,canada_only,value_kind
-2025,12.425,12.425,12.425,measurement_central,False,calendar-year annual
+2025,12.424999999999999,12.424999999999999,12.424999999999999,measurement_central,False,calendar-year annual
 2026,29.82,29.82,29.82,measurement_central,False,calendar-year annual
 2027,42.245,42.245,42.245,measurement_central,False,calendar-year annual
 2028,42.245,49.913,49.913,measurement_central,False,calendar-year annual
@@ -9,7 +9,7 @@ year,operating,plus_under_construction,plus_proposed,scenario,canada_only,value_
 2032,42.245,58.32863,58.32863,measurement_central,False,calendar-year annual
 2033,42.245,58.32863,58.32863,measurement_central,False,calendar-year annual
 2034,42.245,58.32863,75.36863,measurement_central,False,calendar-year annual
-2035,42.245,58.32863,185.70263,measurement_central,False,calendar-year annual
+2035,42.245,58.32863,185.70262999999997,measurement_central,False,calendar-year annual
 2036,42.245,58.32863,264.78953,measurement_central,False,calendar-year annual
 2037,42.245,58.32863,298.689545,measurement_central,False,calendar-year annual
 2038,42.245,58.32863,298.689545,measurement_central,False,calendar-year annual
