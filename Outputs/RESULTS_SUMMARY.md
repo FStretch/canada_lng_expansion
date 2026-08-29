@@ -1,6 +1,6 @@
 # Canada LNG lifecycle emissions — review summary
 
-Default scenario: `measurement_central`. Run at 2026-08-29 09:13 UTC. Numbers to one decimal. Inputs read-only. `calc_group` from `Asset Register:calc_group`.
+Default scenario: `measurement_central`. Run at 2026-08-29 09:20 UTC. Numbers to one decimal. Inputs read-only. `calc_group` from `Asset Register:calc_group`.
 
 Deck-facing tables (one sheet per table, 1-decimal): `Outputs/SLIDE_TABLES.xlsx`. Send that workbook to the PPT chat.
 
@@ -181,28 +181,30 @@ Figure: `Outputs/figures/fig08_electrification_canada_territorial.png`.
 
 ## 11. Climate loss and damage (global)
 
-Monetised economic damages from the modelled lifecycle emissions. The **central case** is ECCC official SC-CO2 at the **2%** discount rate, applied per calendar year of emissions, in 2025 CAD (named parameters `central_price_family=eccc`, `central_aggregation=calendar_year`). ECCC 1.5% and 2.5% are the central case's sensitivity range. Burke et al. (2026) is an **upper-bracket sensitivity** across discount rates and Figure 2e horizons (default g = 0; Hatton +2% is not used). Damages are **global**. They are not a legal bill. ECCC SC-CO2 is applied to the full GWP100 CO2e total. That **overstates** the methane contribution (CH4-derived CO2e is charged at SC-CO2 rather than at SC-CH4) and is not conservative in that direction. Construction, sea-level rise, extremes, and mortality outside GDP are omitted.
+Monetised economic damages from the modelled lifecycle emissions. The **central case** is ECCC official SC-CO2 **and SC-CH4** at the **2%** discount rate, applied per calendar year of emissions, in 2025 CAD (named parameters `central_price_family=eccc`, `central_aggregation=calendar_year`). Each year's damage is `co2_t x SC-CO2_t + ch4_mass_t x SC-CH4_t`, from the Task 1 per-gas split, both schedules at the same discount rate and both inflated CAD 2021 to CAD 2025 exactly once. ECCC 1.5% and 2.5% are the central case's sensitivity range. Burke et al. (2026) is an **upper-bracket sensitivity** across discount rates and Figure 2e horizons (default g = 0; Hatton +2% is not used); **Burke has no SC-CH4, so the Burke family prices the whole GWP100 CO2e total at Burke's SC-CO2**. Damages are **global**. They are not a legal bill. Construction, sea-level rise, extremes, and mortality outside GDP are omitted.
 
-Methane share of the CO2e total is **3.7%** (348 of 9,315 MtCO2e). That is the excess of the central upstream factor (0.25) over inventory CO2 (0.154), i.e. 0.096 tCO2e per t LNG, as a share of the chain total. Pipeline and shipping methane stay inside CO2e as CO2 and are not in this share. GWP100 = 29.8; ECCC SC-CH4/SC-CO2 is 9.6 in 2025 and 16.7 by 2080. Pricing that methane CO2e as CO2 therefore charges it at roughly 3.1× the ECCC CH4 price in 2025. The resulting overstatement is **2.0%** of the central damage bill. This treatment overstates methane and is not conservative in that direction.
+**Per-gas pricing.** The panel splits every asset-year into CO2 and CH4 (see section 5a). Central lifetime is 8,967 MtCO2 plus 11,682 kt CH4, the latter worth 348 MtCO2e at GWP100 = 29.8, i.e. **3.7%** of the 9,315 MtCO2e total. The CH4 is the upstream excess over inventory CO2 (0.25 less 0.154 = 0.096 tCO2e per t LNG) plus shipping methane slip. Pipeline fugitive methane is not split and stays inside the CO2 total. CO2 is priced at SC-CO2 and CH4 mass at ECCC SC-CH4 (SC-CH4/SC-CO2 is 9.6 in 2025 and 16.7 by 2080, against GWP100 of 29.8). Methane is **1.7%** of the central damage bill ($71 billion), CO2 the rest ($4.0 trillion).
 
-Implied average price is **$447/t** CAD 2025 (total damages / lifetime tonnes). That is the emissions-weighted mean of the ECCC 2% schedule after a **single** CAD 2021→2025 inflation of 1.1535 (deflators 124.81689 / 143.98050). The unweighted mean of the same series over panel years is $434/t. In CAD 2021 the weighted mean is $387/t (2025 official schedule value is $271/t). Prices are looked up on the **calendar year of emission**. 45% of lifetime tonnes are after 2050, so the weighted mean sits above the 2037 peak-year price. Year table: `Outputs/figure_data/ld_price_by_year.csv`.
+Reconciliation with the retired treatment: pricing the whole GWP100 CO2e total at SC-CO2 would have given $4.2 trillion, **+2.1%** against the per-gas figure. The overstatement-bound machinery it supported is retired.
 
-- **Central (ECCC 2%, calendar year), all in-scope:** **$4.2 trillion** (operating $526 billion  |  under construction $240 billion  |  proposed $3.4 trillion)
-- **Central sensitivity (ECCC 1.5%–2.5%, calendar year):** $2.8 trillion to $6.5 trillion
-- **ECCC 2% NPV to 2025 (sensitivity, not central):** $2.6 trillion (proposed $2.0 trillion)
-- **Burke upper bracket (g = 0, year-by-year 2100 path, 1.5%–5%):** $4.5 trillion to $20.7 trillion; Figure 2e through-2300 at 2% fixed: **$51.0 trillion** (proposed $40.7 trillion)
+Implied average price is **$438/t** CAD 2025 (total damages / lifetime CO2e tonnes; an effective blended rate across CO2 at SC-CO2 and CH4 at SC-CH4, not a schedule value). The underlying SC-CO2 series is the emissions-weighted mean of the ECCC 2% schedule after a **single** CAD 2021→2025 inflation of 1.1535 (deflators 124.81689 / 143.98050). The unweighted mean of the same series over panel years is $434/t. In CAD 2021 the weighted mean is $387/t (2025 official schedule value is $271/t). Prices are looked up on the **calendar year of emission**. 45% of lifetime tonnes are after 2050, so the weighted mean sits above the 2037 peak-year price. Year table: `Outputs/figure_data/ld_price_by_year.csv`.
+
+- **Central (ECCC 2%, calendar year), all in-scope:** **$4.1 trillion** (operating $514 billion  |  under construction $235 billion  |  proposed $3.3 trillion)
+- **Central sensitivity (ECCC 1.5%–2.5%, calendar year):** $2.7 trillion to $6.4 trillion
+- **ECCC 2% NPV to 2025 (sensitivity, not central):** $2.5 trillion (proposed $2.0 trillion)
+- **Burke upper bracket (whole CO2e at Burke SC-CO2, no SC-CH4; g = 0, year-by-year 2100 path, 1.5%–5%):** $4.5 trillion to $20.7 trillion; Figure 2e through-2300 at 2% fixed: **$51.0 trillion** (proposed $40.7 trillion)
 - **Canadian value (proposed, CBoC scaled, 40 yr, 2025 CAD):** **$799 billion**
-- **Externality ratio, ECCC central (proposed):** **4.3x** global damages / Canadian value (Hatton UK range was 5.9x–16.8x; Burke through-2300 is 51x)
+- **Externality ratio, ECCC central (proposed):** **4.2x** global damages / Canadian value (Hatton UK range was 5.9x–16.8x; Burke through-2300 is 51x)
 - **Canada Burke-channel victim share (sensitivity, not central):** **0.17%** of a 1990 1 Gt pulse, so it externalises 99.8% ($69 billion borne at the through-2300 2% price)
 - **National test, Burke channel only (not the headline):** Canadian value is 11.5x the damages Canada itself bears. Reported as indeterminate.
 - **30-year denominator sensitivity (ECCC central, proposed):** $599 billion Canadian value, ratio **6x** (research sketch used 30 years; central uses 40).
-- **Operating + under construction only (ECCC central):** $765 billion global L&D / $192 billion value = **4x** (19.4 mtpa export).
+- **Operating + under construction only (ECCC central):** $749 billion global L&D / $192 billion value = **4x** (19.4 mtpa export).
 
 Burke Figure 4 sankey (`damages_and_benefits_k90.rds`) is emitter/recipient flows for 1990–2020 **all** emissions, not LNG. Canada as emitter caused **$1.33 trillion** (2.40% of global owing; USA $10.18T validates against the paper's $10.2T). Canada is **not** a plotted recipient, so CAN-on-CAN cannot be read from this file. Victim share stays 0.17% from the 1 Gt pulse.
 
 Canada denominator: Conference Board *A Rising Tide* Table 1, Canada GDP at market prices **C$11.153bn/yr (2020 CAD)** at 56 mtpa, scaled linearly on proposed export nameplate (80.7 mtpa) over 40 years (Appendix A operating life). Whole-chain including upstream (76% of the GDP). Industry-commissioned. Inflated to 2025 CAD with FRED NGDPDIXCAA. Uninflated 2020 CAD value is $643 billion.
 
-Burke horizon rows (g = 0, proposed slate; upper bracket, not central). Global L&D and value in trillion 2025 CAD; Canada-borne in billion 2025 CAD. Bold is the Burke default horizon, not the paper central.
+Burke horizon rows (whole GWP100 CO2e at Burke SC-CO2 — Burke has no SC-CH4; g = 0, proposed slate; upper bracket, not central). Global L&D and value in trillion 2025 CAD; Canada-borne in billion 2025 CAD. Bold is the Burke default horizon, not the paper central.
 
 | horizon | discounting | SC USD2020/t | global L&D (tn) | value (tn) | ratio | Canada-borne (bn) |
 |---|---|---|---|---|---|---|
@@ -240,27 +242,27 @@ Placeholder-start assets account for **5509.6 MtCO2e** (59.1% of the 9315.3 Mt l
 
 | start year | lifetime Mt | peak year | peak Mt | last year | central damage CAD bn |
 |---|---|---|---|---|---|
-| 2030 (central) | 9315.3 | 2037 | 298.7 | 2069 | 4164 |
-| 2033 | 9315.3 | 2040 | 298.7 | 2072 | 4252 |
-| 2035 | 9315.3 | 2042 | 298.7 | 2074 | 4310 |
+| 2030 (central) | 9315.3 | 2037 | 298.7 | 2069 | 4080 |
+| 2033 | 9315.3 | 2040 | 298.7 | 2072 | 4167 |
+| 2035 | 9315.3 | 2042 | 298.7 | 2074 | 4225 |
 
-## Monte Carlo (physics sampled, ECCC 2% applied after)
+## Monte Carlo (physics sampled, ECCC 2% per gas applied after)
 
-10,000 draws, seed `20260828`. Physics 0.12s; pricing 0.02s. Kernel vs published panel max abs 1.8e-15 Mt. Liquefaction held at 0.29. Howarth 0.55 is a named point, not a draw. Draws are on the headline scope (export chain).
+10,000 draws, seed `20260828`. Physics 0.18s; pricing 0.04s. Kernel vs published panel max abs 2.8e-14 Mt. Liquefaction held at 0.29. Howarth 0.55 is a named point, not a draw. Draws are on the headline scope (export chain). Each draw carries its own upstream and shipping factor, so its CH4 mass moves with it; damages are CO2 at SC-CO2 plus CH4 mass at SC-CH4, the same per-gas treatment as the central case.
 
 | build-out | lifetime median [p5, p95] Mt | peak-year median [p5, p95] Mt | ECCC 2% damage median [p5, p95] CAD bn |
 |---|---|---|---|
-| committed | 1903.6 [1800.2, 2011.3] | 59.4 [56.2, 62.8] | 779 [737, 823] |
-| committed_plus_advanced | 3874.0 [3641.4, 4123.9] | 138.2 [130.7, 146.1] | 1642 [1546, 1745] |
-| full | 9477.1 [8290.3, 10752.6] | 304.1 [287.6, 321.3] | 4236 [3625, 4915] |
+| committed | 1903.6 [1800.2, 2011.3] | 59.4 [56.2, 62.8] | 759 [719, 801] |
+| committed_plus_advanced | 3874.0 [3641.4, 4123.9] | 138.2 [130.7, 146.1] | 1601 [1509, 1698] |
+| full | 9477.1 [8290.3, 10752.6] | 304.1 [287.6, 321.3] | 4133 [3537, 4796] |
 
 Howarth 0.55 (other stages central, not inside the interval):
 
 | build-out | lifetime Mt | peak year / Mt | ECCC 2% CAD bn |
 |---|---|---|---|
-| committed | 2027.5 | 2030 / 63.3 | 830 |
-| committed_plus_advanced | 4127.4 | 2037 / 147.2 | 1749 |
-| full | 10102.5 | 2037 / 323.9 | 4516 |
+| committed | 2027.5 | 2030 / 63.3 | 777 |
+| committed_plus_advanced | 4127.4 | 2037 / 147.2 | 1639 |
+| full | 10102.5 | 2037 / 323.9 | 4241 |
 
 Central case versus Monte Carlo median (full build-out):
 
@@ -268,7 +270,7 @@ Central case versus Monte Carlo median (full build-out):
 |---|---|---|
 | Lifetime (Mt) | 9315.3 | 9477.1 [8290.3, 10752.6] |
 | Peak-year (Mt) | 298.7 in 2037 | 304.1 [287.6, 321.3] |
-| ECCC 2% damage (CAD bn) | 4164 | 4236 [3625, 4915] |
+| ECCC 2% damage (CAD bn) | 4080 | 4133 [3537, 4796] |
 
 They differ because the stage triangles are right-skewed (shipping 0.05 / 0.12 / 0.31 especially): the Monte Carlo median is not the point estimate from central factor values.
 

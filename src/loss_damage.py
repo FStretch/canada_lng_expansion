@@ -5,10 +5,14 @@ CO2e). This module does not change those calculations.
 
 The published central case is named in Inputs/loss_damage/parameters.csv
 (`central_price_family`, `central_aggregation`, `eccc_central_discount_rate_pct`).
-Default: ECCC official SC-CO2 at 2%, applied per calendar year of emissions
-to the full GWP100 CO2e total (year t tonnes × year t SC, summed in 2025 CAD).
-This overstates methane (CH4-derived CO2e is charged at SC-CO2 rather than
-SC-CH4); that bound is reported. There is no native per-gas split.
+Default: ECCC official SC-CO2 and SC-CH4 at 2%, applied per calendar year of
+emissions to the **per-gas** split from the physics (Task 1):
+
+    damages_t = co2_t * SC-CO2_t + ch4_mass_t * SC-CH4_t
+
+Both schedules are official ECCC, both at the same discount rate, both
+inflated CAD 2021 -> CAD 2025 exactly once. The retired treatment (whole
+GWP100 CO2e at SC-CO2) is reported as a one-line reconciliation only.
 
 Burke et al. (2026) is an upper-bracket sensitivity across discount rates
 and Figure 2e horizons. Burke default is g = 0; Hatton's +2% is not used
@@ -17,10 +21,8 @@ as a Burke default. The SC already discounts the damage stream.
     SC_t = SC_2020_CAD2025 * (1 + g) ** (t - 2020)
     L&D  = sum_t SC_t * E_t
 
-ECCC path: official SC-CO2 schedule (C$2021) inflated to C$2025, applied to
-the full GWP100 CO2e total. This overstates the methane contribution: CH4-
-derived CO2e is charged at SC-CO2 rather than at SC-CH4. That bound is
-reported; there is no native per-gas split.
+Burke has no SC-CH4, so the Burke family still prices the full GWP100 CO2e
+total at Burke's SC-CO2. That is stated in the Burke output labels.
 """
 
 from __future__ import annotations
@@ -369,15 +371,6 @@ def compute_loss_damage(
     inv_up = float(inputs["upstream_by_scenario"]["inventory_as_reported"])
     ch4_share_param = float(get_param(inputs["params"], "upstream_ch4_share"))
     inventory_co2_upstream = inv_up * (1.0 - ch4_share_param)
-    frac_cache: dict[tuple, float] = {}
-
-    def _methane_frac(asset_row, scen: str) -> float:
-        key = (asset_row["project_id"], scen)
-        if key not in frac_cache:
-            frac_cache[key] = methane_co2e_fraction_from_upstream(
-                asset_row, scen, inputs
-            )
-        return frac_cache[key]
 
     if panel is None:
         panel = build_emissions_panel(
@@ -392,20 +385,33 @@ def compute_loss_damage(
             raise MissingInputError("Emissions panel has no L&D scenarios.")
     assets_by_id = {r["project_id"]: r for _, r in inputs["assets"].iterrows()}
 
+    for col in ("co2_mt", "ch4_mass_kt"):
+        if col not in panel.columns:
+            raise MissingInputError(
+                f"Emissions panel has no '{col}'. ECCC damages are priced per "
+                f"gas and need the Task 1 split."
+            )
+    if panel["ch4_mass_kt"].isna().any():
+        raise MissingInputError(
+            "Emissions panel has blank ch4_mass_kt rows. ECCC damages price "
+            "CH4 mass at SC-CH4 and cannot fall back to CO2e."
+        )
+
     year_rows = []
-    methane_overstatement_cad = 0.0
     methane_co2e_tonnes_central = 0.0
     co2e_tonnes_central = 0.0
+    ch4_tonnes_central = 0.0
+    old_treatment_cad = 0.0
     for _, prec in panel.iterrows():
         row = assets_by_id[prec["project_id"]]
         scenario = prec["scenario"]
         year = int(prec["year"])
         mt = float(prec["emissions_mtco2e"])
         tonnes_co2e = mt * 1e6
-        methane_frac = _methane_frac(row, scenario)
-        # Published damages price the full GWP100 CO2e total at SC-CO2.
-        # That overstates methane: CH4-derived CO2e is charged at SC-CO2
-        # rather than at SC-CH4. Do not treat this as conservative.
+        tonnes_co2 = float(prec["co2_mt"]) * 1e6
+        tonnes_ch4 = float(prec["ch4_mass_kt"]) * 1e3
+        # Burke has no SC-CH4, so the Burke family keeps pricing the full
+        # GWP100 CO2e at Burke's SC-CO2. Labelled as such in the outputs.
         for rate in BURKE_RATES:
             for g in GROWTH_RATES:
                 sc = burke_sc_cad2025(year, rate, g, burke_cad[rate], p)
@@ -434,8 +440,17 @@ def compute_loss_damage(
                 raise MissingInputError(
                     f"ECCC schedule has no SC-CO2 for rate {rate}% year {year}."
                 ) from exc
+            try:
+                sc_ch4_21 = float(eccc_ch4_idx.loc[(rate, year)])
+            except KeyError as exc:
+                raise MissingInputError(
+                    f"ECCC schedule has no SC-CH4 for rate {rate}% year {year}. "
+                    f"Do not extrapolate and do not fall back to SC-CO2."
+                ) from exc
+            # Both inflated CAD 2021 -> CAD 2025 once, at the same rate.
             sc = cad2021_to_cad2025(sc21, p)
-            undisc = sc * tonnes_co2e
+            sc_ch4 = cad2021_to_cad2025(sc_ch4_21, p)
+            undisc = sc * tonnes_co2 + sc_ch4 * tonnes_ch4
             npv = undisc / ((1.0 + rate / 100.0) ** (year - analysis))
             year_rows.append({
                 "price_family": "eccc",
@@ -446,31 +461,28 @@ def compute_loss_damage(
                 "chain": row["chain"],
                 "year": year,
                 "emissions_mtco2e": mt,
+                "co2_mt": float(prec["co2_mt"]),
+                "ch4_kt": float(prec["ch4_mass_kt"]),
                 "discount_rate_pct": rate,
                 "growth_rate": None,
                 "sc_cad2021_per_t": sc21,
                 "sc_cad2025_per_t": sc,
+                "sc_ch4_cad2021_per_t": sc_ch4_21,
+                "sc_ch4_cad2025_per_t": sc_ch4,
+                "co2_damage_cad": sc * tonnes_co2,
+                "ch4_damage_cad": sc_ch4 * tonnes_ch4,
                 "hatton_sum_cad": undisc,
                 "npv_analysis_year_cad": npv,
             })
             if scenario == DEFAULT_SCENARIO and rate == eccc_r:
-                try:
-                    ratio_yr = float(eccc_ch4_idx.loc[(rate, year)]) / float(
-                        eccc_idx.loc[(rate, year)]
-                    )
-                except KeyError as exc:
-                    raise MissingInputError(
-                        f"ECCC CH4/CO2 ratio missing for {rate}% year {year}."
-                    ) from exc
-                methane_t = tonnes_co2e * methane_frac
-                # Priced as CO2: methane_t × SC-CO2.
-                # Priced as CH4: (methane_t / GWP100) × SC-CH4
-                #              = methane_t × SC-CO2 × (ratio / GWP100).
-                methane_overstatement_cad += (
-                    methane_t * sc * (1.0 - ratio_yr / gwp)
-                )
-                methane_co2e_tonnes_central += methane_t
+                methane_co2e_tonnes_central += float(
+                    prec["ch4_derived_co2e_mt"]
+                ) * 1e6
                 co2e_tonnes_central += tonnes_co2e
+                ch4_tonnes_central += tonnes_ch4
+                # One-line reconciliation only: what the retired treatment
+                # (whole CO2e at SC-CO2) would have produced.
+                old_treatment_cad += sc * tonnes_co2e
 
 
     by_year = pd.DataFrame(year_rows)
@@ -674,9 +686,18 @@ def compute_loss_damage(
         if co2e_tonnes_central else 0.0
     )
     published_cad = float(published["total_cad"])
-    methane_overstatement_pct = (
-        methane_overstatement_cad / published_cad if published_cad else 0.0
+    # One-line reconciliation with the retired treatment (whole GWP100 CO2e
+    # priced at SC-CO2). Not a bound on the published number any more.
+    old_treatment_delta_pct = (
+        (old_treatment_cad - published_cad) / published_cad if published_cad else 0.0
     )
+    eccc_central_rows = by_year.loc[
+        (by_year["price_family"] == "eccc")
+        & (by_year["scenario"] == DEFAULT_SCENARIO)
+        & (by_year["discount_rate_pct"] == eccc_r)
+    ]
+    co2_damage_cad = float(eccc_central_rows["co2_damage_cad"].sum())
+    ch4_damage_cad = float(eccc_central_rows["ch4_damage_cad"].sum())
 
     def _eccc_ratio(year: int) -> float:
         return float(eccc_ch4_idx.loc[(eccc_r, year)]) / float(
@@ -802,8 +823,14 @@ def compute_loss_damage(
         eccc_yr.groupby("year", sort=True)
         .agg(
             emissions_mtco2e=("emissions_mtco2e", "sum"),
+            co2_mt=("co2_mt", "sum"),
+            ch4_kt=("ch4_kt", "sum"),
             sc_cad2021_per_t=("sc_cad2021_per_t", "first"),
             sc_cad2025_per_t=("sc_cad2025_per_t", "first"),
+            sc_ch4_cad2021_per_t=("sc_ch4_cad2021_per_t", "first"),
+            sc_ch4_cad2025_per_t=("sc_ch4_cad2025_per_t", "first"),
+            co2_damage_cad=("co2_damage_cad", "sum"),
+            ch4_damage_cad=("ch4_damage_cad", "sum"),
             damage_cad=("hatton_sum_cad", "sum"),
         )
         .reset_index()
@@ -858,8 +885,15 @@ def compute_loss_damage(
         "methane_co2e_mt": methane_co2e_tonnes_central / 1e6,
         "methane_co2e_per_t_lng": methane_co2e_per_t_lng,
         "inventory_co2_upstream": inventory_co2_upstream,
-        "methane_overstatement_cad": methane_overstatement_cad,
-        "methane_overstatement_pct": methane_overstatement_pct,
+        "ch4_mass_kt_central": ch4_tonnes_central / 1e3,
+        "co2_tonnes_central": co2e_tonnes_central - methane_co2e_tonnes_central,
+        "eccc_co2_damage_cad": co2_damage_cad,
+        "eccc_ch4_damage_cad": ch4_damage_cad,
+        "eccc_ch4_damage_share": (
+            ch4_damage_cad / published_cad if published_cad else 0.0
+        ),
+        "old_treatment_cad": old_treatment_cad,
+        "old_treatment_delta_pct": old_treatment_delta_pct,
         "ch4_co2_ratio_2020": ch4_co2_ratio_2020,
         "ch4_co2_ratio_2025": ch4_co2_ratio_2025,
         "ch4_co2_ratio_2080": ch4_co2_ratio_2080,
@@ -906,9 +940,10 @@ def write_ld_figure(h_row, path: Path) -> None:
         ax.text(i, v + ymax * 0.03, f"{v:.1f}", ha="center", fontsize=10)
     fig.text(
         0.5, 0.02,
-        "Central case: ECCC SC-CO2 at 2%, applied per calendar year of emissions "
-        "(2025 CAD). ECCC 1.5% and 2.5% are the sensitivity range. "
-        "Burke is an upper-bracket sensitivity, not shown here. Global damages.",
+        "Central case: ECCC SC-CO2 on CO2 and SC-CH4 on CH4 mass at 2%, applied "
+        "per calendar year of emissions (2025 CAD). ECCC 1.5% and 2.5% are the "
+        "sensitivity range. Burke is an upper-bracket sensitivity, not shown "
+        "here. Global damages.",
         ha="center", fontsize=8, color="#444",
     )
     fig.subplots_adjust(bottom=0.16, top=0.9)
@@ -936,43 +971,58 @@ def format_ld_markdown(ld: dict) -> list[str]:
     lines.append("")
     lines.append(
         "Monetised economic damages from the modelled lifecycle emissions. "
-        "The **central case** is ECCC official SC-CO2 at the **2%** discount "
-        "rate, applied per calendar year of emissions, in 2025 CAD "
+        "The **central case** is ECCC official SC-CO2 **and SC-CH4** at the "
+        "**2%** discount rate, applied per calendar year of emissions, in 2025 "
+        "CAD "
         f"(named parameters `central_price_family={ld['central_price_family']}`, "
         f"`central_aggregation={ld['central_aggregation']}`). "
+        "Each year's damage is `co2_t x SC-CO2_t + ch4_mass_t x SC-CH4_t`, "
+        "from the Task 1 per-gas split, both schedules at the same discount "
+        "rate and both inflated CAD 2021 to CAD 2025 exactly once. "
         "ECCC 1.5% and 2.5% are the central case's sensitivity range. "
         "Burke et al. (2026) is an **upper-bracket sensitivity** across discount "
-        "rates and Figure 2e horizons (default g = 0; Hatton +2% is not used). "
+        "rates and Figure 2e horizons (default g = 0; Hatton +2% is not used); "
+        "**Burke has no SC-CH4, so the Burke family prices the whole GWP100 "
+        "CO2e total at Burke's SC-CO2**. "
         "Damages are **global**. They are not a legal bill. "
-        "ECCC SC-CO2 is applied to the full GWP100 CO2e total. That "
-        "**overstates** the methane contribution (CH4-derived CO2e is charged "
-        "at SC-CO2 rather than at SC-CH4) and is not conservative in that "
-        "direction. Construction, sea-level rise, extremes, and mortality "
+        "Construction, sea-level rise, extremes, and mortality "
         "outside GDP are omitted."
     )
     lines.append("")
     share_ch4 = 100 * ld["methane_share_of_co2e"]
-    over_pct = 100 * ld["methane_overstatement_pct"]
     total_mt = (
         ld["methane_co2e_mt"] / ld["methane_share_of_co2e"]
         if ld["methane_share_of_co2e"] else 0.0
     )
     up_central = ld["inventory_co2_upstream"] + ld["methane_co2e_per_t_lng"]
     lines.append(
-        f"Methane share of the CO2e total is **{share_ch4:.1f}%** "
-        f"({ld['methane_co2e_mt']:,.0f} of {total_mt:,.0f} MtCO2e). "
-        f"That is the excess of the central upstream factor ({up_central:.2f}) "
-        f"over inventory CO2 ({ld['inventory_co2_upstream']:.3f}), i.e. "
-        f"{ld['methane_co2e_per_t_lng']:.3f} tCO2e per t LNG, as a share of "
-        f"the chain total. Pipeline and shipping methane stay inside CO2e as "
-        f"CO2 and are not in this share. GWP100 = {ld['gwp100_ch4']:.1f}; "
-        f"ECCC SC-CH4/SC-CO2 is {ld['ch4_co2_ratio_2025']:.1f} in 2025 and "
-        f"{ld['ch4_co2_ratio_2080']:.1f} by 2080. Pricing that methane CO2e "
-        f"as CO2 therefore charges it at roughly "
-        f"{ld['gwp100_ch4']/ld['ch4_co2_ratio_2025']:.1f}× the ECCC CH4 price "
-        f"in 2025. The resulting overstatement is **{over_pct:.1f}%** of the "
-        f"central damage bill. This treatment overstates methane and is not "
-        f"conservative in that direction."
+        f"**Per-gas pricing.** The panel splits every asset-year into CO2 and "
+        f"CH4 (see section 5a). Central lifetime is "
+        f"{ld['co2_tonnes_central']/1e6:,.0f} MtCO2 plus "
+        f"{ld['ch4_mass_kt_central']:,.0f} kt CH4, the latter worth "
+        f"{ld['methane_co2e_mt']:,.0f} MtCO2e at GWP100 = "
+        f"{ld['gwp100_ch4']:.1f}, i.e. **{share_ch4:.1f}%** of the "
+        f"{total_mt:,.0f} MtCO2e total. The CH4 is the upstream excess over "
+        f"inventory CO2 ({up_central:.2f} less "
+        f"{ld['inventory_co2_upstream']:.3f} = "
+        f"{ld['methane_co2e_per_t_lng']:.3f} tCO2e per t LNG) plus shipping "
+        f"methane slip. Pipeline fugitive methane is not split and stays "
+        f"inside the CO2 total. "
+        f"CO2 is priced at SC-CO2 and CH4 mass at ECCC SC-CH4 "
+        f"(SC-CH4/SC-CO2 is {ld['ch4_co2_ratio_2025']:.1f} in 2025 and "
+        f"{ld['ch4_co2_ratio_2080']:.1f} by 2080, against GWP100 of "
+        f"{ld['gwp100_ch4']:.1f}). Methane is "
+        f"**{100*ld['eccc_ch4_damage_share']:.1f}%** of the central damage "
+        f"bill ({_money_cad(ld['eccc_ch4_damage_cad']/1e9)}), CO2 the rest "
+        f"({_money_cad(ld['eccc_co2_damage_cad']/1e9)})."
+    )
+    lines.append("")
+    lines.append(
+        f"Reconciliation with the retired treatment: pricing the whole GWP100 "
+        f"CO2e total at SC-CO2 would have given "
+        f"{_money_cad(ld['old_treatment_cad']/1e9)}, "
+        f"**{100*ld['old_treatment_delta_pct']:+.1f}%** against the per-gas "
+        f"figure. The overstatement-bound machinery it supported is retired."
     )
     lines.append("")
     py = ld["price_by_year"]
@@ -980,7 +1030,9 @@ def format_ld_markdown(ld: dict) -> list[str]:
     e_all = float(py["emissions_mtco2e"].sum())
     lines.append(
         f"Implied average price is **${ld['weighted_sc_cad2025']:,.0f}/t** "
-        f"CAD 2025 (total damages / lifetime tonnes). That is the "
+        f"CAD 2025 (total damages / lifetime CO2e tonnes; an effective blended "
+        f"rate across CO2 at SC-CO2 and CH4 at SC-CH4, not a schedule value). "
+        f"The underlying SC-CO2 series is the "
         f"emissions-weighted mean of the ECCC 2% schedule after a **single** "
         f"CAD 2021→2025 inflation of {ld['cad2021_to_2025_factor']:.4f} "
         f"(deflators {ld['params']['canada_gdp_deflator_2021']} / "
@@ -1016,7 +1068,8 @@ def format_ld_markdown(ld: dict) -> list[str]:
     burke_min = float(burke_g0["total_cad_billion"].min())
     burke_max = float(burke_g0["total_cad_billion"].max())
     lines.append(
-        f"- **Burke upper bracket (g = 0, year-by-year 2100 path, 1.5%–5%):** "
+        f"- **Burke upper bracket (whole CO2e at Burke SC-CO2, no SC-CH4; "
+        f"g = 0, year-by-year 2100 path, 1.5%–5%):** "
         f"{_money_cad(burke_min)} to {_money_cad(burke_max)}; "
         f"Figure 2e through-2300 at 2% fixed: "
         f"**{_money_cad(burke['total_cad_billion'])}** "
@@ -1091,7 +1144,8 @@ def format_ld_markdown(ld: dict) -> list[str]:
     )
     lines.append("")
     lines.append(
-        "Burke horizon rows (g = 0, proposed slate; upper bracket, not central). "
+        "Burke horizon rows (whole GWP100 CO2e at Burke SC-CO2 — Burke has no "
+        "SC-CH4; g = 0, proposed slate; upper bracket, not central). "
         "Global L&D and value in trillion 2025 CAD; Canada-borne in billion 2025 CAD. "
         "Bold is the Burke default horizon, not the paper central."
     )

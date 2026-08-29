@@ -591,19 +591,26 @@ def build_slide_tables(
                     "Central, ECCC 2% calendar year",
                     round(float(published["total_cad_billion"]) / 1000, 2),
                     "trillion 2025 CAD",
-                    "Full CO2e × SC-CO2; overstates methane (see bound below)",
+                    "CO2 x SC-CO2 + CH4 mass x SC-CH4, per calendar year",
                 ),
                 (
                     "Methane share of CO2e total",
                     round(100 * float(ld["methane_share_of_co2e"]), 1),
                     "%",
-                    "Upstream 0.25 minus inventory CO2 0.154, as share of chain total",
+                    "Upstream excess over inventory CO2 plus shipping methane slip",
                 ),
                 (
-                    "Methane overstatement bound",
-                    round(100 * float(ld["methane_overstatement_pct"]), 1),
+                    "Methane share of the damage bill",
+                    round(100 * float(ld["eccc_ch4_damage_share"]), 1),
                     "% of damage bill",
-                    "CH4-CO2e priced as CO2 vs SC-CH4; this overstates methane",
+                    "CH4 mass priced at ECCC SC-CH4",
+                ),
+                (
+                    "Retired treatment (whole CO2e at SC-CO2)",
+                    round(float(ld["old_treatment_cad"]) / 1e12, 2),
+                    "trillion 2025 CAD",
+                    "Reconciliation only: "
+                    f"{100*float(ld['old_treatment_delta_pct']):+.1f}% vs per-gas",
                 ),
                 (
                     "ECCC 1.5% calendar year",

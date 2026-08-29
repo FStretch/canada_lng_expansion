@@ -913,18 +913,38 @@ def _validate_loss_damage(sample: pd.DataFrame, ld: dict, panel: pd.DataFrame) -
     assert abs(
         float(hb["proposed_cad_billion"]) - float(hb["proposed_gwp_cad_billion"])
     ) < 1e-6
+    # Task 3: ECCC damages are priced per gas. The old methane_overstatement
+    # bound no longer applies as written; it survives only as a one-line
+    # reconciliation with the retired whole-CO2e-at-SC-CO2 treatment.
     assert 0.01 < ld["methane_share_of_co2e"] < 0.08, ld["methane_share_of_co2e"]
-    assert 0.0 < ld["methane_overstatement_pct"] < 0.10, ld["methane_overstatement_pct"]
     py = ld["price_by_year"]
+    gas_sum = float(py["co2_damage_cad"].sum()) + float(py["ch4_damage_cad"].sum())
+    assert abs(gas_sum - float(published["total_cad"])) < 1.0, (
+        gas_sum,
+        float(published["total_cad"]),
+    )
+    assert 0.0 < ld["eccc_ch4_damage_share"] < 0.05, ld["eccc_ch4_damage_share"]
+    # Pricing CH4 at SC-CH4 must cost less than charging the same CH4-derived
+    # CO2e at SC-CO2, because SC-CH4/SC-CO2 stays below GWP100 on the schedule.
+    assert ld["old_treatment_cad"] > float(published["total_cad"]), (
+        ld["old_treatment_cad"],
+        float(published["total_cad"]),
+    )
+    assert 0.0 < ld["old_treatment_delta_pct"] < 0.10, ld["old_treatment_delta_pct"]
     tonnes = float(py["emissions_mtco2e"].sum()) * 1e6
     wavg = float(published["total_cad"]) / tonnes
     assert abs(wavg - ld["weighted_sc_cad2025"]) < 1e-6, (wavg, ld["weighted_sc_cad2025"])
     y2025 = py.loc[py["year"] == 2025].iloc[0]
     assert int(y2025["sc_cad2021_per_t"]) == 271
+    assert int(y2025["sc_ch4_cad2021_per_t"]) > 0
     factor = ld["cad2021_to_2025_factor"]
     # Inflation applied once: CAD 2025 = CAD 2021 × deflator, not × deflator².
     assert abs(float(y2025["sc_cad2025_per_t"]) - 271.0 * factor) < 1e-6
     assert abs(float(y2025["sc_cad2025_per_t"]) - 271.0 * factor * factor) > 1.0
+    assert abs(
+        float(y2025["sc_ch4_cad2025_per_t"])
+        - float(y2025["sc_ch4_cad2021_per_t"]) * factor
+    ) < 1e-6
     assert int(py["year"].min()) == 2025
     assert ld["gva"] > ld["gva_proposed_as_published"]
     assert not ld["fig4"]["canada_in_recipient_panel"]

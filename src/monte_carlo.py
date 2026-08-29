@@ -16,8 +16,19 @@ import numpy as np
 import pandas as pd
 
 from src.inputs import DEFAULT_SCENARIO, get_param
-from src.loss_damage import cad2021_to_cad2025, load_eccc_schedule, load_ld_params
-from src.model import _fid_ok, _is_legacy, _licence_end_year, _lifespan
+from src.loss_damage import (
+    cad2021_to_cad2025,
+    load_eccc_ch4,
+    load_eccc_schedule,
+    load_ld_params,
+)
+from src.model import (
+    _fid_ok,
+    _is_legacy,
+    _licence_end_year,
+    _lifespan,
+    stage_ch4_co2e_intensity,
+)
 from src.scope import headline_scope_sets, row_in_headline_scope
 from src.trajectories import PANEL_START_YEAR, _start_year
 
@@ -181,32 +192,50 @@ def _intensity_by_draw(
     upstream: np.ndarray,
     stage_draws: dict[str, np.ndarray],
     liquefaction: float,
-) -> np.ndarray:
-    """n_draws × n_assets chain intensity (tCO2e / t LNG)."""
+    inputs: dict,
+) -> tuple[np.ndarray, np.ndarray]:
+    """(total, CH4-derived) n_draws × n_assets chain intensity, tCO2e / t LNG.
+
+    The CH4 part uses the same construction as the central case
+    (`src.model.stage_ch4_co2e_intensity`), applied draw by draw: each draw
+    carries its own upstream and shipping factor, so the methane it implies
+    moves with it.
+    """
     n_draws = len(upstream)
     n_assets = len(specs)
     out = np.zeros((n_draws, n_assets))
+    ch4_out = np.zeros((n_draws, n_assets))
     for j, spec in enumerate(specs):
         tot = np.zeros(n_draws)
+        ch4 = np.zeros(n_draws)
         for stage in spec.stages:
             if stage == "upstream_production":
-                tot += upstream
+                draw = upstream
             elif stage == "liquefaction":
-                tot += liquefaction
+                draw = np.full(n_draws, liquefaction)
             elif stage in stage_draws:
-                tot += stage_draws[stage]
+                draw = stage_draws[stage]
             else:
                 raise ValueError(f"Unpriced stage {stage} on {spec.project_id}.")
+            tot += draw
+            ch4 += stage_ch4_co2e_intensity(stage, draw, inputs)
         out[:, j] = tot
-    return out
+        ch4_out[:, j] = ch4
+    return out, ch4_out
 
 
-def _eccc_price_cad2025(inputs_dir: Path, years: np.ndarray) -> np.ndarray:
+def _eccc_price_cad2025(
+    inputs_dir: Path, years: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    """(SC-CO2 per tCO2, SC-CH4 per tCH4) in CAD 2025, one entry per year."""
     ld = load_ld_params(inputs_dir)
     p = ld["params"]
     eccc = load_eccc_schedule(inputs_dir, p)
+    eccc_ch4 = load_eccc_ch4(inputs_dir, p)
     idx = eccc.set_index(["discount_rate_pct", "year"])["sc_co2_cad2021"]
+    ch4_idx = eccc_ch4.set_index(["discount_rate_pct", "year"])["sc_ch4_cad2021"]
     out = np.empty(len(years), dtype=float)
+    out_ch4 = np.empty(len(years), dtype=float)
     for i, year in enumerate(years):
         try:
             cad2021 = float(idx.loc[(ECCC_RATE, int(year))])
@@ -214,8 +243,16 @@ def _eccc_price_cad2025(inputs_dir: Path, years: np.ndarray) -> np.ndarray:
             raise KeyError(
                 f"ECCC SC-CO2 at {ECCC_RATE}% has no year {int(year)}."
             ) from exc
+        try:
+            ch4_cad2021 = float(ch4_idx.loc[(ECCC_RATE, int(year))])
+        except KeyError as exc:
+            raise KeyError(
+                f"ECCC SC-CH4 at {ECCC_RATE}% has no year {int(year)}. "
+                f"Do not extrapolate and do not fall back to SC-CO2."
+            ) from exc
         out[i] = cad2021_to_cad2025(cad2021, p)
-    return out
+        out_ch4[i] = cad2021_to_cad2025(ch4_cad2021, p)
+    return out, out_ch4
 
 
 def _membership(specs: list[AssetSpec], name: str) -> np.ndarray:
@@ -230,16 +267,26 @@ def _membership(specs: list[AssetSpec], name: str) -> np.ndarray:
 
 def _summarise_yearly(
     yearly: np.ndarray,
+    yearly_co2: np.ndarray,
+    yearly_ch4_kt: np.ndarray,
     years: np.ndarray,
     prices: np.ndarray,
-) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
-    """lifetime Mt, peak Mt, peak year, damage CAD billion."""
+    prices_ch4: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """lifetime Mt, peak Mt, peak year, damage CAD billion, lifetime CO2-only Mt.
+
+    Damages are per gas, as in the central case: CO2 at SC-CO2 and CH4 mass
+    at SC-CH4, both at 2%, both already in CAD 2025.
+    """
     lifetime = yearly.sum(axis=1)
     peak_idx = yearly.argmax(axis=1)
     peak_mt = yearly[np.arange(len(yearly)), peak_idx]
     peak_year = years[peak_idx]
-    damage_bn = (yearly * (prices * 1e6)[None, :]).sum(axis=1) / 1e9
-    return lifetime, peak_mt, peak_year, damage_bn
+    damage_bn = (
+        (yearly_co2 * (prices * 1e6)[None, :]).sum(axis=1)
+        + (yearly_ch4_kt * (prices_ch4 * 1e3)[None, :]).sum(axis=1)
+    ) / 1e9
+    return lifetime, peak_mt, peak_year, damage_bn, yearly_co2.sum(axis=1)
 
 
 def _ci90(x: np.ndarray) -> tuple[float, float, float]:
@@ -259,10 +306,17 @@ def _simulate(
     stage_draws: dict[str, np.ndarray],
     life_draw: np.ndarray,
     delay_draw: np.ndarray,
-) -> dict[str, np.ndarray]:
+    inputs: dict,
+    gwp100: float,
+) -> tuple[dict[str, np.ndarray], dict[str, np.ndarray], dict[str, np.ndarray]]:
+    """(CO2e Mt, CO2 Mt, CH4 kt) per build-out, n_draws x n_years."""
     n_draws = len(upstream)
-    intensity = _intensity_by_draw(specs, upstream, stage_draws, liquefaction)
+    intensity, ch4_intensity = _intensity_by_draw(
+        specs, upstream, stage_draws, liquefaction, inputs
+    )
     yearly = {name: np.zeros((n_draws, len(years))) for name in BUILD_OUTS}
+    yearly_co2 = {name: np.zeros((n_draws, len(years))) for name in BUILD_OUTS}
+    yearly_ch4 = {name: np.zeros((n_draws, len(years))) for name in BUILD_OUTS}
     for j, spec in enumerate(specs):
         if spec.life_sampled:
             life = life_draw
@@ -283,11 +337,17 @@ def _simulate(
             spec.ramp,
             spec.licence_end,
         )
-        mt = spec.capacity_mtpa * mtpa_to_t * util * intensity[:, [j]] / 1e6
+        base = spec.capacity_mtpa * mtpa_to_t * util / 1e6
+        mt = base * intensity[:, [j]]
+        ch4_co2e_mt = base * ch4_intensity[:, [j]]
+        co2_mt = mt - ch4_co2e_mt
+        ch4_kt = ch4_co2e_mt / gwp100 * 1000.0
         for name in BUILD_OUTS:
             if getattr(spec, name):
                 yearly[name] += mt
-    return yearly
+                yearly_co2[name] += co2_mt
+                yearly_ch4[name] += ch4_kt
+    return yearly, yearly_co2, yearly_ch4
 
 
 def _howarth_from_panel(
@@ -295,6 +355,7 @@ def _howarth_from_panel(
     assets: pd.DataFrame,
     years: np.ndarray,
     prices: np.ndarray,
+    prices_ch4: np.ndarray,
 ) -> pd.DataFrame:
     sl = panel.loc[panel["scenario"] == HOWARTH_SCENARIO].copy()
     meta = assets[["project_id", "tier"]].drop_duplicates("project_id")
@@ -305,12 +366,13 @@ def _howarth_from_panel(
     )
     sl["full"] = True
     rows = []
+    cols = ["emissions_mtco2e", "co2_mt", "ch4_mass_kt"]
     for name in BUILD_OUTS:
         sub = sl.loc[sl[name]]
-        by_year = (
-            sub.groupby("year")["emissions_mtco2e"].sum().reindex(years, fill_value=0.0)
-        )
-        yearly = by_year.to_numpy(dtype=float)
+        grouped = sub.groupby("year")[cols].sum().reindex(years, fill_value=0.0)
+        yearly = grouped["emissions_mtco2e"].to_numpy(dtype=float)
+        yearly_co2 = grouped["co2_mt"].to_numpy(dtype=float)
+        yearly_ch4 = grouped["ch4_mass_kt"].to_numpy(dtype=float)
         lifetime = float(yearly.sum())
         peak_i = int(yearly.argmax())
         rows.append(
@@ -318,10 +380,16 @@ def _howarth_from_panel(
                 "build_out": name,
                 "upstream": 0.55,
                 "lifetime_mtco2e": lifetime,
+                "lifetime_co2_only_mt": float(yearly_co2.sum()),
+                "lifetime_ch4_kt": float(yearly_ch4.sum()),
                 "peak_year": int(years[peak_i]),
                 "peak_mtco2e_yr": float(yearly[peak_i]),
                 "central_damage_cad_billion": float(
-                    (yearly * prices * 1e6).sum() / 1e9
+                    (
+                        (yearly_co2 * prices * 1e6).sum()
+                        + (yearly_ch4 * prices_ch4 * 1e3).sum()
+                    )
+                    / 1e9
                 ),
             }
         )
@@ -348,7 +416,8 @@ def run_monte_carlo(
     year0 = PANEL_START_YEAR
     year1 = max(s.start + 50 - 1 for s in specs)
     years = np.arange(year0, year1 + 1)
-    prices = _eccc_price_cad2025(inputs_dir, years)
+    prices, prices_ch4 = _eccc_price_cad2025(inputs_dir, years)
+    gwp100 = float(get_param(params, "gwp100_ch4"))
 
     stage_bounds = {stage: _tri(factors, stage) for stage in SAMPLED_STAGES}
 
@@ -361,8 +430,8 @@ def run_monte_carlo(
     }
     life_c = np.full(n1, int(get_param(params, "lifecycle_years_default")), dtype=int)
     delay_c = np.full(n1, int(get_param(params, "fid_delay_mid")), dtype=int)
-    central_yearly = _simulate(
-        specs, years, mtpa_to_t, liq, up_c, st_c, life_c, delay_c
+    central_yearly, central_co2, _central_ch4 = _simulate(
+        specs, years, mtpa_to_t, liq, up_c, st_c, life_c, delay_c, inputs, gwp100
     )
     published = (
         panel.loc[panel["scenario"] == DEFAULT_SCENARIO]
@@ -378,6 +447,19 @@ def run_monte_carlo(
             f"Monte Carlo kernel diverges from the published panel "
             f"(max abs {max_abs} Mt in a year)."
         )
+    published_co2 = (
+        panel.loc[panel["scenario"] == DEFAULT_SCENARIO]
+        .groupby("year")["co2_mt"]
+        .sum()
+        .reindex(years, fill_value=0.0)
+        .to_numpy(dtype=float)
+    )
+    max_abs_co2 = float(np.max(np.abs(central_co2["full"][0] - published_co2)))
+    if max_abs_co2 > 1e-6:
+        raise AssertionError(
+            f"Monte Carlo CO2-only kernel diverges from the published panel "
+            f"(max abs {max_abs_co2} Mt in a year)."
+        )
 
     rng = np.random.default_rng(seed)
     t0 = perf_counter()
@@ -388,23 +470,40 @@ def run_monte_carlo(
     }
     life_draw = np.rint(rng.triangular(*LIFE_TRI, size=n_draws)).astype(int)
     delay_draw = np.rint(rng.triangular(*FID_TRI, size=n_draws)).astype(int)
-    yearly = _simulate(
-        specs, years, mtpa_to_t, liq, upstream, stage_draws, life_draw, delay_draw
+    yearly, yearly_co2, yearly_ch4 = _simulate(
+        specs,
+        years,
+        mtpa_to_t,
+        liq,
+        upstream,
+        stage_draws,
+        life_draw,
+        delay_draw,
+        inputs,
+        gwp100,
     )
     physics_s = perf_counter() - t0
     t1 = perf_counter()
     draw_rows = []
     summary_rows = []
     for name in BUILD_OUTS:
-        life, peak_mt, peak_year, damage = _summarise_yearly(
-            yearly[name], years, prices
+        life, peak_mt, peak_year, damage, life_co2 = _summarise_yearly(
+            yearly[name],
+            yearly_co2[name],
+            yearly_ch4[name],
+            years,
+            prices,
+            prices_ch4,
         )
+        life_ch4 = yearly_ch4[name].sum(axis=1)
         for i in range(n_draws):
             draw_rows.append(
                 {
                     "draw": i,
                     "build_out": name,
                     "lifetime_mtco2e": float(life[i]),
+                    "lifetime_co2_only_mt": float(life_co2[i]),
+                    "lifetime_ch4_kt": float(life_ch4[i]),
                     "peak_mtco2e_yr": float(peak_mt[i]),
                     "peak_year": int(peak_year[i]),
                     "central_damage_cad_billion": float(damage[i]),
@@ -413,6 +512,8 @@ def run_monte_carlo(
             )
         for metric, arr in (
             ("lifetime_mtco2e", life),
+            ("lifetime_co2_only_mt", life_co2),
+            ("lifetime_ch4_kt", life_ch4),
             ("peak_mtco2e_yr", peak_mt),
             ("central_damage_cad_billion", damage),
         ):
@@ -431,7 +532,9 @@ def run_monte_carlo(
     price_s = perf_counter() - t1
     draws = pd.DataFrame(draw_rows)
     summary = pd.DataFrame(summary_rows)
-    howarth = _howarth_from_panel(panel, inputs["assets"], years, prices)
+    howarth = _howarth_from_panel(
+        panel, inputs["assets"], years, prices, prices_ch4
+    )
 
     sampled_life_ids = [s.project_id for s in specs if s.life_sampled]
     sampled_fid_ids = [s.project_id for s in specs if not s.fid_ok]
@@ -514,6 +617,7 @@ def run_monte_carlo(
         "physics_seconds": physics_s,
         "price_seconds": price_s,
         "kernel_panel_max_abs_mt": max_abs,
+        "kernel_panel_max_abs_co2_mt": max_abs_co2,
         "sampled_life_ids": sampled_life_ids,
         "sampled_fid_ids": sampled_fid_ids,
         "n_assets": len(specs),
@@ -523,14 +627,19 @@ def run_monte_carlo(
 
 def format_mc_markdown(mc: dict, published: dict | None = None) -> list[str]:
     lines = []
-    lines.append("## Monte Carlo (physics sampled, ECCC 2% applied after)")
+    lines.append(
+        "## Monte Carlo (physics sampled, ECCC 2% per gas applied after)"
+    )
     lines.append("")
     lines.append(
         f"{mc['n_draws']:,} draws, seed `{mc['seed']}`. "
         f"Physics {mc['physics_seconds']:.2f}s; pricing {mc['price_seconds']:.2f}s. "
         f"Kernel vs published panel max abs {mc['kernel_panel_max_abs_mt']:.1e} Mt. "
         "Liquefaction held at 0.29. Howarth 0.55 is a named point, not a draw. "
-        "Draws are on the headline scope (export chain)."
+        "Draws are on the headline scope (export chain). "
+        "Each draw carries its own upstream and shipping factor, so its CH4 "
+        "mass moves with it; damages are CO2 at SC-CO2 plus CH4 mass at "
+        "SC-CH4, the same per-gas treatment as the central case."
     )
     lines.append("")
     lines.append(

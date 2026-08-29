@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
+import numpy as np
 import pandas as pd
 
 from src.inputs import (
@@ -223,7 +224,10 @@ def stage_ch4_co2e_intensity(
         params = inputs["params"]
         share = float(get_param(params, "upstream_ch4_share"))
         inv = float(inputs["upstream_by_scenario"]["inventory_as_reported"])
-        return max(float(intensity) - inv * (1.0 - share), 0.0)
+        floor = inv * (1.0 - share)
+        if isinstance(intensity, np.ndarray):
+            return np.maximum(intensity - floor, 0.0)
+        return max(float(intensity) - floor, 0.0)
     if stage == "shipping":
         uplift = float(get_param(inputs["params"], "lng_carrier_methane_slip_uplift"))
         if uplift <= 0:
@@ -231,7 +235,10 @@ def stage_ch4_co2e_intensity(
                 "Parameter 'lng_carrier_methane_slip_uplift' must be positive; "
                 f"got {uplift}."
             )
-        return float(intensity) * (1.0 - 1.0 / uplift)
+        slip = 1.0 - 1.0 / uplift
+        if isinstance(intensity, np.ndarray):
+            return intensity * slip
+        return float(intensity) * slip
     return 0.0
 
 
