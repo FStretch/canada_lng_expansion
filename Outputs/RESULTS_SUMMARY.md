@@ -1,6 +1,6 @@
 # Canada LNG lifecycle emissions — review summary
 
-Default scenario: `measurement_central`. Run at 2026-08-29 09:12 UTC. Numbers to one decimal. Inputs read-only. `calc_group` from `Asset Register:calc_group`.
+Default scenario: `measurement_central`. Run at 2026-08-29 09:13 UTC. Numbers to one decimal. Inputs read-only. `calc_group` from `Asset Register:calc_group`.
 
 Deck-facing tables (one sheet per table, 1-decimal): `Outputs/SLIDE_TABLES.xlsx`. Send that workbook to the PPT chat.
 
@@ -18,7 +18,7 @@ Deck-facing tables (one sheet per table, 1-decimal): `Outputs/SLIDE_TABLES.xlsx`
 
 - **Scope 1+2:** 46.7 MtCO2e/yr (18.0%)  |  **Scope 3:** 212.2 MtCO2e/yr (82.0%)
 - **Territorial:** CAN 46.7 (18.0%)  |  BUNK 8.8 (3.4%)  |  FOR 203.5 (78.6%)
-- **Share of remaining carbon budget (GCB 2025, from start of 2026):** 1.5°C, 50% from start of 2026 5.5% of 170 GtCO2  |  1.7°C, 50% from start of 2026 1.8% of 525 GtCO2  |  2.0°C, 50% from start of 2026 0.9% of 1055 GtCO2. Comparison is **CO2e against a CO2 budget** (approximation); a true CO2-only total is not derivable.
+- **Share of remaining carbon budget (GCB 2025, from start of 2026), on the CO2-only lifetime of 8,967.2 MtCO2:** 1.5°C, 50% from start of 2026 5.3% of 170 GtCO2  |  1.7°C, 50% from start of 2026 1.7% of 525 GtCO2  |  2.0°C, 50% from start of 2026 0.8% of 1055 GtCO2. This is **like for like**: CO2 against a CO2 budget. Residual caveats: pipeline fugitive methane is not split out of the CO2 total, and non-CO2 gases other than CH4 are not counted. On the older GWP100 CO2e basis the same shares are 5.5%  |  1.8%  |  0.9%.
 
 ## 2. By group
 
@@ -173,7 +173,7 @@ Figure: `Outputs/figures/fig08_electrification_canada_territorial.png`.
 - FINDING: tilbury_marine_jetty: chain=none — no lifecycle applies; excluded (not zeroed).
 - Flag: port_of_hamilton_lng.capacity_mtpa=missing
 - Excluded (chain=none or blank, not zeroed): ['tilbury_marine_jetty']
-- Remaining carbon budgets (GCB 2025) are CO2 from the start of 2026. Lifetime totals are GWP100 CO2e. The share-of-budget figures compare CO2e to a CO2 budget and are an approximation; a true CO2-only total is not derivable from this model.
+- Remaining carbon budgets (GCB 2025) are CO2 from the start of 2026. The paper's share-of-budget figures are now the **CO2-only** lifetime against those budgets, from the Task 1 per-gas split. Residual caveats: pipeline fugitive methane is not split out of the CO2 total, so a small amount of methane sits inside it; and non-CO2 gases other than CH4 (N2O, refrigerants) are not counted anywhere in the model.
 - Reconciliations close within floating-point tolerance (1e-6 to 1e-3); no material rounding residuals.
 - Saint John at ~0.5 Mt/yr depends entirely on `saint_john_utilisation=0.025`; nameplate at default util would be ~17 Mt/yr. tier=watch but calc_group=operating (operating import terminal).
 - Tilbury Phase 2 (2.5 mtpa) sits on bunkering by register judgement (`chain_note`); NRCan lists it as export — classification is a stated judgement, not re-derived in code.

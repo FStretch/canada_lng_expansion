@@ -17,6 +17,7 @@ from src.trajectories import (
     canada_pathway_series,
     cumulative_case_series,
     oil_lifecycle_gt,
+    panel_gas_totals,
     panel_lifetime_mt,
     panel_n_emitting,
     panel_peak,
@@ -288,7 +289,10 @@ def build_slide_tables(
         columns=["item", "value", "unit"],
     )
 
-    budgets = carbon_budget_shares(lifecycle, inputs["params"])
+    lifetime_co2_only = panel_gas_totals(panel, DEFAULT_SCENARIO)[
+        "lifetime_co2_only_mt"
+    ]
+    budgets = carbon_budget_shares(lifecycle, inputs["params"], lifetime_co2_only)
     budget_rows = []
     for r in budgets.itertuples():
         budget_rows.append(
@@ -297,7 +301,9 @@ def build_slide_tables(
                 "value": _r1(r.share_pct),
                 "unit": "%",
                 "budget_GtCO2": r.budget_gtco2,
+                "lifetime_GtCO2_co2_only": round(r.lifetime_gtco2, 2),
                 "lifetime_GtCO2e": round(r.lifetime_gtco2e, 2),
+                "share_on_co2e_basis_pct": _r1(r.share_co2e_pct),
                 "note": r.units_note,
             }
         )

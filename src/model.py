@@ -772,13 +772,31 @@ CARBON_BUDGET_PARAMS = (
 )
 
 
-def carbon_budget_shares(lifetime_mtco2e: float, params) -> pd.DataFrame:
-    """Lifetime CO2e as a share of GCB 2025 remaining CO2 budgets.
+CO2_ONLY_BUDGET_CAVEAT = (
+    "Like for like: CO2-only lifetime against a CO2 budget. Residual caveats: "
+    "pipeline fugitive methane is not split out of the CO2 total, and non-CO2 "
+    "gases other than CH4 (N2O, refrigerants) are not counted at all."
+)
 
-    Budgets are CO2; the register is GWP100 CO2e. The comparison is an
-    approximation: a true CO2-only total is not derivable from this model.
+
+def carbon_budget_shares(
+    lifetime_mtco2e: float,
+    params,
+    lifetime_co2_only_mt: float | None = None,
+) -> pd.DataFrame:
+    """Lifetime against the GCB 2025 remaining CO2 budgets, both bases.
+
+    `share_pct` is the **paper value**: the CO2-only lifetime against a CO2
+    budget. `share_co2e_pct` is the older CO2e-against-CO2 comparison, kept
+    for continuity and labelled as an approximation.
     """
     gt = float(lifetime_mtco2e) / 1000.0
+    if lifetime_co2_only_mt is None:
+        raise MissingInputError(
+            "carbon_budget_shares needs lifetime_co2_only_mt. The paper value "
+            "is the CO2-only share; pass it from the panel gas split."
+        )
+    gt_co2 = float(lifetime_co2_only_mt) / 1000.0
     rows = []
     for name, label in CARBON_BUDGET_PARAMS:
         budget = float(get_param(params, name))
@@ -786,11 +804,12 @@ def carbon_budget_shares(lifetime_mtco2e: float, params) -> pd.DataFrame:
             "parameter": name,
             "label": label,
             "budget_gtco2": budget,
+            "lifetime_gtco2": gt_co2,
             "lifetime_gtco2e": gt,
-            "share_pct": 100.0 * gt / budget,
-            "units_note": (
-                "CO2e compared to a CO2 budget (approximation); "
-                "a true CO2-only total is not derivable"
-            ),
+            "share_pct": 100.0 * gt_co2 / budget,
+            "share_basis": "CO2-only lifetime vs CO2 budget (paper value)",
+            "share_co2e_pct": 100.0 * gt / budget,
+            "share_co2e_basis": "GWP100 CO2e vs CO2 budget (approximation)",
+            "units_note": CO2_ONLY_BUDGET_CAVEAT,
         })
     return pd.DataFrame(rows)

@@ -177,9 +177,17 @@ America.
 | Remaining 1.5°C budget (50%) | 170 GtCO2 | Global Carbon Budget 2025, from start of 2026 |
 | Remaining 1.7°C / 2°C (50%) | 525 / 1,055 GtCO2 | Same source |
 
-Lifetime CO2e is also reported as a share of those remaining budgets. The budgets are CO2;
-the register is GWP100 CO2e. That comparison is an approximation: a true CO2-only total is
-not derivable from this model.
+Lifetime emissions are also reported as a share of those remaining budgets. The budgets are
+CO2, so the **paper value is the CO2-only lifetime** (8,967.2 MtCO2 at full buildout, 5.3% of
+the 170 GtCO2 remaining for 1.5°C). That is like for like. The panel carries an explicit
+per-gas split — `co2_mt`, `ch4_derived_co2e_mt` and `ch4_mass_kt` per asset-year, summing to
+`emissions_mtco2e` exactly — built from parameters already on the workbook: upstream CH4 is
+the scenario factor less the CO2 part of the official inventory, and shipping CH4 is the
+measured methane-slip share of the carrier uplift (1 − 1/1.44). Two residual caveats remain:
+pipeline fugitive methane is not split, so a small amount of methane sits inside the CO2
+total; and non-CO2 gases other than methane (N2O, refrigerants) are not counted anywhere in
+the model. The GWP100 CO2e share against the same budgets (5.5% for 1.5°C) is still reported
+alongside for continuity.
 
 The FID delay sits inside the lifespan window rather than extending it, so a delayed project has
 fewer operating years. It is the least evidenced parameter in the model and is worth approximately

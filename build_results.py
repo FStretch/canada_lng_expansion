@@ -292,15 +292,25 @@ def write_review_summary(
         f"BUNK {bunk:.1f} ({bunk/annual*100:.1f}%)  |  "
         f"FOR {foreign:.1f} ({foreign/annual*100:.1f}%)"
     )
-    budgets = carbon_budget_shares(lifecycle, params)
+    lifetime_co2_only = panel_gas_totals(panel, DEFAULT_SCENARIO)[
+        "lifetime_co2_only_mt"
+    ]
+    budgets = carbon_budget_shares(lifecycle, params, lifetime_co2_only)
     lines.append(
-        "- **Share of remaining carbon budget (GCB 2025, from start of 2026):** "
+        f"- **Share of remaining carbon budget (GCB 2025, from start of 2026), "
+        f"on the CO2-only lifetime of {lifetime_co2_only:,.1f} MtCO2:** "
         + "  |  ".join(
             f"{r.label} {r.share_pct:.1f}% of {r.budget_gtco2:g} GtCO2"
             for r in budgets.itertuples()
         )
-        + ". Comparison is **CO2e against a CO2 budget** (approximation); "
-        "a true CO2-only total is not derivable."
+        + f". This is **like for like**: CO2 against a CO2 budget. "
+        f"Residual caveats: pipeline fugitive methane is not split out of the "
+        f"CO2 total, and non-CO2 gases other than CH4 are not counted. "
+        f"On the older GWP100 CO2e basis the same shares are "
+        + "  |  ".join(
+            f"{r.share_co2e_pct:.1f}%" for r in budgets.itertuples()
+        )
+        + "."
     )
     lines.append("")
 
@@ -781,9 +791,11 @@ def write_review_summary(
         )
     lines.append(
         "- Remaining carbon budgets (GCB 2025) are CO2 from the start of 2026. "
-        "Lifetime totals are GWP100 CO2e. The share-of-budget figures compare "
-        "CO2e to a CO2 budget and are an approximation; a true CO2-only total "
-        "is not derivable from this model."
+        "The paper's share-of-budget figures are now the **CO2-only** lifetime "
+        "against those budgets, from the Task 1 per-gas split. Residual "
+        "caveats: pipeline fugitive methane is not split out of the CO2 total, "
+        "so a small amount of methane sits inside it; and non-CO2 gases other "
+        "than CH4 (N2O, refrigerants) are not counted anywhere in the model."
     )
     lines.append(
         "- Reconciliations close within floating-point tolerance (1e-6 to 1e-3); "
@@ -1239,12 +1251,16 @@ def main() -> None:
         f"({gwp20_rec['difference_pct']:+.2f}%) - reported, not forced"
     )
 
-    budgets = carbon_budget_shares(panel_life_mt, inputs["params"])
+    budgets = carbon_budget_shares(
+        panel_life_mt,
+        inputs["params"],
+        float(full_split["lifetime_co2_only_mt"]),
+    )
     b15 = budgets.loc[budgets["parameter"] == "remaining_15c_budget"].iloc[0]
     print(
-        f"[validate] lifetime {b15['lifetime_gtco2e']:.2f} GtCO2e is "
+        f"[validate] lifetime {b15['lifetime_gtco2']:.2f} GtCO2 (CO2 only) is "
         f"{b15['share_pct']:.1f}% of 1.5C budget {b15['budget_gtco2']:g} GtCO2 "
-        f"(CO2e vs CO2 approximation) PASS"
+        f"like for like (CO2e basis would be {b15['share_co2e_pct']:.1f}%) PASS"
     )
 
     summary = summary.copy()
@@ -1311,11 +1327,16 @@ def main() -> None:
             ("monte_carlo_n_draws", mc["n_draws"]),
             ("monte_carlo_physics_seconds", round(mc["physics_seconds"], 3)),
             ("monte_carlo_price_seconds", round(mc["price_seconds"], 3)),
+            ("lifetime_co2_only_mt", float(full_split["lifetime_co2_only_mt"])),
+            ("lifetime_ch4_kt", float(full_split["lifetime_ch4_kt"])),
             (
                 "carbon_budget_units_note",
-                "Lifetime is GWP100 CO2e; GCB 2025 budgets are CO2. "
-                "Share-of-budget is CO2e / CO2 (approximation).",
+                "Share-of-budget is the CO2-only lifetime against the CO2 "
+                "budgets (like for like). Residual: pipeline fugitive methane "
+                "is not split out of the CO2 total, and non-CO2 gases other "
+                "than CH4 are not counted.",
             ),
+            ("lifetime_share_of_15c_budget_co2e_basis_pct", float(b15["share_co2e_pct"])),
             ("duration_x_average_mtco2e", duration_life),
             ("export_capacity_mtpa", export_total),
             ("canada_territorial_mtco2e_yr", can / 1e6),
