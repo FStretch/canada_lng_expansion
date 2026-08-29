@@ -19,6 +19,10 @@ from src.inputs import (
 )
 from src.figures_report import build_all_report_figures
 from src.slide_tables import build_slide_tables, write_slide_tables_xlsx
+from src.drive_sensitivity import (
+    format_drive_markdown,
+    run_drive_sensitivity,
+)
 from src.feedgas_sensitivity import (
     format_feedgas_markdown,
     run_kino_aski_feedgas_sensitivity,
@@ -350,6 +354,7 @@ def write_review_summary(
     paper_set: pd.DataFrame | None = None,
     uniform_life: dict | None = None,
     feedgas: dict | None = None,
+    drive_sens: dict | None = None,
 ) -> None:
     sample = headline_sample(by_project, DEFAULT_SCENARIO)
     params = inputs["params"]
@@ -1066,6 +1071,8 @@ def write_review_summary(
         lines.extend(format_uniform_life_markdown(uniform_life))
     if feedgas is not None:
         lines.extend(format_feedgas_markdown(feedgas, inputs))
+    if drive_sens is not None:
+        lines.extend(format_drive_markdown(drive_sens))
     if mc is not None:
         published_vs_mc = None
         if ld is not None:
@@ -1512,6 +1519,19 @@ def main() -> None:
         + " PASS"
     )
 
+    drive_sens = run_drive_sensitivity(inputs, panel)
+    dcen = drive_sens["cases"].loc[drive_sens["cases"]["case"] == "central"].iloc[0]
+    assert abs(float(dcen["headline_lifetime_mtco2e"]) - panel_life_mt) < 1e-6
+    print(
+        "[validate] liquefaction drive sensitivity (central 0.29 unchanged): "
+        + "; ".join(
+            f"{r['case']} {r['headline_delta_mtco2e']:+.1f} Mt total and CAN"
+            for _, r in drive_sens["cases"].iterrows()
+            if r["case"] != "central"
+        )
+        + " PASS"
+    )
+
     mc = run_monte_carlo(inputs, INPUTS_DIR, panel)
     print(
         f"[validate] Monte Carlo {mc['n_draws']} draws seed {mc['seed']} "
@@ -1746,6 +1766,7 @@ def main() -> None:
         paper_set=paper_set,
         uniform_life=uniform_life,
         feedgas=feedgas,
+        drive_sens=drive_sens,
     )
     fig_results = build_all_report_figures(
         inputs, by_project, stages, FIGURE_DIR, FIGURE_DATA, panel=panel
@@ -1791,6 +1812,12 @@ def main() -> None:
     )
     feedgas["cases"].to_csv(
         FIGURE_DATA / "sens_kino_aski_feedgas.csv", index=False
+    )
+    drive_sens["cases"].to_csv(
+        FIGURE_DATA / "sens_liquefaction_drive.csv", index=False
+    )
+    drive_sens["by_asset"].to_csv(
+        FIGURE_DATA / "sens_liquefaction_drive_by_asset.csv", index=False
     )
     slide_tables = build_slide_tables(
         inputs, by_project, summary, by_chain, stages, panel, ld=ld, mc=mc

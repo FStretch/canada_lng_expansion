@@ -1,0 +1,5 @@
+case,project_id,evidence,liquefaction_intensity,lifetime_delta_mtco2e,canada_delta_mtco2e
+electric_drive_gas_generation,ksi_lisims_lng,sourced (BC EAO assessment is for this facility),0.156,-39.543936,-39.543936
+electric_drive_gas_generation,cedar_lng,assumption: same floating-LNG electric-drive class as Ksi Lisims; no Cedar-specific figure was located,0.156,-14.213634600000002,-14.213634600000002
+electric_drive_grid,ksi_lisims_lng,sourced (BC EAO assessment is for this facility),0.021,-79.382976,-79.382976
+electric_drive_grid,cedar_lng,assumption: same floating-LNG electric-drive class as Ksi Lisims; no Cedar-specific figure was located,0.021,-28.533341100000005,-28.533341100000005

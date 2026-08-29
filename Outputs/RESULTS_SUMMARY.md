@@ -1,6 +1,6 @@
 # Canada LNG lifecycle emissions — review summary
 
-Default scenario: `measurement_central`. Run at 2026-08-29 09:35 UTC. Numbers to one decimal. Inputs read-only. `calc_group` from `Asset Register:calc_group`.
+Default scenario: `measurement_central`. Run at 2026-08-29 09:38 UTC. Numbers to one decimal. Inputs read-only. `calc_group` from `Asset Register:calc_group`.
 
 Deck-facing tables (one sheet per table, 1-decimal): `Outputs/SLIDE_TABLES.xlsx`. Send that workbook to the PPT chat.
 
@@ -319,9 +319,25 @@ Case B leaves the total unchanged (9,298.1 Mt) and moves 151.1 Mt out of the Can
 - **Fermeuse (Avalon Peninsula, 5.0 mtpa).** The feedgas is offshore associated gas from the Jeanne d'Arc Basin, not Western Canadian pipeline gas. The bias runs the other way on pipeline transport: there is essentially no onshore transmission haul, so applying the 0.10 tCO2e/t pipeline factor **overstates** that stage. Offshore associated gas production has a different emissions profile from onshore unconventional production - platform power, flaring and venting rather than well-pad and gathering methane - and no Canadian offshore factor was located, so the Western Canadian upstream factor is applied and the direction of that bias is **not determined**. No factor change is made for Fermeuse; this is limitations text only.
 - **Shipping is now route-scaled** (see the emission factors section), so the Atlantic projects no longer carry a Pacific shipping distance. That correction is in the central case; the upstream and pipeline substitutions above are not.
 
+## Liquefaction drive-type sensitivity (SI only)
+
+Central liquefaction stays **0.29** tCO2e per tonne LNG (gas turbine drive) for every terminal, and the run still asserts it. Two electric-drive figures from the British Columbia Environmental Assessment Office's assessment of Ksi Lisims LNG (7 August 2025, Canadian Impact Assessment Registry document 163192E, pages 847 to 848) are applied as a sensitivity: **0.156** for the Alternative Case with gas-fired power barges, and **0.021** for the Base Case on grid supply.
+
+**Boundary caveat.** The two drive figures are facility total intensity including marine sources, not the liquefaction stage alone; 0.29 is a liquefaction-stage factor. The comparison is approximate. Both parameter rows on the Parameters sheet carry the same note.
+
+Scope: **Ksi Lisims**, where the figures are sourced, and **Cedar**, on the stated **assumption** that it belongs to the same floating-LNG electric-drive class - no Cedar-specific figure was located. No other terminal is touched. The existing electrification appendix (0.12 versus 0.29, figure 8) is unchanged and is a separate comparator.
+
+| case | liquefaction tCO2e/t | headline lifetime Mt | delta Mt | headline Canada-territorial Mt | Canada delta Mt |
+|---|---|---|---|---|---|
+| Central: gas turbine 0.29 for every terminal | 0.290 | 9,298.1 | +0.0 | 1,679.4 | +0.0 |
+| Alternative Case, gas-fired power barges (BC EAO Ksi Lisims), applied to Ksi Lisims and Cedar | 0.156 | 9,244.3 | -53.8 | 1,625.6 | -53.8 |
+| Base Case, grid supply (BC EAO Ksi Lisims), applied to Ksi Lisims and Cedar | 0.021 | 9,190.2 | -107.9 | 1,571.5 | -107.9 |
+
+Liquefaction is CAN-tagged on every chain that includes it, so the whole delta lands in the Canada-territorial column: the total and the Canada figure move by the same amount. Per-asset split: `Outputs/figure_data/sens_liquefaction_drive.csv`.
+
 ## Monte Carlo (physics sampled, ECCC 2% per gas applied after)
 
-10,000 draws, seed `20260828`. Physics 0.20s; pricing 0.04s. Kernel vs published panel max abs 2.8e-14 Mt. Liquefaction held at 0.29. Howarth 0.55 is a named point, not a draw. Draws are on the headline scope (export chain). Each draw carries its own upstream and shipping factor, so its CH4 mass moves with it; damages are CO2 at SC-CO2 plus CH4 mass at SC-CH4, the same per-gas treatment as the central case.
+10,000 draws, seed `20260828`. Physics 0.18s; pricing 0.03s. Kernel vs published panel max abs 2.8e-14 Mt. Liquefaction held at 0.29. Howarth 0.55 is a named point, not a draw. Draws are on the headline scope (export chain). Each draw carries its own upstream and shipping factor, so its CH4 mass moves with it; damages are CO2 at SC-CO2 plus CH4 mass at SC-CH4, the same per-gas treatment as the central case.
 
 | build-out | lifetime median [p5, p95] Mt | peak-year median [p5, p95] Mt | ECCC 2% damage median [p5, p95] CAD bn |
 |---|---|---|---|
