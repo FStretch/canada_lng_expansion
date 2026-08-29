@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -88,6 +89,11 @@ FIGURE = OUT / "figures" / "operating_vs_proposed.png"
 FIGURE_DIR = OUT / "figures"
 FIGURE_DATA = OUT / "figure_data"
 PAPER_SET_CSV = OUT / "figure_data" / "paper_set.csv"
+# Canonical, rounded copy of the paper set. Its SHA-256 is asserted below, so
+# a re-run that moves any published digit fails loudly instead of quietly
+# republishing. Rounded to the published precision on purpose: the hash should
+# track paper numbers, not float noise in the last bits.
+PAPER_SET_LOCKED_CSV = OUT / "paper_set_locked.csv"
 
 # Snapshot before the August 2026 register/electrification revision.
 BEFORE = {
@@ -139,6 +145,12 @@ EXPECTED_PEAK_MT = 298.2
 #
 # One decimal on Mt, whole CAD bn. `full` duplicates EXPECTED_LIFETIME_MT /
 # EXPECTED_PEAK_MT / EXPECTED_PEAK_YEAR on purpose: the two locks must agree.
+# SHA-256 of Outputs/paper_set_locked.csv, the rounded canonical copy of the
+# paper set. Re-lock it in the same commit as EXPECTED_BUILD_OUT, never alone.
+EXPECTED_PAPER_SET_SHA256 = (
+    "9e33c6914c18219b6a066d7c7afab048102ffd53d832d8c7a2d2f3e6272a0946"
+)
+
 EXPECTED_BUILD_OUT = {
     "committed": {
         "lifetime_mt": 1869.5,
@@ -198,6 +210,45 @@ def gas_split_table(panel: pd.DataFrame, inputs: dict) -> pd.DataFrame:
         "liquefaction, regasification and combustion are treated as CO2."
     )
     return df
+
+
+PAPER_SET_LOCKED_COLUMNS = (
+    ("build_out", None),
+    ("n_assets", None),
+    ("lifetime_mtco2e", 1),
+    ("lifetime_mtco2e_p05", 1),
+    ("lifetime_mtco2e_p95", 1),
+    ("lifetime_mtco2e_mc_median", 1),
+    ("lifetime_co2_only_mt", 1),
+    ("lifetime_co2_only_mt_p05", 1),
+    ("lifetime_co2_only_mt_p95", 1),
+    ("lifetime_ch4_kt", 0),
+    ("peak_year", None),
+    ("peak_mtco2e_yr", 1),
+    ("peak_mtco2e_yr_p05", 1),
+    ("peak_mtco2e_yr_p95", 1),
+    ("eccc_2pct_damages_cad_bn", 0),
+    ("eccc_2pct_damages_cad_bn_p05", 0),
+    ("eccc_2pct_damages_cad_bn_p95", 0),
+    ("canada_territorial_pct", 1),
+    ("international_bunkers_pct", 1),
+    ("foreign_territorial_pct", 1),
+    ("share_of_remaining_15c_budget_pct", 2),
+    ("share_of_remaining_17c_budget_pct", 2),
+    ("share_of_remaining_2c_budget_pct", 2),
+)
+
+
+def write_paper_set_locked(paper_set: pd.DataFrame, path: Path) -> str:
+    """Write the rounded paper set and return its SHA-256."""
+    out = pd.DataFrame()
+    for col, places in PAPER_SET_LOCKED_COLUMNS:
+        series = paper_set[col]
+        out[col] = series if places is None else series.astype(float).round(places)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    text = out.to_csv(index=False, lineterminator=chr(10))
+    path.write_text(text, encoding="utf-8", newline="")
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 def paper_set_table(
@@ -1618,6 +1669,18 @@ def main() -> None:
             <= r["lifetime_mtco2e_mc_median"]
             <= r["lifetime_mtco2e_p95"]
         ), r["build_out"]
+    paper_set_sha = write_paper_set_locked(paper_set, PAPER_SET_LOCKED_CSV)
+    assert paper_set_sha == EXPECTED_PAPER_SET_SHA256, (
+        "The locked paper-set table has changed. "
+        f"expected SHA-256 {EXPECTED_PAPER_SET_SHA256}; "
+        f"got {paper_set_sha}; "
+        f"file {PAPER_SET_LOCKED_CSV}. "
+        "Every published paper number is in that file. If the change is "
+        "deliberate, update EXPECTED_PAPER_SET_SHA256 and EXPECTED_BUILD_OUT "
+        "in the same commit and put the old and new values in the message."
+    )
+    print(f"[validate] paper-set SHA-256 {paper_set_sha[:16]}... matches lock PASS")
+
     full_row = paper_set.loc[paper_set["build_out"] == "full"].iloc[0]
     assert round(float(full_row["lifetime_mtco2e"]), 1) == EXPECTED_LIFETIME_MT
     assert int(full_row["peak_year"]) == EXPECTED_PEAK_YEAR

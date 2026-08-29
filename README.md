@@ -69,6 +69,7 @@ src/
   slide_tables.py                   deck-facing Excel tables
   report_params.py                  figure-only defaults if a parameter is not on the Inputs sheet
 build_results.py                    orchestrates a run and writes the outputs
+tools/                              one-off, documented scripts that edit an input workbook
 Outputs/
   Canada_LNG_Emissions_Results.xlsx results by project, chain, stage, group and scenario
   SLIDE_TABLES.xlsx                 deck-facing tables (one sheet per table; send this file)
@@ -341,6 +342,16 @@ errors point in opposite directions. Recorded in the register's Data Gaps sheet.
 
 ## Reproducing a run
 
+Built and published on **Python 3.13.0** (Windows 11). Dependencies are pinned exactly in
+`requirements.txt` — `pandas==2.3.2`, `numpy==2.3.3`, `matplotlib==3.10.8`, `openpyxl==3.1.5` —
+rather than ranged, because the run asserts a SHA-256 over the locked paper-set table and a
+library upgrade that changed float formatting should fail the run rather than quietly republish
+different digits.
+
+```bash
+pip install -r requirements.txt
+```
+
 ```bash
 python build_results.py
 ```
@@ -348,6 +359,23 @@ python build_results.py
 Reads both workbooks from `Inputs/`, runs all five scenarios, and writes the results workbook,
 `SLIDE_TABLES.xlsx`, the summary and the figures to `Outputs/`. The inputs are opened read-only
 and the run asserts they are unmodified on completion.
+
+**Every published number is locked.** `EXPECTED_BUILD_OUT` in `build_results.py` holds the paper
+set for all three build-outs, and `EXPECTED_PAPER_SET_SHA256` is a SHA-256 over
+`Outputs/paper_set_locked.csv`, the rounded canonical copy of that table. A re-run that moves any
+published digit fails with the expected and actual hash rather than silently rewriting the
+outputs. Re-locking is deliberate: both constants change in the same commit, with the old and new
+values in the commit message.
+
+Repository metadata for citation is in `CITATION.cff`.
+
+Workbook edits are deliberate and scripted. The model never writes to `Inputs/`; the one-off
+scripts that changed an input workbook or the register live in `tools/`, each documenting what it
+changed and why.
+
+`python tools/stale_figure_inventory.py` regenerates `Outputs/STALE_FIGURE_INVENTORY.md`, which
+greps the whole repository for superseded headline values and separates live hits from deliberate
+historical records. Run it after any re-lock.
 
 To change an assumption, edit the input workbooks rather than the code. The model has no
 hardcoded emission factors, capacities or parameters.

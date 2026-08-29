@@ -1,4 +1,9 @@
-pandas>=2.0
-openpyxl>=3.1
-matplotlib>=3.7
-numpy>=1.24
+# Exact pins, from the environment the published run was produced in
+# (Python 3.13.0, Windows 11). Pinned rather than ranged because
+# build_results.py asserts a SHA-256 over the locked paper-set table: a
+# library upgrade that changes float formatting would fail the run rather
+# than silently republish different digits.
+pandas==2.3.2
+numpy==2.3.3
+matplotlib==3.10.8
+openpyxl==3.1.5

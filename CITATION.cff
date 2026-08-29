@@ -1,0 +1,47 @@
+cff-version: 1.2.0
+title: "Canada LNG Expansion: Lifecycle Emissions Model"
+message: >-
+  If you use this model, its outputs or its asset register, please cite it
+  using these metadata.
+type: software
+authors:
+  - name: "Toronto Climate Observatory"
+    city: Toronto
+    region: Ontario
+    country: CA
+abstract: >-
+  An open, reproducible model of the greenhouse gas emissions caused by
+  Canada's liquefied natural gas export expansion. Covers every LNG asset in
+  the country in the register - operating, under construction and proposed -
+  over a per-asset, per-calendar-year lifecycle panel, with an explicit
+  carbon dioxide and methane split, territorial tagging (Canada, international
+  marine bunkers, foreign), and monetised global loss and damage at Canada's
+  official social cost of greenhouse gases. Headline results are the export
+  chain.
+keywords:
+  - liquefied natural gas
+  - lifecycle emissions
+  - methane
+  - social cost of carbon
+  - loss and damage
+  - Canada
+license: CC-BY-4.0
+repository-code: "https://github.com/FStretch/canada_lng_expansion"
+version: "2026.08"
+date-released: "2026-08-29"
+references:
+  - type: data
+    title: "Global Gas Infrastructure Tracker: LNG Terminals"
+    authors:
+      - name: "Global Energy Monitor"
+    year: 2025
+    url: "https://globalenergymonitor.org/projects/global-gas-infrastructure-tracker/"
+  - type: report
+    title: "Social Cost of Greenhouse Gas Estimates - Interim Updated Guidance"
+    authors:
+      - name: "Environment and Climate Change Canada"
+    url: "https://www.canada.ca/en/environment-climate-change/services/climate-change/science-research-data/social-cost-ghg.html"
+  - type: software
+    title: "echolab-stanford/loss_damage: Replication code for Burke, Zahid, Diffenbaugh and Hsiang"
+    doi: "10.5281/zenodo.18158445"
+    year: 2026
