@@ -163,10 +163,12 @@ def util_in_calendar_year(
     sched: list[float],
     start: int,
     legacy: bool,
+    *,
+    ignore_licence_end: bool = False,
 ) -> float:
     if legacy:
         return _steady_from_schedule(sched)
-    licence_end = _licence_end_year(row)
+    licence_end = None if ignore_licence_end else _licence_end_year(row)
     if licence_end is not None and year > licence_end:
         return 0.0
     idx = year - start
@@ -184,16 +186,31 @@ def project_annual_split_mt(
     *,
     canada_only: bool = False,
     liquefaction_mode: str | None = None,
+    lifespan_override_years: int | None = None,
+    ignore_licence_end: bool = False,
 ) -> tuple[float, float, float] | None:
     """(MtCO2e, MtCO2, Mt CH4-derived CO2e) for one asset-year, or None if excluded."""
     if pd.isna(row["capacity_mtpa"]):
         return None
     params = inputs["params"]
-    life, _ = _lifespan(row, params)
+    life, _ = _lifespan(
+        row,
+        params,
+        lifespan_override_years=lifespan_override_years,
+        ignore_licence_end=ignore_licence_end,
+    )
     legacy = _is_legacy(row, life)
     start, _ = _start_year(row, assumed_start)
     sched = _util_schedule(row, life, params)
-    util = util_in_calendar_year(row, year, life, sched, start, legacy)
+    util = util_in_calendar_year(
+        row,
+        year,
+        life,
+        sched,
+        start,
+        legacy,
+        ignore_licence_end=ignore_licence_end,
+    )
     if util == 0.0:
         return 0.0, 0.0, 0.0
     mtpa_to_t = float(get_param(params, "mtpa_to_tonnes"))
@@ -217,6 +234,8 @@ def project_annual_mt(
     *,
     canada_only: bool = False,
     liquefaction_mode: str | None = None,
+    lifespan_override_years: int | None = None,
+    ignore_licence_end: bool = False,
 ) -> float | None:
     """MtCO2e in a calendar year for one asset, or None if excluded (no capacity)."""
     split = project_annual_split_mt(
@@ -227,18 +246,31 @@ def project_annual_mt(
         assumed_start,
         canada_only=canada_only,
         liquefaction_mode=liquefaction_mode,
+        lifespan_override_years=lifespan_override_years,
+        ignore_licence_end=ignore_licence_end,
     )
     return None if split is None else split[0]
 
 
-def calendar_bounds(inputs: dict, assumed_start: int) -> tuple[int, int]:
+def calendar_bounds(
+    inputs: dict,
+    assumed_start: int,
+    *,
+    lifespan_override_years: int | None = None,
+    ignore_licence_end: bool = False,
+) -> tuple[int, int]:
     """Inclusive (first, last) calendar year of the published emissions panel."""
     last = PANEL_START_YEAR
     params = inputs["params"]
     for _, row in inputs["assets"].iterrows():
         if pd.isna(row["capacity_mtpa"]):
             continue
-        life, _ = _lifespan(row, params)
+        life, _ = _lifespan(
+            row,
+            params,
+            lifespan_override_years=lifespan_override_years,
+            ignore_licence_end=ignore_licence_end,
+        )
         if _is_legacy(row, life):
             continue
         start, _ = _start_year(row, assumed_start)
@@ -253,6 +285,8 @@ def build_emissions_panel(
     assumed_start: int | None = None,
     canada_only: bool = False,
     liquefaction_mode: str | None = None,
+    lifespan_override_years: int | None = None,
+    ignore_licence_end: bool = False,
 ) -> pd.DataFrame:
     """Per-asset, per-calendar-year MtCO2e. Primary emissions object.
 
@@ -266,7 +300,12 @@ def build_emissions_panel(
     if assumed_start is None:
         assumed_start = int(get_param(inputs["params"], "assumed_first_export_year_if_missing"))
     scen_list = tuple(scenarios) if scenarios is not None else INTENSITY_SCENARIOS
-    year0, year1 = calendar_bounds(inputs, assumed_start)
+    year0, year1 = calendar_bounds(
+        inputs,
+        assumed_start,
+        lifespan_override_years=lifespan_override_years,
+        ignore_licence_end=ignore_licence_end,
+    )
     years = range(year0, year1 + 1)
     gwp100 = float(get_param(inputs["params"], "gwp100_ch4"))
     rows = []
@@ -275,7 +314,12 @@ def build_emissions_panel(
         for _, row in inputs["assets"].iterrows():
             if pd.isna(row["capacity_mtpa"]):
                 continue
-            life, life_src = _lifespan(row, inputs["params"])
+            life, life_src = _lifespan(
+                row,
+                inputs["params"],
+                lifespan_override_years=lifespan_override_years,
+                ignore_licence_end=ignore_licence_end,
+            )
             if _is_legacy(row, life):
                 continue
             start, placeholder = _start_year(row, assumed_start)
@@ -288,6 +332,8 @@ def build_emissions_panel(
                     assumed_start,
                     canada_only=canada_only,
                     liquefaction_mode=liquefaction_mode,
+                    lifespan_override_years=lifespan_override_years,
+                    ignore_licence_end=ignore_licence_end,
                 )
                 if split is None:
                     continue

@@ -1,6 +1,6 @@
 # Canada LNG lifecycle emissions — review summary
 
-Default scenario: `measurement_central`. Run at 2026-08-29 09:27 UTC. Numbers to one decimal. Inputs read-only. `calc_group` from `Asset Register:calc_group`.
+Default scenario: `measurement_central`. Run at 2026-08-29 09:30 UTC. Numbers to one decimal. Inputs read-only. `calc_group` from `Asset Register:calc_group`.
 
 Deck-facing tables (one sheet per table, 1-decimal): `Outputs/SLIDE_TABLES.xlsx`. Send that workbook to the PPT chat.
 
@@ -272,9 +272,31 @@ Placeholder-start assets account for **5492.4 MtCO2e** (59.1% of the 9298.1 Mt l
 | 2033 | 9298.1 | 2040 | 298.2 | 2072 | 4160 |
 | 2035 | 9298.1 | 2042 | 298.2 | 2074 | 4218 |
 
+## Uniform 40-year life sensitivity (SI only)
+
+Every in-scope asset run at **40 years from its first export year with no `authorised_export_end_year` stop** (`lifespan_override_years=40`, `ignore_licence_end=True` on the panel builder). The central case is unchanged and stays the paper's number; this is supplementary information. Lives in the central case run from 27 to 40 years, and the licence-end stops bite hardest on the two LNG Canada trains and Ksi Lisims — the assets furthest along — so the central case is not simply a shorter version of this one.
+
+| build-out | case | lifetime CO2e Mt | lifetime CO2-only Mt | peak Mt (year) | ECCC 2% damages CAD bn |
+|---|---|---|---|---|---|
+| committed | central | 1,869.5 | 1,799.6 | 58.3 (2030) | 749 |
+| committed | uniform_40yr_no_licence_stop | 2,279.8 | 2,194.6 | 58.3 (2030) | 955 |
+| committed_plus_advanced | central | 3,805.7 | 3,663.5 | 135.8 (2037) | 1,579 |
+| committed_plus_advanced | uniform_40yr_no_licence_stop | 4,936.9 | 4,752.4 | 135.8 (2037) | 2,157 |
+| full | central | 9,298.1 | 8,955.2 | 298.2 (2037) | 4,073 |
+| full | uniform_40yr_no_licence_stop | 10,509.6 | 10,121.5 | 298.2 (2037) | 4,693 |
+
+Full buildout moves **+13.0%** on the uniform life. Committed-to-full ratio, both ways:
+
+| case | full / committed | committed as % of full |
+|---|---|---|
+| central | 4.97 | 20.1% |
+| uniform_40yr_no_licence_stop | 4.61 | 21.7% |
+
+Series: `Outputs/figure_data/sens_uniform_life.csv`. No locked value changes: the central case is untouched.
+
 ## Monte Carlo (physics sampled, ECCC 2% per gas applied after)
 
-10,000 draws, seed `20260828`. Physics 0.19s; pricing 0.04s. Kernel vs published panel max abs 2.8e-14 Mt. Liquefaction held at 0.29. Howarth 0.55 is a named point, not a draw. Draws are on the headline scope (export chain). Each draw carries its own upstream and shipping factor, so its CH4 mass moves with it; damages are CO2 at SC-CO2 plus CH4 mass at SC-CH4, the same per-gas treatment as the central case.
+10,000 draws, seed `20260828`. Physics 0.18s; pricing 0.04s. Kernel vs published panel max abs 2.8e-14 Mt. Liquefaction held at 0.29. Howarth 0.55 is a named point, not a draw. Draws are on the headline scope (export chain). Each draw carries its own upstream and shipping factor, so its CH4 mass moves with it; damages are CO2 at SC-CO2 plus CH4 mass at SC-CH4, the same per-gas treatment as the central case.
 
 | build-out | lifetime median [p5, p95] Mt | peak-year median [p5, p95] Mt | ECCC 2% damage median [p5, p95] CAD bn |
 |---|---|---|---|

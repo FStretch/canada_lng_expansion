@@ -19,6 +19,10 @@ from src.inputs import (
 )
 from src.figures_report import build_all_report_figures
 from src.slide_tables import build_slide_tables, write_slide_tables_xlsx
+from src.lifespan_sensitivity import (
+    format_uniform_life_markdown,
+    run_uniform_life_sensitivity,
+)
 from src.placeholder_sensitivity import (
     format_placeholder_markdown,
     run_placeholder_start_sensitivity,
@@ -340,6 +344,7 @@ def write_review_summary(
     gas_split: pd.DataFrame | None = None,
     gwp20_rec: dict | None = None,
     paper_set: pd.DataFrame | None = None,
+    uniform_life: dict | None = None,
 ) -> None:
     sample = headline_sample(by_project, DEFAULT_SCENARIO)
     params = inputs["params"]
@@ -1052,6 +1057,8 @@ def write_review_summary(
         lines.extend(format_ld_markdown(ld))
     if placeholder_sens is not None:
         lines.extend(format_placeholder_markdown(placeholder_sens))
+    if uniform_life is not None:
+        lines.extend(format_uniform_life_markdown(uniform_life))
     if mc is not None:
         published_vs_mc = None
         if ld is not None:
@@ -1466,6 +1473,21 @@ def main() -> None:
         f"{placeholder_sens['placeholder_mt']:.1f} Mt "
         f"({placeholder_sens['placeholder_pct']:.1f}% of lifetime) PASS"
     )
+    uniform_life = run_uniform_life_sensitivity(inputs, INPUTS_DIR, panel, ld)
+    central_full = float(
+        uniform_life["cases"].loc[
+            (uniform_life["cases"]["case"] == "central")
+            & (uniform_life["cases"]["build_out"] == "full"),
+            "lifetime_mtco2e",
+        ].iloc[0]
+    )
+    assert abs(central_full - panel_life_mt) < 1e-9, (central_full, panel_life_mt)
+    print(
+        f"[validate] uniform 40-year life sensitivity "
+        f"{uniform_life['delta_pct_full']:+.1f}% on full buildout; "
+        f"central case unchanged PASS"
+    )
+
     mc = run_monte_carlo(inputs, INPUTS_DIR, panel)
     print(
         f"[validate] Monte Carlo {mc['n_draws']} draws seed {mc['seed']} "
@@ -1698,6 +1720,7 @@ def main() -> None:
         gas_split=gas_split,
         gwp20_rec=gwp20_rec,
         paper_set=paper_set,
+        uniform_life=uniform_life,
     )
     fig_results = build_all_report_figures(
         inputs, by_project, stages, FIGURE_DIR, FIGURE_DATA, panel=panel
@@ -1735,6 +1758,12 @@ def main() -> None:
     panel.to_csv(FIGURE_DATA / "emissions_panel.csv", index=False)
     gas_split.to_csv(FIGURE_DATA / "gas_split.csv", index=False)
     paper_set.to_csv(PAPER_SET_CSV, index=False)
+    uniform_life["cases"].to_csv(
+        FIGURE_DATA / "sens_uniform_life.csv", index=False
+    )
+    uniform_life["by_asset"].to_csv(
+        FIGURE_DATA / "sens_uniform_life_by_asset.csv", index=False
+    )
     slide_tables = build_slide_tables(
         inputs, by_project, summary, by_chain, stages, panel, ld=ld, mc=mc
     )

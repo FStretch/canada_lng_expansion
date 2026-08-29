@@ -34,8 +34,26 @@ def _licence_end_year(row) -> int | None:
     return int(val)
 
 
-def _lifespan(row, params) -> tuple[int, str]:
-    if pd.notna(row["authorised_export_term_years"]):
+def _lifespan(
+    row,
+    params,
+    *,
+    lifespan_override_years: int | None = None,
+    ignore_licence_end: bool = False,
+) -> tuple[int, str]:
+    """Operating years and where the figure came from.
+
+    `lifespan_override_years` runs every asset at the same life regardless of
+    licence term or stated project life; `ignore_licence_end` drops the
+    `authorised_export_end_year` hard stop. Both are SI-sensitivity switches
+    and are off in the published central case.
+    """
+    if lifespan_override_years is not None:
+        life = int(lifespan_override_years)
+        src = f"sensitivity:lifespan_override_years={life}"
+        if ignore_licence_end:
+            return life, f"{src} (licence end ignored)"
+    elif pd.notna(row["authorised_export_term_years"]):
         life = int(row["authorised_export_term_years"])
         src = "Asset Register:authorised_export_term_years"
     elif pd.notna(row["project_life_years"]):
@@ -44,6 +62,9 @@ def _lifespan(row, params) -> tuple[int, str]:
     else:
         life = int(get_param(params, "lifecycle_years_default"))
         src = "Parameters:lifecycle_years_default"
+
+    if ignore_licence_end:
+        return life, f"{src} (licence end ignored)"
 
     licence_end = _licence_end_year(row)
     start = row.get("first_export_year")
