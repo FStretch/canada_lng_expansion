@@ -573,7 +573,9 @@ def build_slide_tables(
                 "Central case (sheet 01, 20) is the point estimate from central factor values. "
                 "Monte Carlo median (sheet 20) is higher because the stage triangles are "
                 "right-skewed (shipping 0.05/0.12/0.31). They are different quantities. "
-                "Which is the paper headline is not chosen here.",
+                "Paper reports the central case with the MC p5-p95 as its "
+                "interval (decision of 29 August 2026); the MC median is "
+                "stated once, with the skew as the reason.",
             ),
         ],
         columns=["item", "value"],

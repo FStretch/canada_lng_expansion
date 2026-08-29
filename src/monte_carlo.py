@@ -733,7 +733,10 @@ def format_mc_markdown(mc: dict, published: dict | None = None) -> list[str]:
         )
         lines.append("")
         lines.append(
-            "Which of the two should be the paper's headline number is not chosen here."
+            "Decision taken 29 August 2026: the paper reports the central "
+            "case with the 5th to 95th percentile above as its interval. The "
+            "Monte Carlo median is stated once, with this reason. See the "
+            "Paper set section."
         )
         lines.append("")
     return lines

@@ -1,8 +1,34 @@
 # Canada LNG lifecycle emissions — review summary
 
-Default scenario: `measurement_central`. Run at 2026-08-29 09:24 UTC. Numbers to one decimal. Inputs read-only. `calc_group` from `Asset Register:calc_group`.
+Default scenario: `measurement_central`. Run at 2026-08-29 09:27 UTC. Numbers to one decimal. Inputs read-only. `calc_group` from `Asset Register:calc_group`.
 
 Deck-facing tables (one sheet per table, 1-decimal): `Outputs/SLIDE_TABLES.xlsx`. Send that workbook to the PPT chat.
+
+## Paper set
+
+Decision taken 29 August 2026. The paper reports the **central case** — the point estimate from the central factor values — with the Monte Carlo **5th to 95th percentile** as its interval. The Monte Carlo median is stated once, in its own column, and is not the reported figure.
+
+| build-out | lifetime CO2e Mt | lifetime CO2-only Mt | peak | ECCC 2% damages CAD bn | MC median (lifetime / peak / damages)¹ |
+|---|---|---|---|---|---|
+| committed | **1,869.5** [1,800.2, 2,011.3] | **1,799.6** [1,722.2, 1,917.6] | **58.3** in 2030 [56.2, 62.8] | **749** [719, 801] | 1,903.6 / 59.4 / 759 |
+| committed_plus_advanced | **3,805.7** [3,641.4, 4,123.9] | **3,663.5** [3,482.1, 3,933.1] | **135.8** in 2037 [130.7, 146.1] | **1,579** [1,509, 1,698] | 3,874.0 / 138.2 / 1,601 |
+| full | **9,298.1** [8,274.6, 10,727.0] | **8,955.2** [7,914.4, 10,245.9] | **298.2** in 2037 [287.1, 320.5] | **4,073** [3,529, 4,785] | 9,454.1 / 303.5 / 4,125 |
+
+¹ The Monte Carlo median sits **above** the central case (9,454.1 against 9,298.1 Mt at full buildout) because the sampled stage triangles are right-skewed — shipping 0.05 / 0.12 / 0.31 especially, where the central 0.12 sits well below the midpoint of the range. The median of a right-skewed draw is not the point estimate from central values. Both are reported; only the central case is the paper's number.
+
+Membership: **committed** = committed (operating + under construction) (3 assets); **committed_plus_advanced** = committed plus advanced (+ tier advanced_proposed) (5 assets); **full** = full (every headline-scope asset) (10 assets). Interval basis: Monte Carlo p5-p95, 10000 draws, seed 20260828.
+
+### Territorial split and carbon-budget shares
+
+Territorial shares are the life-average split. Budget shares are the **CO2-only** lifetime against the GCB 2025 remaining CO2 budgets from the start of 2026, like for like.
+
+| build-out | CAN % | BUNK % | FOR % | 1.5°C (170 GtCO2) | 1.7°C (525) | 2.0°C (1,055) |
+|---|---|---|---|---|---|---|
+| committed | 18.0 | 3.4 | 78.6 | 1.06% | 0.34% | 0.17% |
+| committed_plus_advanced | 18.0 | 3.4 | 78.6 | 2.16% | 0.70% | 0.35% |
+| full | 18.1 | 3.2 | 78.7 | 5.27% | 1.71% | 0.85% |
+
+Locked in `build_results.py` as `EXPECTED_BUILD_OUT`; the run asserts every cell of the central column. Machine-readable copy: `Outputs/figure_data/paper_set.csv`.
 
 ## 1. Headline
 
@@ -248,7 +274,7 @@ Placeholder-start assets account for **5492.4 MtCO2e** (59.1% of the 9298.1 Mt l
 
 ## Monte Carlo (physics sampled, ECCC 2% per gas applied after)
 
-10,000 draws, seed `20260828`. Physics 0.18s; pricing 0.04s. Kernel vs published panel max abs 2.8e-14 Mt. Liquefaction held at 0.29. Howarth 0.55 is a named point, not a draw. Draws are on the headline scope (export chain). Each draw carries its own upstream and shipping factor, so its CH4 mass moves with it; damages are CO2 at SC-CO2 plus CH4 mass at SC-CH4, the same per-gas treatment as the central case.
+10,000 draws, seed `20260828`. Physics 0.19s; pricing 0.04s. Kernel vs published panel max abs 2.8e-14 Mt. Liquefaction held at 0.29. Howarth 0.55 is a named point, not a draw. Draws are on the headline scope (export chain). Each draw carries its own upstream and shipping factor, so its CH4 mass moves with it; damages are CO2 at SC-CO2 plus CH4 mass at SC-CH4, the same per-gas treatment as the central case.
 
 | build-out | lifetime median [p5, p95] Mt | peak-year median [p5, p95] Mt | ECCC 2% damage median [p5, p95] CAD bn |
 |---|---|---|---|
@@ -274,7 +300,7 @@ Central case versus Monte Carlo median (full build-out):
 
 They differ because the stage triangles are right-skewed (shipping 0.05 / 0.12 / 0.31 especially): the Monte Carlo median is not the point estimate from central factor values.
 
-Which of the two should be the paper's headline number is not chosen here.
+Decision taken 29 August 2026: the paper reports the central case with the 5th to 95th percentile above as its interval. The Monte Carlo median is stated once, with this reason. See the Paper set section.
 
 ## Lifecycle intensity comparison
 

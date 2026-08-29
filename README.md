@@ -8,7 +8,20 @@ construction and proposed. Headline results are the export chain.
 
 ## What this produces
 
-At full export buildout (ten projects, 100.1 mtpa):
+**The paper set.** Central case, with the Monte Carlo 5th to 95th percentile as its interval
+(10,000 draws, seed 20260828). Central is the point estimate from the central factor values.
+
+| build-out | lifetime CO2e Mt | lifetime CO2-only Mt | peak | ECCC 2% damages C$bn |
+|---|---|---|---|---|
+| Committed (operating + under construction, 3 assets) | **1,869.5** [1,800, 2,011] | **1,799.6** [1,722, 1,918] | **58.3** in 2030 [56, 63] | **749** [719, 801] |
+| Committed plus advanced (5 assets) | **3,805.7** [3,641, 4,124] | **3,663.5** [3,482, 3,933] | **135.8** in 2037 [131, 146] | **1,579** [1,509, 1,698] |
+| Full buildout (10 projects, 100.1 mtpa) | **9,298.1** [8,275, 10,727] | **8,955.2** [7,914, 10,246] | **298.2** in 2037 [287, 321] | **4,073** [3,529, 4,785] |
+
+The Monte Carlo median sits above the central case (9,454.1 Mt at full buildout) because the
+sampled stage triangles are right-skewed, shipping 0.05 / 0.12 / 0.31 especially. It is stated
+once, with that reason, and is not the reported figure.
+
+At full buildout:
 
 | | |
 |---|---|
@@ -21,7 +34,10 @@ At full export buildout (ten projects, 100.1 mtpa):
 | Scope 3 | 211.8 Mt/yr, 81.9% |
 
 Split by where the emissions are counted: **18.1% Canada, 3.2% international marine bunkers,
-78.7% foreign**.
+78.7% foreign**. The CO2-only lifetime is 5.3% of the 170 GtCO2 remaining for 1.5°C.
+
+Every figure in the paper-set table is locked as `EXPECTED_BUILD_OUT` in `build_results.py` and
+asserted on every run.
 
 Headline results include assets whose chain is in `headline_scope_chains` (export) and whose
 calc_group is in `headline_scope_calc_groups` (operating, under construction, proposed). Eight

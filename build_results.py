@@ -73,6 +73,7 @@ SUMMARY_MD = OUT / "RESULTS_SUMMARY.md"
 FIGURE = OUT / "figures" / "operating_vs_proposed.png"
 FIGURE_DIR = OUT / "figures"
 FIGURE_DATA = OUT / "figure_data"
+PAPER_SET_CSV = OUT / "figure_data" / "paper_set.csv"
 
 # Snapshot before the August 2026 register/electrification revision.
 BEFORE = {
@@ -116,6 +117,38 @@ EXPECTED_LIFETIME_MT = 9298.1
 EXPECTED_PEAK_YEAR = 2037
 EXPECTED_PEAK_MT = 298.2
 
+# The paper set, locked 29 August 2026 (Task 5). The paper reports the central
+# case — the point estimate from the central factor values — with the Monte
+# Carlo 5th to 95th percentile as its interval. The MC median is stated once,
+# with the reason it sits above the central: the stage triangles are
+# right-skewed, shipping 0.05 / 0.12 / 0.31 especially.
+#
+# One decimal on Mt, whole CAD bn. `full` duplicates EXPECTED_LIFETIME_MT /
+# EXPECTED_PEAK_MT / EXPECTED_PEAK_YEAR on purpose: the two locks must agree.
+EXPECTED_BUILD_OUT = {
+    "committed": {
+        "lifetime_mt": 1869.5,
+        "lifetime_co2_only_mt": 1799.6,
+        "peak_year": 2030,
+        "peak_mt": 58.3,
+        "damages_cad_bn": 749,
+    },
+    "committed_plus_advanced": {
+        "lifetime_mt": 3805.7,
+        "lifetime_co2_only_mt": 3663.5,
+        "peak_year": 2037,
+        "peak_mt": 135.8,
+        "damages_cad_bn": 1579,
+    },
+    "full": {
+        "lifetime_mt": 9298.1,
+        "lifetime_co2_only_mt": 8955.2,
+        "peak_year": 2037,
+        "peak_mt": 298.2,
+        "damages_cad_bn": 4073,
+    },
+}
+
 
 def gas_split_table(panel: pd.DataFrame, inputs: dict) -> pd.DataFrame:
     """Lifetime CO2e, CO2-only and CH4 mass by build-out and by calc_group."""
@@ -151,6 +184,100 @@ def gas_split_table(panel: pd.DataFrame, inputs: dict) -> pd.DataFrame:
         "liquefaction, regasification and combustion are treated as CO2."
     )
     return df
+
+
+def paper_set_table(
+    panel: pd.DataFrame,
+    ld: dict,
+    mc: dict,
+    inputs: dict,
+    by_project: pd.DataFrame,
+) -> pd.DataFrame:
+    """The paper set: central case per build-out, with the MC interval beside it.
+
+    Central is the point estimate from the central factor values. The interval
+    is the Monte Carlo 5th to 95th percentile. The MC median is carried in its
+    own column and is not the reported figure.
+    """
+    ids = build_out_project_ids(inputs)
+    summ = mc["summary"]
+    bp = ld["by_project"]
+    eccc = bp.loc[
+        (bp["price_family"] == "eccc")
+        & (bp["discount_rate_pct"] == ld["eccc_r"])
+    ]
+    sample = headline_sample(by_project, DEFAULT_SCENARIO)
+    params = inputs["params"]
+
+    def _mc(name: str, metric: str) -> tuple[float, float, float]:
+        r = summ.loc[(summ["build_out"] == name) & (summ["metric"] == metric)]
+        if not len(r):
+            return (float("nan"),) * 3
+        r = r.iloc[0]
+        return float(r["median"]), float(r["p05"]), float(r["p95"])
+
+    rows = []
+    for name in BUILD_OUTS:
+        members = ids[name]
+        gas = panel_gas_totals(panel, DEFAULT_SCENARIO, project_ids=members)
+        slice_panel = panel.loc[panel["project_id"].isin(members)]
+        peak_year, peak_mt = panel_peak(slice_panel, DEFAULT_SCENARIO)
+        damages_bn = float(
+            eccc.loc[eccc["project_id"].isin(members), "hatton_sum_cad"].sum()
+        ) / 1e9
+        sl = sample.loc[sample["project_id"].isin(members)]
+        terr_total = float(sl["annual_total"].sum())
+        budgets = carbon_budget_shares(
+            gas["lifetime_mtco2e"], params, gas["lifetime_co2_only_mt"]
+        )
+        life_med, life_lo, life_hi = _mc(name, "lifetime_mtco2e")
+        co2_med, co2_lo, co2_hi = _mc(name, "lifetime_co2_only_mt")
+        peak_med, peak_lo, peak_hi = _mc(name, "peak_mtco2e_yr")
+        dmg_med, dmg_lo, dmg_hi = _mc(name, "central_damage_cad_billion")
+        rows.append({
+            "build_out": name,
+            "membership": BUILD_OUT_LABEL[name],
+            "n_assets": len(members),
+            "lifetime_mtco2e": gas["lifetime_mtco2e"],
+            "lifetime_mtco2e_p05": life_lo,
+            "lifetime_mtco2e_p95": life_hi,
+            "lifetime_mtco2e_mc_median": life_med,
+            "lifetime_co2_only_mt": gas["lifetime_co2_only_mt"],
+            "lifetime_co2_only_mt_p05": co2_lo,
+            "lifetime_co2_only_mt_p95": co2_hi,
+            "lifetime_co2_only_mt_mc_median": co2_med,
+            "lifetime_ch4_kt": gas["lifetime_ch4_kt"],
+            "peak_year": int(peak_year),
+            "peak_mtco2e_yr": peak_mt,
+            "peak_mtco2e_yr_p05": peak_lo,
+            "peak_mtco2e_yr_p95": peak_hi,
+            "peak_mtco2e_yr_mc_median": peak_med,
+            "eccc_2pct_damages_cad_bn": damages_bn,
+            "eccc_2pct_damages_cad_bn_p05": dmg_lo,
+            "eccc_2pct_damages_cad_bn_p95": dmg_hi,
+            "eccc_2pct_damages_cad_bn_mc_median": dmg_med,
+            "canada_territorial_pct": (
+                100.0 * float(sl["canada_territorial"].sum()) / terr_total
+                if terr_total else float("nan")
+            ),
+            "international_bunkers_pct": (
+                100.0 * float(sl["international_bunkers"].sum()) / terr_total
+                if terr_total else float("nan")
+            ),
+            "foreign_territorial_pct": (
+                100.0 * float(sl["foreign_territorial"].sum()) / terr_total
+                if terr_total else float("nan")
+            ),
+            **{
+                f"share_of_{r.parameter}_pct": r.share_pct
+                for r in budgets.itertuples()
+            },
+            "central_basis": "point estimate from central factor values",
+            "interval_basis": (
+                f"Monte Carlo p5-p95, {mc['n_draws']} draws, seed {mc['seed']}"
+            ),
+        })
+    return pd.DataFrame(rows)
 
 
 def write_figure(by_project: pd.DataFrame, path: Path) -> None:
@@ -212,6 +339,7 @@ def write_review_summary(
     exclusion: dict | None = None,
     gas_split: pd.DataFrame | None = None,
     gwp20_rec: dict | None = None,
+    paper_set: pd.DataFrame | None = None,
 ) -> None:
     sample = headline_sample(by_project, DEFAULT_SCENARIO)
     params = inputs["params"]
@@ -249,6 +377,97 @@ def write_review_summary(
         "`Outputs/SLIDE_TABLES.xlsx`. Send that workbook to the PPT chat."
     )
     lines.append("")
+
+    # 0 Paper set
+    if paper_set is not None:
+        lines.append("## Paper set")
+        lines.append("")
+        lines.append(
+            "Decision taken 29 August 2026. The paper reports the **central "
+            "case** — the point estimate from the central factor values — with "
+            "the Monte Carlo **5th to 95th percentile** as its interval. The "
+            "Monte Carlo median is stated once, in its own column, and is not "
+            "the reported figure."
+        )
+        lines.append("")
+        lines.append(
+            "| build-out | lifetime CO2e Mt | lifetime CO2-only Mt | "
+            "peak | ECCC 2% damages CAD bn | MC median (lifetime / peak / "
+            "damages)\u00b9 |"
+        )
+        lines.append("|---|---|---|---|---|---|")
+        for _, r in paper_set.iterrows():
+            lines.append(
+                f"| {r['build_out']} | "
+                f"**{r['lifetime_mtco2e']:,.1f}** "
+                f"[{r['lifetime_mtco2e_p05']:,.1f}, "
+                f"{r['lifetime_mtco2e_p95']:,.1f}] | "
+                f"**{r['lifetime_co2_only_mt']:,.1f}** "
+                f"[{r['lifetime_co2_only_mt_p05']:,.1f}, "
+                f"{r['lifetime_co2_only_mt_p95']:,.1f}] | "
+                f"**{r['peak_mtco2e_yr']:,.1f}** in {int(r['peak_year'])} "
+                f"[{r['peak_mtco2e_yr_p05']:,.1f}, "
+                f"{r['peak_mtco2e_yr_p95']:,.1f}] | "
+                f"**{r['eccc_2pct_damages_cad_bn']:,.0f}** "
+                f"[{r['eccc_2pct_damages_cad_bn_p05']:,.0f}, "
+                f"{r['eccc_2pct_damages_cad_bn_p95']:,.0f}] | "
+                f"{r['lifetime_mtco2e_mc_median']:,.1f} / "
+                f"{r['peak_mtco2e_yr_mc_median']:,.1f} / "
+                f"{r['eccc_2pct_damages_cad_bn_mc_median']:,.0f} |"
+            )
+        lines.append("")
+        full_ps = paper_set.loc[paper_set["build_out"] == "full"].iloc[0]
+        lines.append(
+            f"\u00b9 The Monte Carlo median sits **above** the central case "
+            f"({full_ps['lifetime_mtco2e_mc_median']:,.1f} against "
+            f"{full_ps['lifetime_mtco2e']:,.1f} Mt at full buildout) because "
+            f"the sampled stage triangles are right-skewed — shipping "
+            f"0.05 / 0.12 / 0.31 especially, where the central 0.12 sits well "
+            f"below the midpoint of the range. The median of a right-skewed "
+            f"draw is not the point estimate from central values. Both are "
+            f"reported; only the central case is the paper's number."
+        )
+        lines.append("")
+        lines.append(
+            "Membership: "
+            + "; ".join(
+                f"**{r['build_out']}** = {r['membership']} ({int(r['n_assets'])} assets)"
+                for _, r in paper_set.iterrows()
+            )
+            + ". Interval basis: "
+            + str(paper_set.iloc[0]["interval_basis"])
+            + "."
+        )
+        lines.append("")
+        lines.append("### Territorial split and carbon-budget shares")
+        lines.append("")
+        lines.append(
+            "Territorial shares are the life-average split. Budget shares are "
+            "the **CO2-only** lifetime against the GCB 2025 remaining CO2 "
+            "budgets from the start of 2026, like for like."
+        )
+        lines.append("")
+        lines.append(
+            "| build-out | CAN % | BUNK % | FOR % | 1.5\u00b0C (170 GtCO2) | "
+            "1.7\u00b0C (525) | 2.0\u00b0C (1,055) |"
+        )
+        lines.append("|---|---|---|---|---|---|---|")
+        for _, r in paper_set.iterrows():
+            lines.append(
+                f"| {r['build_out']} | {r['canada_territorial_pct']:.1f} | "
+                f"{r['international_bunkers_pct']:.1f} | "
+                f"{r['foreign_territorial_pct']:.1f} | "
+                f"{r['share_of_remaining_15c_budget_pct']:.2f}% | "
+                f"{r['share_of_remaining_17c_budget_pct']:.2f}% | "
+                f"{r['share_of_remaining_2c_budget_pct']:.2f}% |"
+            )
+        lines.append("")
+        lines.append(
+            "Locked in `build_results.py` as `EXPECTED_BUILD_OUT`; the run "
+            "asserts every cell of the central column. Machine-readable copy: "
+            "`Outputs/figure_data/paper_set.csv`."
+        )
+        lines.append("")
 
     # 1 Headline
     lines.append("## 1. Headline")
@@ -1277,6 +1496,36 @@ def main() -> None:
         f"({gwp20_rec['difference_pct']:+.2f}%) - reported, not forced"
     )
 
+    paper_set = paper_set_table(panel, ld, mc, inputs, by_project)
+    for _, r in paper_set.iterrows():
+        exp = EXPECTED_BUILD_OUT[r["build_out"]]
+        got = {
+            "lifetime_mt": round(float(r["lifetime_mtco2e"]), 1),
+            "lifetime_co2_only_mt": round(float(r["lifetime_co2_only_mt"]), 1),
+            "peak_year": int(r["peak_year"]),
+            "peak_mt": round(float(r["peak_mtco2e_yr"]), 1),
+            "damages_cad_bn": round(float(r["eccc_2pct_damages_cad_bn"])),
+        }
+        assert got == exp, (r["build_out"], got, exp)
+        assert (
+            r["lifetime_mtco2e_p05"]
+            <= r["lifetime_mtco2e_mc_median"]
+            <= r["lifetime_mtco2e_p95"]
+        ), r["build_out"]
+    full_row = paper_set.loc[paper_set["build_out"] == "full"].iloc[0]
+    assert round(float(full_row["lifetime_mtco2e"]), 1) == EXPECTED_LIFETIME_MT
+    assert int(full_row["peak_year"]) == EXPECTED_PEAK_YEAR
+    assert round(float(full_row["peak_mtco2e_yr"]), 1) == EXPECTED_PEAK_MT
+    print(
+        "[validate] paper set locked for all three build-outs "
+        + "; ".join(
+            f"{r['build_out']} {r['lifetime_mtco2e']:.1f} Mt / "
+            f"{r['eccc_2pct_damages_cad_bn']:.0f} bn"
+            for _, r in paper_set.iterrows()
+        )
+        + " PASS"
+    )
+
     budgets = carbon_budget_shares(
         panel_life_mt,
         inputs["params"],
@@ -1410,6 +1659,7 @@ def main() -> None:
         assumptions.to_excel(writer, sheet_name="Assumptions", index=False)
         budgets.to_excel(writer, sheet_name="Carbon Budgets", index=False)
         gas_split.to_excel(writer, sheet_name="Gas Split", index=False)
+        paper_set.to_excel(writer, sheet_name="Paper Set", index=False)
         by_chain.to_excel(writer, sheet_name="By Chain", index=False)
         exclusion["table"].to_excel(writer, sheet_name="Headline Exclusion", index=False)
         panel.to_excel(writer, sheet_name="Calendar Panel", index=False)
@@ -1447,6 +1697,7 @@ def main() -> None:
         exclusion=exclusion,
         gas_split=gas_split,
         gwp20_rec=gwp20_rec,
+        paper_set=paper_set,
     )
     fig_results = build_all_report_figures(
         inputs, by_project, stages, FIGURE_DIR, FIGURE_DATA, panel=panel
@@ -1483,6 +1734,7 @@ def main() -> None:
     mc["draws"].to_csv(FIGURE_DATA / "mc_draws.csv", index=False)
     panel.to_csv(FIGURE_DATA / "emissions_panel.csv", index=False)
     gas_split.to_csv(FIGURE_DATA / "gas_split.csv", index=False)
+    paper_set.to_csv(PAPER_SET_CSV, index=False)
     slide_tables = build_slide_tables(
         inputs, by_project, summary, by_chain, stages, panel, ld=ld, mc=mc
     )
