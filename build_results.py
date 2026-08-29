@@ -19,6 +19,10 @@ from src.inputs import (
 )
 from src.figures_report import build_all_report_figures
 from src.slide_tables import build_slide_tables, write_slide_tables_xlsx
+from src.feedgas_sensitivity import (
+    format_feedgas_markdown,
+    run_kino_aski_feedgas_sensitivity,
+)
 from src.lifespan_sensitivity import (
     format_uniform_life_markdown,
     run_uniform_life_sensitivity,
@@ -345,6 +349,7 @@ def write_review_summary(
     gwp20_rec: dict | None = None,
     paper_set: pd.DataFrame | None = None,
     uniform_life: dict | None = None,
+    feedgas: dict | None = None,
 ) -> None:
     sample = headline_sample(by_project, DEFAULT_SCENARIO)
     params = inputs["params"]
@@ -1059,6 +1064,8 @@ def write_review_summary(
         lines.extend(format_placeholder_markdown(placeholder_sens))
     if uniform_life is not None:
         lines.extend(format_uniform_life_markdown(uniform_life))
+    if feedgas is not None:
+        lines.extend(format_feedgas_markdown(feedgas, inputs))
     if mc is not None:
         published_vs_mc = None
         if ld is not None:
@@ -1488,6 +1495,23 @@ def main() -> None:
         f"central case unchanged PASS"
     )
 
+    feedgas = run_kino_aski_feedgas_sensitivity(inputs, panel)
+    fg_central = feedgas["cases"].loc[feedgas["cases"]["case"] == "central"].iloc[0]
+    assert abs(float(fg_central["headline_lifetime_mtco2e"]) - panel_life_mt) < 1e-6
+    assert abs(round(float(fg_central["headline_canada_pct"]), 1)
+               - EXPECTED_TERRITORIAL_SHARE_PCT["CAN"]) < 0.05, (
+        fg_central["headline_canada_pct"],
+        EXPECTED_TERRITORIAL_SHARE_PCT["CAN"],
+    )
+    print(
+        "[validate] Kino Aski feedgas sensitivity: Canada share "
+        + " / ".join(
+            f"{r['case']} {r['headline_canada_pct']:.1f}%"
+            for _, r in feedgas["cases"].iterrows()
+        )
+        + " PASS"
+    )
+
     mc = run_monte_carlo(inputs, INPUTS_DIR, panel)
     print(
         f"[validate] Monte Carlo {mc['n_draws']} draws seed {mc['seed']} "
@@ -1721,6 +1745,7 @@ def main() -> None:
         gwp20_rec=gwp20_rec,
         paper_set=paper_set,
         uniform_life=uniform_life,
+        feedgas=feedgas,
     )
     fig_results = build_all_report_figures(
         inputs, by_project, stages, FIGURE_DIR, FIGURE_DATA, panel=panel
@@ -1763,6 +1788,9 @@ def main() -> None:
     )
     uniform_life["by_asset"].to_csv(
         FIGURE_DATA / "sens_uniform_life_by_asset.csv", index=False
+    )
+    feedgas["cases"].to_csv(
+        FIGURE_DATA / "sens_kino_aski_feedgas.csv", index=False
     )
     slide_tables = build_slide_tables(
         inputs, by_project, summary, by_chain, stages, panel, ld=ld, mc=mc
