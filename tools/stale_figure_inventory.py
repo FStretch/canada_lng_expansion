@@ -132,6 +132,19 @@ ALLOWED_PAIRS = {
     ("README.md", "pipeline central 0.10 (assumed)"),
     ("Outputs/CITATIONS_WANTED.md", "pipeline central 0.10 (assumed)"),
     ("src/benchmark_table.py", "pipeline central 0.10 (assumed)"),
+    # PUBLICATION_AUDIT.md section 5 tabulates the stale "current values"
+    # banners on four dated documents, so it must quote each wrong value
+    # beside the right one. Exempted value by value rather than whole-file:
+    # the audit's own finding is that a whole-file exemption cannot tell a
+    # quoted historical value from a claim about the present, and it should
+    # not be the exception to its own rule.
+    ("Outputs/PUBLICATION_AUDIT.md", "9,315.3 Mt lifetime (export scope, flat shipping)"),
+    ("Outputs/PUBLICATION_AUDIT.md", "9,298.1 Mt lifetime (Discovery counted as early_proposed)"),
+    ("Outputs/PUBLICATION_AUDIT.md", "298.2 Mt peak (Discovery in)"),
+    ("Outputs/PUBLICATION_AUDIT.md", "18.1 / 3.2 / 78.7 territorial"),
+    ("Outputs/PUBLICATION_AUDIT.md", "7,254.2 Mt lifetime (regasification 0.04)"),
+    ("Outputs/PUBLICATION_AUDIT.md", "238.6 Mt peak (regasification 0.04)"),
+    ("Outputs/PUBLICATION_AUDIT.md", "C$3,143bn ECCC 2% damages (regasification 0.04)"),
 }
 
 
