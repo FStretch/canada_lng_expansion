@@ -1,6 +1,6 @@
 # Citations wanted
 
-Refreshed 3 September 2026, after the methane-share and FID-band changes.
+Refreshed 3 September 2026, after the publication audit and the housekeeping sweep.
 Checked against the workbooks as they stand.
 
 Current lock: **7,162.0 Mt** lifetime, **235.6 Mt** peak in 2037,
@@ -9,7 +9,7 @@ Current lock: **7,162.0 Mt** lifetime, **235.6 Mt** peak in 2037,
 **Closed so far:** regasification central and range, combustion range,
 liquefaction electric, pipeline central, `lng_energy_content`,
 `lng_to_gas_bcm_per_mtpa`, the oil comparator (retired with figure 7),
-`upstream_ch4_share`, and the FID delay band.
+`upstream_ch4_share`, the FID delay band, and `lifespan_sensitivity_low`.
 
 ---
 
@@ -31,17 +31,23 @@ liquefaction electric, pipeline central, `lng_energy_content`,
 | **Pipeline range structure** | Monte Carlo triangle | "Regional greenhouse gas analysis of compressor drivers in natural gas transmission systems in Canada", *J. Cleaner Production* (2023), doi 10.1016/j.jclepro.2023.137150 — **paywalled, HTTP 403**. Institutional access closes it. |
 | **Liquefaction range_high 0.36** | Emission Factors range only; the Monte Carlo does **not** sample liquefaction | Any study or EA with a high-end gas-turbine liquefaction intensity. Low stakes — display only. |
 | **Utilisation ramp 0.40 / 0.70, `ramp_years` 2** | Year-1 and year-2 throughput for every asset except Phase 1 and Saint John | A published multi-facility LNG ramp-up profile. See A4 — we now know the shape is wrong, but not what to replace it with. |
-| **`lifespan_sensitivity_low` 30 yr** | Monte Carlo life triangle low | The Summit Lake PG LNG impact assessment states it. **A lookup, not research** — we just need the document URL. |
-| **`cargo_tonnes_per_dwt` 0.85** | The shipping 0.110 reconstruction in the README validation only — **no module reads it** | A class-society (DNV, Lloyd's) or IMO figure for LNG carrier cargo-to-deadweight ratio. |
+| **`cargo_tonnes_per_dwt` 0.85** | The shipping 0.110 reconstruction in the README validation only — **no module reads it** | A class-society (DNV, Lloyd's) or IMO figure for LNG carrier cargo-to-deadweight ratio. Now marked `reference-only` on the Parameters sheet, so the open citation affects the reconstruction narrative and no published number. |
 
 ---
 
 ## C. Housekeeping — no sourcing needed
 
-**23 Parameters rows no module reads.** Documentation and context only; sourcing them buys
-nothing. They should be marked reference-only or deleted. `post_fid_to_completion` was one of
-these and is now explicitly marked reference-only with a note tying it to `fid_delay_mid`, which
-is the pattern the rest should follow.
+**23 Parameters rows no module reads — done, 3 September 2026.** The Parameters sheet now carries
+a `status` column, `live` or `reference-only`, derived by scanning the code rather than typed by
+hand. 53 live, 23 reference-only. Every reference-only row names what it is for and, where one
+exists, its live counterpart, so the workbook never holds two disconnected versions of one fact.
+
+**One decision left over from that sweep.** Three of the 23 have **no live counterpart at all**:
+`coal_plant_reference_mw` 500, `coal_plant_capacity_factor` 0.55, `coal_tco2e_per_mwh` 0.95. The
+coal-plant equivalence comparator they would support is in no figure, no slide table and no
+output. Their notes say so plainly. They are the only genuinely orphaned rows in the workbook —
+keep them as a stub for a comparator someone may want, or drop all three. Sourcing them would be
+work spent on a calculation nothing performs.
 
 **Upstream 0.25 and 0.26 are two-decimal rounds** of 0.2475 and 0.2585 at the current methane
 share. Declared in the README.
