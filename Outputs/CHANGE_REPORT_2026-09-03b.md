@@ -169,6 +169,16 @@ download. The route that would work is the UNFCCC Common Reporting Tables for Ca
 
 **Items 10, 13–16, 18** — not searched this round; all honestly declared.
 
+**Citations accepted on the author's warrant.** Four documents could not be opened from here —
+the BC EAO Ksi Lisims assessment (exceeds the fetch size limit), Gan et al. 2024, and the two
+Pembina reports (*Squaring the Circle* 2023 and *Wellhead to Waterline* 2014). The figures taken
+from them — 0.156 / 0.021, 0.021 regasification, 0.15 electric-drive liquefaction, and the 0.11
+reduction that explains the old 0.12 — stand on the author's warrant, confirmed 3 September 2026.
+Each source cell names the document, edition and page or table, so a reviewer can check them
+directly. Everything else in this round was verified against the primary document: the IPCC
+tables were re-derived to the digit and cross-checked against Table 2.2, and the IEA report was
+downloaded and read at page level.
+
 **Two IEA figures worth a decision later, not acted on:**
 
 - **Shipping.** IEA gives 3.3 gCO2e/MJ for LNG delivered to China = 0.18 tCO2e/t, against this

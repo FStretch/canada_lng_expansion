@@ -207,9 +207,9 @@ Stated plainly rather than filled.
    rows and every output.
 
 10. **The Ksi Lisims assessment PDF was not re-read at page level.** The URL
-    resolves but the document exceeds the fetch size limit, so the two values
-    and their page reference were taken as supplied rather than independently
-    verified against pp. 847–848.
+    resolves but the document exceeds the fetch size limit. The two values and
+    their pp. 847–848 reference stand **on the author's warrant** (confirmed
+    3 September 2026), not on a machine re-read.
 
 11. **FINDING, recorded and not acted on: GEM now lists Discovery LNG as
     cancelled.** Its GEM page reads `"cancelled (inferred 4 y)"` as of the

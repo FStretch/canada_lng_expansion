@@ -308,6 +308,6 @@ Canada 0.17% future window, `P_dam_FD` = 0.41, `P_dam_HD` = 0.33. The
    only.
 5. **Two 1 September audits now describe a superseded headline.** Bannered rather
    than rewritten, because their findings are what produced the current state.
-6. **The Ksi Lisims assessment PDF still has not been read at page level** — it
-   exceeds the fetch size limit. The 0.156 / 0.021 values and their pp. 847–848
-   reference remain as supplied.
+6. **The Ksi Lisims assessment PDF was not read at page level** — it exceeds
+   the fetch size limit. The 0.156 / 0.021 values and their pp. 847–848
+   reference stand on the author's warrant (confirmed 3 September 2026).
