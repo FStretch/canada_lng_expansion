@@ -27,8 +27,8 @@ keywords:
   - Canada
 license: CC-BY-4.0
 repository-code: "https://github.com/FStretch/canada_lng_expansion"
-version: "2026.08"
-date-released: "2026-08-29"
+version: "2026.09"
+date-released: "2026-09-03"
 references:
   - type: data
     title: "Global Gas Infrastructure Tracker: LNG Terminals"
