@@ -4,6 +4,14 @@ An open, reproducible model of the greenhouse gas emissions caused by Canada's l
 gas export expansion, covering every LNG asset in the country in the register: operating, under
 construction and proposed. Headline results are the export chain.
 
+**Start here.** Five files carry the whole thing:
+
+1. `README.md` — this file: method, assumptions, limitations.
+2. `Outputs/RESULTS_SUMMARY.md` — the numbers, from the current run.
+3. `Inputs/Canada_LNG_Data_Inputs.xlsx` — every factor and parameter, with its type and source.
+4. `build_results.py` — what is asserted: every published digit is locked there.
+5. `Outputs/SOURCING_AUDIT.md` — the verdict on each number's provenance.
+
 ---
 
 ## What this produces
@@ -66,7 +74,8 @@ Inputs/
   Canada_LNG_Asset_Register.xlsx    facts about physical assets, one row per terminal or unit
   Canada_LNG_Data_Inputs.xlsx       emission factors, parameters, scenarios and chain definitions
   loss_damage/                      SC-CO2 schedules, currency conversion, L&D parameters
-  loss_damage_r1/                   Burke et al. (2026) pulse damages (2020 USD / t)
+  loss_damage_r1/                   Burke et al. (2026) pulse damages and the raw replication
+                                    files the derived CSVs came from
 src/
   inputs.py                         loads and validates both workbooks, exposes typed frames
   model.py                          the lifecycle calculation, per-gas split and aggregation
@@ -75,6 +84,7 @@ src/
   loss_damage.py                    global L&D, ECCC per gas + Burke upper bracket
   monte_carlo.py                    sampled physics, then ECCC pricing per gas
   lca_comparison.py                 figure 10, comparator studies on their own boundaries
+  benchmark_table.py                six-row boundary-aligned comparison to external estimates
   placeholder_sensitivity.py        first-export-year fill sensitivity (SI)
   lifespan_sensitivity.py           uniform 40-year life, no licence stop (SI)
   feedgas_sensitivity.py            Kino Aski Western Canadian vs US supply (SI)
@@ -82,17 +92,28 @@ src/
   si_table.py                       one row per headline asset for the SI
   figures_report.py                 report figures and their CSV series
   slide_tables.py                   deck-facing Excel tables
-build_results.py                    orchestrates a run and writes the outputs
-tools/                              one-off, documented scripts that edit an input workbook
+  banners.py                        generated lock banners for the dated documents in Outputs/
+build_results.py                    orchestrates a run, asserts every lock, writes the outputs
+tools/                              one-off, documented scripts that edit an input workbook, plus
+                                    stale_figure_inventory.py and refresh_banners.py (re-run after
+                                    any re-lock)
+requirements.txt                    exact pins for the environment the published run used
+CITATION.cff                        citation metadata
 Outputs/
   Canada_LNG_Emissions_Results.xlsx results by project, chain, stage, group and scenario
   SLIDE_TABLES.xlsx                 deck-facing tables (one sheet per table; send this file)
   RESULTS_SUMMARY.md                a review summary of the current run
   paper_set_locked.csv              the rounded paper set; its SHA-256 is asserted on every run
   si_table_assets.csv               per-asset SI table
-  SOURCING_AUDIT.md                 every number, its recorded source, and a verdict
-  DECK_RECONCILIATION.md            what the model now holds, against an older deck
+  benchmark_comparison.csv          the boundary-aligned external comparison
+  CITATIONS_WANTED.md               what is still uncited or undecided, ranked by headline impact
+  SOURCING_AUDIT.md                 every number, its recorded source, and a verdict (dated)
+  DECK_RECONCILIATION.md            the model against an older deck (dated)
+  LCA_ROMAN_WHITE_GAP.md            well-to-regasification gap diagnostic (dated)
+  OIL_COMPARATOR_AUDIT.md           the audit that retired the oil comparator (dated)
+  PUBLICATION_AUDIT.md              every file classified before the repository went public
   STALE_FIGURE_INVENTORY.md         generated; superseded values and where they still appear
+  BASELINE_<date>.md                the run every change report measures against
   CHANGE_REPORT_<date>.md           what moved in a round of changes, and why
   figures/                          the figures used in the report and deck
   figure_data/                      CSV series behind each figure
@@ -509,6 +530,12 @@ changed and why.
 `python tools/stale_figure_inventory.py` regenerates `Outputs/STALE_FIGURE_INVENTORY.md`, which
 greps the whole repository for superseded headline values and separates live hits from deliberate
 historical records. Run it after any re-lock.
+
+The four dated documents in `Outputs/` — the sourcing audit, the deck reconciliation, the
+Roman-White gap diagnostic and the oil comparator audit — each open with a banner that is
+generated, not hand-written: `src/banners.py` renders it from the lock constants, and the run
+asserts every banner matches. After a re-lock, `python tools/refresh_banners.py` rewrites them;
+until it is run, the build fails and says so. Hand-written banners went stale twice, which is why.
 
 To change an assumption, edit the input workbooks rather than the code. Emission factors,
 capacities, scenarios, utilisation, GWP values, FID and life bounds, and the LCA comparator
