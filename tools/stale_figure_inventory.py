@@ -60,16 +60,24 @@ SUPERSEDED = [
     (r"\b207\.4\b", "207.4 Mt/yr life-average (regasification 0.04)", "206.3 Mt/yr", "regasification 0.04 -> 0.021"),
     (r"regasification 0\.04|regas 0\.04", "regasification central 0.04 (uncited)", "0.021 (Gan et al. 2024)", "moved onto a cited value"),
     (r"combustion (?:range )?2\.50|2\.50\s*/\s*3\.00", "combustion range low 2.50 (uncited)", "2.58 (IPCC 2006 uncertainty band)", "moved onto a cited derivation"),
+    # Pipeline moved onto two converging cited routes, 3 September 2026.
+    (r"7[,.]?215\.3", "7,215.3 Mt lifetime (pipeline 0.10)", "7,162.0 Mt", "pipeline 0.10 -> 0.074"),
+    (r"237\.3", "237.3 Mt peak (pipeline 0.10)", "235.6 Mt in 2037", "pipeline 0.10 -> 0.074"),
+    (r"6[,.]?948\.8", "6,948.8 Mt CO2-only (pipeline 0.10)", "6,895.6 Mt", "pipeline 0.10 -> 0.074"),
+    (r"18\.2\s*[/-]\s*3\.2\s*[/-]\s*78\.6", "18.2 / 3.2 / 78.6 territorial", "17.6 / 3.2 / 79.2", "pipeline 0.10 -> 0.074 (pipeline is CAN-tagged)"),
+    (r"3[,.]?126", "C$3,126bn ECCC 2% damages (pipeline 0.10)", "C$3,103bn", "pipeline 0.10 -> 0.074"),
+    (r"206\.3", "206.3 Mt/yr life-average (pipeline 0.10)", "204.7 Mt/yr", "pipeline 0.10 -> 0.074"),
+    (r"pipeline (?:transport )?(?:central )?0\.10", "pipeline central 0.10 (assumed)", "0.074 (Liu 2021 / CER 2022)", "moved onto two converging cited routes"),
 ]
 
 CURRENT = {
-    "lifetime CO2e": "7,215.3 Mt",
-    "lifetime CO2 only": "6,948.8 Mt (plus 8,942 kt CH4)",
-    "peak": "237.3 Mt in 2037",
-    "territorial CAN / BUNK / FOR": "18.2 / 3.2 / 78.6 %",
-    "ECCC 2% damages": "C$3,126 bn",
-    "committed": "1,859.5 Mt, C$745 bn",
-    "committed plus advanced": "3,785.4 Mt, C$1,570 bn",
+    "lifetime CO2e": "7,162.0 Mt",
+    "lifetime CO2 only": "6,895.6 Mt (plus 8,942 kt CH4)",
+    "peak": "235.6 Mt in 2037",
+    "territorial CAN / BUNK / FOR": "17.6 / 3.2 / 79.2 %",
+    "ECCC 2% damages": "C$3,103 bn",
+    "committed": "1,845.8 Mt, C$739 bn",
+    "committed plus advanced": "3,757.5 Mt, C$1,559 bn",
     "export capacity": "80.1 mtpa across nine projects",
 }
 
@@ -85,6 +93,8 @@ ALLOWED = {
     "tools/fix_audit_findings.py",
     "tools/update_chains_applies_to.py",
     "tools/apply_found_citations.py",
+    "tools/update_pipeline_factor.py",
+    "tools/record_ch4_share_derivation.py",
     "build_results.py",
     "Outputs/STALE_FIGURE_INVENTORY.md",
     # Dated diagnostics and audits, each carrying a superseded-snapshot banner.
@@ -109,6 +119,9 @@ ALLOWED_PAIRS = {
     ("README.md", "combustion range low 2.50 (uncited)"),
     ("Outputs/CITATIONS_WANTED.md", "regasification central 0.04 (uncited)"),
     ("Outputs/CITATIONS_WANTED.md", "combustion range low 2.50 (uncited)"),
+    ("README.md", "pipeline central 0.10 (assumed)"),
+    ("Outputs/CITATIONS_WANTED.md", "pipeline central 0.10 (assumed)"),
+    ("src/benchmark_table.py", "pipeline central 0.10 (assumed)"),
 }
 
 

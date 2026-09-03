@@ -20,6 +20,7 @@ from src.inputs import (
 )
 from src.figures_report import build_all_report_figures
 from src.slide_tables import build_slide_tables, write_slide_tables_xlsx
+from src.benchmark_table import build_benchmark_table, format_benchmark_markdown
 from src.si_table import build_si_asset_table, format_si_table_markdown
 from src.drive_sensitivity import (
     format_drive_markdown,
@@ -84,6 +85,7 @@ OUT = ROOT / "Outputs"
 RESULTS = OUT / "Canada_LNG_Emissions_Results.xlsx"
 SLIDE_TABLES = OUT / "SLIDE_TABLES.xlsx"
 SI_TABLE_CSV = OUT / "si_table_assets.csv"
+BENCHMARK_CSV = OUT / "benchmark_comparison.csv"
 SUMMARY_MD = OUT / "RESULTS_SUMMARY.md"
 FIGURE = OUT / "figures" / "operating_vs_proposed.png"
 FIGURE_DIR = OUT / "figures"
@@ -130,17 +132,21 @@ EXPECTED_ADVANCED_EXPORT = 26.0
 #   route-scaled shipping: CAN 18.1 / BUNK 3.2 / FOR 78.7; lifetime 9298.1; peak 298.2 (2037)
 #   Discovery returned to cancelled (1 Sep 2026): CAN 18.1 / BUNK 3.2 / FOR 78.8;
 #   lifetime 7254.2; peak 238.6 (2037). Discovery was 20 mtpa / 2,043.9 Mt.
-#   Regasification 0.04 -> 0.021 (3 Sep 2026): values below. The old 0.04 was
-#   uncited and sat above the top of the IEA range; 0.021 is Gan et al. 2024.
-#   Regasification is FOR-tagged, so cutting it moves weight from FOR to CAN.
-EXPECTED_TERRITORIAL_SHARE_PCT = {"CAN": 18.2, "BUNK": 3.2, "FOR": 78.6}
-EXPECTED_LIFETIME_MT = 7215.3
+#   Regasification 0.04 -> 0.021 (3 Sep 2026): CAN 18.2 / BUNK 3.2 / FOR 78.6;
+#   lifetime 7215.3; peak 237.3 (2037).
+#   Pipeline 0.10 -> 0.074 (3 Sep 2026): values below. The old 0.10 was assumed
+#   and about 35% above two independent cited routes (Liu et al. 2021 via the
+#   ERA restatement, 0.0735; CER/NIR 2019 pipeline transport, 0.0744). Pipeline
+#   is CAN-tagged, so cutting it moves weight from CAN to FOR.
+EXPECTED_TERRITORIAL_SHARE_PCT = {"CAN": 17.6, "BUNK": 3.2, "FOR": 79.2}
+EXPECTED_LIFETIME_MT = 7162.0
 EXPECTED_PEAK_YEAR = 2037
-EXPECTED_PEAK_MT = 237.3
+EXPECTED_PEAK_MT = 235.6
 
 # The paper set, locked 3 September 2026 (Discovery cancelled; GWP20 methane-
 # only; Monte Carlo triangles read from the workbooks; regasification and the
-# combustion range bounds moved onto cited values). The paper reports the central
+# combustion range bounds moved onto cited values; pipeline moved onto two
+# converging cited routes). The paper reports the central
 # case — the point estimate from the central factor values — with the Monte
 # Carlo 5th to 95th percentile as its interval. The MC median is stated once,
 # with the reason it sits above the central: the stage triangles are
@@ -151,30 +157,30 @@ EXPECTED_PEAK_MT = 237.3
 # SHA-256 of Outputs/paper_set_locked.csv, the rounded canonical copy of the
 # paper set. Re-lock it in the same commit as EXPECTED_BUILD_OUT, never alone.
 EXPECTED_PAPER_SET_SHA256 = (
-    "5d20d7fe67d99fde0cdbc33b51daf6b92d4ca45ad3bbc49835eb30319eca7f4d"
+    "3e325c3aaa40fcb5fa4e027548d5e535a327e2d9ae4d694dd075bb1125b8f949"
 )
 
 EXPECTED_BUILD_OUT = {
     "committed": {
-        "lifetime_mt": 1859.5,
-        "lifetime_co2_only_mt": 1789.6,
+        "lifetime_mt": 1845.8,
+        "lifetime_co2_only_mt": 1775.9,
         "peak_year": 2030,
-        "peak_mt": 58.0,
-        "damages_cad_bn": 745,
+        "peak_mt": 57.6,
+        "damages_cad_bn": 739,
     },
     "committed_plus_advanced": {
-        "lifetime_mt": 3785.4,
-        "lifetime_co2_only_mt": 3643.1,
+        "lifetime_mt": 3757.5,
+        "lifetime_co2_only_mt": 3615.3,
         "peak_year": 2037,
-        "peak_mt": 135.0,
-        "damages_cad_bn": 1570,
+        "peak_mt": 134.0,
+        "damages_cad_bn": 1559,
     },
     "full": {
-        "lifetime_mt": 7215.3,
-        "lifetime_co2_only_mt": 6948.8,
+        "lifetime_mt": 7162.0,
+        "lifetime_co2_only_mt": 6895.6,
         "peak_year": 2037,
-        "peak_mt": 237.3,
-        "damages_cad_bn": 3126,
+        "peak_mt": 235.6,
+        "damages_cad_bn": 3103,
     },
 }
 
@@ -412,6 +418,7 @@ def write_review_summary(
     feedgas: dict | None = None,
     drive_sens: dict | None = None,
     si_assets: pd.DataFrame | None = None,
+    benchmark: pd.DataFrame | None = None,
 ) -> None:
     sample = headline_sample(by_project, DEFAULT_SCENARIO)
     params = inputs["params"]
@@ -1118,6 +1125,8 @@ def write_review_summary(
         lines.extend(format_feedgas_markdown(feedgas, inputs))
     if drive_sens is not None:
         lines.extend(format_drive_markdown(drive_sens))
+    if benchmark is not None:
+        lines.extend(format_benchmark_markdown(benchmark))
     if si_assets is not None:
         lines.extend(format_si_table_markdown(si_assets))
     if mc is not None:
@@ -1595,6 +1604,14 @@ def main() -> None:
         + " PASS"
     )
 
+    benchmark = build_benchmark_table(inputs)
+    assert len(benchmark) == 6, len(benchmark)
+    print(
+        f"[validate] benchmark comparison table {len(benchmark)} rows "
+        f"(liquefaction, shipping, pipeline, regasification, well-to-regas, "
+        f"LNG stages) PASS"
+    )
+
     si_assets = build_si_asset_table(inputs, panel)
     assert len(si_assets) == int(sample["project_id"].nunique()), len(si_assets)
     assert abs(float(si_assets["lifetime_mtco2e"].sum()) - panel_life_mt) < 1e-6
@@ -1821,6 +1838,7 @@ def main() -> None:
         gas_split.to_excel(writer, sheet_name="Gas Split", index=False)
         paper_set.to_excel(writer, sheet_name="Paper Set", index=False)
         si_assets.to_excel(writer, sheet_name="SI Assets", index=False)
+        benchmark.to_excel(writer, sheet_name="Benchmark", index=False)
         by_chain.to_excel(writer, sheet_name="By Chain", index=False)
         exclusion["table"].to_excel(writer, sheet_name="Headline Exclusion", index=False)
         panel.to_excel(writer, sheet_name="Calendar Panel", index=False)
@@ -1863,6 +1881,7 @@ def main() -> None:
         feedgas=feedgas,
         drive_sens=drive_sens,
         si_assets=si_assets,
+        benchmark=benchmark,
     )
     fig_results = build_all_report_figures(
         inputs, by_project, stages, FIGURE_DIR, FIGURE_DATA, panel=panel
@@ -1958,6 +1977,7 @@ def main() -> None:
         FIGURE_DATA / "sens_liquefaction_drive_by_asset.csv", index=False
     )
     si_assets.to_csv(SI_TABLE_CSV, index=False)
+    benchmark.to_csv(BENCHMARK_CSV, index=False)
     slide_tables = build_slide_tables(
         inputs, by_project, summary, by_chain, stages, panel, ld=ld, mc=mc
     )

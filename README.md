@@ -13,11 +13,11 @@ construction and proposed. Headline results are the export chain.
 
 | build-out | lifetime CO2e Mt | lifetime CO2-only Mt | peak | ECCC 2% damages C$bn |
 |---|---|---|---|---|
-| Committed (operating + under construction, 3 assets) | **1,859.5** [1,828, 2,030] | **1,789.6** [1,741, 1,911] | **58.0** in 2030 [57, 63] | **745** [729, 802] |
-| Committed plus advanced (5 assets) | **3,785.4** [3,697, 4,159] | **3,643.1** [3,515, 3,922] | **135.0** in 2037 [133, 147] | **1,570** [1,528, 1,701] |
-| Full buildout (9 projects, 80.1 mtpa) | **7,215.3** [6,689, 8,290] | **6,948.8** [6,347, 7,845] | **237.3** in 2037 [233, 259] | **3,126** [2,827, 3,619] |
+| Committed (operating + under construction, 3 assets) | **1,845.8** [1,815, 2,013] | **1,775.9** [1,727, 1,895] | **57.6** in 2030 [57, 63] | **739** [723, 796] |
+| Committed plus advanced (5 assets) | **3,757.5** [3,669, 4,125] | **3,615.3** [3,488, 3,890] | **134.0** in 2037 [132, 146] | **1,559** [1,517, 1,687] |
+| Full buildout (9 projects, 80.1 mtpa) | **7,162.0** [6,632, 8,222] | **6,895.6** [6,295, 7,775] | **235.6** in 2037 [232, 257] | **3,103** [2,804, 3,589] |
 
-The Monte Carlo median sits above the central case (7,456.2 Mt at full buildout) because the
+The Monte Carlo median sits above the central case (7,397.4 Mt at full buildout) because the
 sampled stage triangles are right-skewed, shipping 0.05 / 0.12 / 0.31 especially. It is stated
 once, with that reason, and is not the reported figure. The upstream triangle high is the GWP20
 scenario factor (0.428), not Howarth 0.55.
@@ -26,16 +26,16 @@ At full buildout:
 
 | | |
 |---|---|
-| Headline annual (panel peak) | **237.3 MtCO2e** in 2037 |
-| life_average_annual_mt | **206.3 MtCO2e/yr** (not a calendar year) |
-| Lifetime emissions | **7,215.3 MtCO2e** (calendar panel 2025–2069) |
-| Lifetime, CO2 only | **6,948.8 MtCO2** (plus 8,942 kt CH4) |
+| Headline annual (panel peak) | **235.6 MtCO2e** in 2037 |
+| life_average_annual_mt | **204.7 MtCO2e/yr** (not a calendar year) |
+| Lifetime emissions | **7,162.0 MtCO2e** (calendar panel 2025–2069) |
+| Lifetime, CO2 only | **6,895.6 MtCO2** (plus 8,942 kt CH4) |
 | Export capacity | 80.1 mtpa across nine projects |
 | Scope 1 and 2 | 37.5 Mt/yr, 18.2% |
 | Scope 3 | 168.8 Mt/yr, 81.8% |
 
-Split by where the emissions are counted: **18.2% Canada, 3.2% international marine bunkers,
-78.6% foreign**. The CO2-only lifetime is 4.1% of the 170 GtCO2 remaining for 1.5°C.
+Split by where the emissions are counted: **17.6% Canada, 3.2% international marine bunkers,
+79.2% foreign**. The CO2-only lifetime is 4.1% of the 170 GtCO2 remaining for 1.5°C.
 
 Every figure in the paper-set table is locked as `EXPECTED_BUILD_OUT` in `build_results.py` and
 asserted on every run.
@@ -46,15 +46,16 @@ non-export assets totalling 242.9 MtCO2e stay in the register as a stated exclus
 
 The published lifetime total is the sum of a per-asset, per-calendar-year panel from 2025
 through each asset's last emitting year (currently 2069). It is not duration × life-average.
-The headline annual figure is the panel peak (237.3 MtCO2e in 2037). `life_average_annual_mt`
-(206.3 MtCO2e/yr) is a life-average of utilisation over each facility's operating window,
+The headline annual figure is the panel peak (235.6 MtCO2e in 2037). `life_average_annual_mt`
+(204.7 MtCO2e/yr) is a life-average of utilisation over each facility's operating window,
 including start-up years; it is not a calendar year.
 
 These headlines are below the 9,298.1 Mt / 100.1 mtpa figures that included Discovery LNG as
 early_proposed. Discovery is now cancelled, matching Global Energy Monitor. That is a scope
 change, not a change in the physics of the remaining nine assets. A further 38.9 Mt came off on
 3 September 2026 when regasification moved from an uncited 0.04 to the cited 0.021 of
-Gan et al. (2024).
+Gan et al. (2024), and a further 53.3 Mt when pipeline transport moved from an assumed 0.10 to
+0.074, the figure two independent cited routes converge on.
 
 ---
 
@@ -166,7 +167,7 @@ are not correlated.
 | Stage | Central | Basis |
 |---|---|---|
 | Upstream production | 0.25 | Canada Energy Regulator British Columbia oil and gas emissions, corrected for measured methane |
-| Pipeline transport | 0.10 | Assumed. The BC assessment of Coastal GasLink is a scaling check (1.47 vs 1.48 MtCO2e/yr on Phase 1 throughput), not a measurement of 0.10 |
+| Pipeline transport | 0.074 | Liu et al. (2021) via the ERA/Modern West restatement, 0.0735; cross-checked against CER/ECCC 2019 national pipeline transport, 0.0744. Applied flat, not distance-scaled |
 | Liquefaction | 0.29 | Gas turbine drive, applied to every terminal for its whole operating life. 0.15 is retained as the low bound and applies only if electrification is contracted and delivered |
 | Shipping | 0.12 | Howarth (2024), reconstructed against IMO carrier data. Derived on the British Columbia to north-east Asia route and **scaled per asset by route distance** |
 | Regasification | 0.021 | Gan et al. (2024), *Communications Earth & Environment*, peer-reviewed US LNG lifecycle assessment. Range 0.011–0.0275 from IEA (2025) |
@@ -197,10 +198,28 @@ band to our 2.75 central. The central 2.75 is unchanged: it is the stoichiometri
 methane, which is right for LNG because liquefaction strips inerts and heavier fractions. IPCC's
 own natural-gas central of 2.693 is for pipeline gas.
 
-**Pipeline transport 0.10 remains uncited.** The IEA's 2025 LNG supply assessment bundles
-transmission with production and processing and never reports it separately, so it could not
-close this one. For context on liquefaction, the same report puts the global average at about
-6 gCO2e/MJ, which is 0.33 tCO2e/t — above this model's 0.29, so 0.29 is not a high-side choice.
+**Pipeline transport moved onto two converging cited routes on 3 September 2026**, from an
+assumed 0.10 to **0.074**. Route A: Liu et al. (2021) report 4.2 gCO2e/MJ at transmission
+pipeline outlet, and the ERA / Modern West restatement puts the same study at 2.86 gCO2e/MJ at
+plant exit; the difference, 1.34 gCO2e/MJ, is the transmission stage, which at 54.863 GJ/t is
+0.0735 tCO2e/t. Route B: the CER reports 8.3 MtCO2e of Canadian pipeline transport emissions in
+2019, primarily compressor-station combustion, which over roughly 170 bcm of marketable gas at
+36 PJ/bcm is 0.0744 tCO2e/t. The two agree to within 1.2%; the retired 0.10 was about 35% above
+both.
+
+**The pipeline factor is applied flat, not scaled by distance** — unlike shipping. Route A is
+calibrated on a 1,100 km line and Route B is a national average haul, while the in-scope feedgas
+lines are Coastal GasLink 670 km, Prince Rupert Gas Transmission 750 km and FortisBC Eagle
+Mountain 47 km. If transmission emissions scale with distance, 0.074 is high for all three,
+Woodfibre most of all. That is a stated limitation rather than a correction applied here. The
+0.037–0.133 range is a declared assumption: it keeps the relative width of the retired band, and
+the 1.2% agreement between the two routes is convergence on the central, not an uncertainty
+interval.
+
+All the external comparisons the model holds are now assembled in one place — see **Benchmark
+comparison** in `Outputs/RESULTS_SUMMARY.md` and `Outputs/benchmark_comparison.csv`. Every
+comparison that is not an adopted value points the same way: this model sits at or below the
+external figure.
 
 **Electric drive is not assumed for any terminal.** Of the projects claiming electrification, only
 Cedar and Woodfibre have interconnection works under construction; the remainder rest on memoranda
@@ -247,13 +266,13 @@ America.
 
 **Lifespans are capped at each project's export licence expiry** rather than running a uniform 40
 years. The end year may emit; the year after may not. That cut is 1.2 GtCO2e against the same
-nine assets at a uniform 40 years from first export with no licence stop (8,420.4 Mt versus
-7,215.3 Mt). Anyone comparing versions should treat that as a methodological improvement, not
+nine assets at a uniform 40 years from first export with no licence stop (8,358.2 Mt versus
+7,162.0 Mt). Anyone comparing versions should treat that as a methodological improvement, not
 an error in the lower total. Where a proponent states a different operating life, that is used
 instead: Summit Lake PG LNG states 30 years.
 
 Lifetime emissions are also reported as a share of those remaining budgets. The budgets are
-CO2, so the **paper value is the CO2-only lifetime** (6,948.8 MtCO2 at full buildout, 4.1% of
+CO2, so the **paper value is the CO2-only lifetime** (6,895.6 MtCO2 at full buildout, 4.1% of
 the 170 GtCO2 remaining for 1.5°C). That is like for like. The panel carries an explicit
 per-gas split — `co2_mt`, `ch4_derived_co2e_mt` and `ch4_mass_kt` per asset-year, summing to
 `emissions_mtco2e` exactly — built from parameters already on the workbook: upstream CH4 is
@@ -333,9 +352,13 @@ Factors sheets.
   Central fill remains 2030.
 - Cedar is assumed to share Ksi Lisims' electric-drive class in the SI drive sensitivity. The
   central case is gas turbine for every terminal.
-- Pipeline 0.10 and its 0.05–0.18 range are assumed. No document stating those figures was
-  located, and the IEA's 2025 LNG assessment does not report transmission separately.
+- The pipeline 0.037–0.133 range is assumed. The central 0.074 is cited; no published
+  uncertainty interval for Canadian gas transmission intensity was located.
 - Liquefaction range_high 0.36 is an uncited literature upper bound.
+- `upstream_ch4_share` 0.30 remains an assumption. A derivation from Johnson et al. (2023)
+  brackets it at roughly 18–34%, centring near 25%, so 0.30 sits high but within range. The
+  central upstream factor is insensitive to the choice; the GWP20 scenario and the methane
+  damages line are not.
 
 ### Proponent-sourced values
 
@@ -384,6 +407,13 @@ of which are eventually abandoned.
 **The methane share of upstream emissions is assumed.** British Columbia does not publish the
 carbon dioxide and methane split separately. The 30 per cent figure is tested across 20 to 40 per
 cent, but it is an assumption rather than a derivation. The GWP20 scenario depends on it.
+Johnson et al. (2023) now brackets it: their British Columbia 2021 upstream methane intensity of
+0.38 per cent of marketed gas, divided by the 1.7 times factor by which their measurement-based
+inventory exceeds the official one, implies a methane share of 25 to 30 per cent depending on the
+methane GWP vintage; an absolute route over the same paper's 144.5 kt/y gives 21 to 25 per cent.
+The bracket spans roughly 18 to 34 per cent and centres near 25. The assumed 0.30 sits high in
+that bracket. It has not been changed, because the evidence brackets rather than pins it and the
+choice moves the GWP20 scenario and the methane damages line.
 
 **Two projects rest on weak capacity figures.** Kino Aski LNG's 15 mtpa (formerly Marinvest,
 Baie-Comeau) is from a 17 August 2026 press release; no regulatory process has begun and the
@@ -407,9 +437,9 @@ places it on the bunkering chain and records the disagreement rather than resolv
 **Capacity is never summed across chains.** Export and bunkering capacity is liquefaction; import
 capacity is regasification. They measure opposite operations.
 
-**Annual figures come in two forms.** The headline annual is the panel peak (237.3 MtCO2e in
-2037). `life_average_annual_mt` (206.3 MtCO2e/yr) is a life-average across each facility's
-operating window. The published lifetime (7,215.3 MtCO2e) is the sum of the calendar panel
+**Annual figures come in two forms.** The headline annual is the panel peak (235.6 MtCO2e in
+2037). `life_average_annual_mt` (204.7 MtCO2e/yr) is a life-average across each facility's
+operating window. The published lifetime (7,162.0 MtCO2e) is the sum of the calendar panel
 from 2025 through 2069. Duration × life-average is no longer published.
 
 **One route distance is the west-coast basis rather than a port-specific figure.** Kanata LNG

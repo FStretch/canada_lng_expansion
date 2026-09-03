@@ -1,7 +1,7 @@
 parameter,distribution,source,sampled
 upstream_production,"triangular(0.22, 0.25, 0.428)","Scenarios: inventory_as_reported / measurement_central / near_term_methane_gwp20. Howarth 0.55 is a named point, not a draw.",True
 liquefaction,fixed at Emission Factors central,"Emission Factors liquefaction central, asserted equal to Parameters liquefaction_gas_turbine. Electric 0.12 is a discrete counterfactual, not an uncertainty band.",False
-pipeline_transport,"triangular(0.05, 0.1, 0.18)",Emission Factors range_low / central / range_high,True
+pipeline_transport,"triangular(0.037, 0.074, 0.133)",Emission Factors range_low / central / range_high,True
 shipping,"triangular(0.05, 0.12, 0.31)",Emission Factors range_low / central / range_high,True
 regasification,"triangular(0.011, 0.021, 0.0275)",Emission Factors range_low / central / range_high,True
 combustion,"triangular(2.58, 2.75, 3.0)",Emission Factors range_low / central / range_high,True
