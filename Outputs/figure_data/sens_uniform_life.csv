@@ -1,7 +1,7 @@
 case,lifespan_override_years,ignore_licence_end,build_out,membership,lifetime_mtco2e,lifetime_co2_only_mt,lifetime_ch4_kt,peak_year,peak_mtco2e_yr,eccc_2pct_damages_cad_bn
 central,,False,committed,committed (operating + under construction),1869.4836050000004,1799.6193350666674,2344.4385883668897,2030,58.32863,748.9457461093489
 central,,False,committed_plus_advanced,committed plus advanced (+ tier advanced_proposed),3805.738805,3663.514951066667,4772.612548098434,2037,135.76833,1579.1249037777764
-central,,False,full,full (every headline-scope asset),9298.097503157895,8955.23925469298,11505.31035117155,2037,298.1874697368421,4072.816379144376
+central,,False,full,full (every headline-scope asset),7254.220503157894,6987.7437613596485,8942.172543565288,2037,238.6184697368421,3143.328391980731
 uniform_40yr_no_licence_stop,40.0,True,committed,committed (operating + under construction),2279.8199400000008,2194.6210352,2859.0236510067093,2030,58.32863,955.3438586346374
 uniform_40yr_no_licence_stop,40.0,True,committed_plus_advanced,committed plus advanced (+ tier advanced_proposed),4936.86004,4752.3651765333325,6191.102800894854,2037,135.76833,2157.124561224943
-uniform_40yr_no_licence_stop,40.0,True,full,full (every headline-scope asset),10509.636888157893,10121.502332159649,13024.649530142466,2037,298.1874697368421,4692.574887322019
+uniform_40yr_no_licence_stop,40.0,True,full,full (every headline-scope asset),8465.759888157894,8154.006838826314,10461.511722536205,2037,238.6184697368421,3763.086900158375

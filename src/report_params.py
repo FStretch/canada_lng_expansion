@@ -13,11 +13,10 @@ REPORT_PARAM_DEFAULTS: dict[str, dict] = {
     "tmx_expansion_bpd": {
         "value": 590_000,
         "unit": "bpd",
-        "source": (
-            "TMX expansion increment commonly cited as 590,000 bpd above the "
-            "pre-expansion system; used with tmx_oil_lifecycle_per_barrel for "
-            "figure 7. Add to Parameters sheet to override."
-        ),
+            "source": (
+                "TMX expansion increment: expanded-system 890,000 bpd less the "
+                "pre-expansion ~300,000 bpd. Prefer the Parameters-sheet value."
+            ),
     },
     "alberta_bc_bitumen_pipeline_bpd": {
         "value": 1_000_000,

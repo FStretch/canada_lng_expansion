@@ -28,9 +28,9 @@ from src.scope import headline_scope_sets, row_in_headline_scope
 
 TRAJECTORY_YEARS = tuple(range(2025, 2051))
 # Scenarios whose CO2e is on a GWP100 basis, so CH4 mass = CH4-derived CO2e /
-# gwp100_ch4. near_term_methane_gwp20 is excluded: its 0.33 upstream factor is
-# the inventory factor scaled whole (0.22 x 1.5), not a GWP100 CO2e figure that
-# can be divided back to a mass. Its ch4_mass_kt is left blank rather than wrong.
+# gwp100_ch4. near_term_methane_gwp20 is excluded: its upstream factor is a
+# GWP20 re-weight of the methane portion, not a GWP100 CO2e figure that can
+# be divided back to a mass. Its ch4_mass_kt is left blank rather than wrong.
 GWP100_SCENARIOS = (
     "inventory_as_reported",
     "measurement_central",
@@ -421,14 +421,14 @@ def panel_gas_totals(
 def gwp20_reconciliation(panel: pd.DataFrame, inputs: dict) -> dict:
     """Reconcile the `near_term_methane_gwp20` scenario against the CH4-mass route.
 
-    Route A is the scenario as the workbook defines it: upstream 0.33, every
-    other stage at its central value.
+    Route A is the scenario as the workbook defines it: methane-only GWP20
+    re-weight of upstream, every other stage at its central value.
 
     Route B re-weights the Task 1 CH4 mass at `gwp20_ch4`:
     `co2_mt + ch4_mass_kt/1000 x gwp20`.
 
-    The two are not expected to agree, and are not forced to. The decomposition
-    below is reported instead.
+    The remaining gap is shipping methane slip, which the named scenario does
+    not re-weight. The two are not forced together.
     """
     gwp100 = float(get_param(inputs["params"], "gwp100_ch4"))
     gwp20 = float(get_param(inputs["params"], "gwp20_ch4"))
@@ -669,7 +669,21 @@ def canada_pathway_series(
 
 
 def oil_lifecycle_gt(bpd: float, params: dict) -> float:
-    """Same method as TMX: bpd × tCO2e/bbl × 365 × lifecycle_years / 1e9."""
-    per_bbl = float(get_param(params, "tmx_oil_lifecycle_per_barrel"))
+    """Nameplate oil: bpd × (upstream+transport+combustion) × days_per_year × life / 1e9.
+
+    Unlike LNG this has no ramp, utilisation curve or FID delay. Figure 7
+    states that asymmetry: it understates LNG relative to oil.
+    """
+    up = float(get_param(params, "tmx_oil_upstream_per_barrel"))
+    transport = float(get_param(params, "tmx_oil_transport_per_barrel"))
+    combustion = float(get_param(params, "tmx_oil_combustion_per_barrel"))
+    per_bbl = up + transport + combustion
+    recorded = float(get_param(params, "tmx_oil_lifecycle_per_barrel"))
+    if abs(per_bbl - recorded) > 1e-9:
+        raise ValueError(
+            "tmx_oil_lifecycle_per_barrel is "
+            f"{recorded}, but the three stage rows sum to {per_bbl}."
+        )
+    days = float(get_param(params, "days_per_year"))
     life = float(get_param(params, "lifecycle_years_default"))
-    return float(bpd) * per_bbl * 365.0 * life / 1e9
+    return float(bpd) * per_bbl * days * life / 1e9

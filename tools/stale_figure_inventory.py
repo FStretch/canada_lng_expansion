@@ -38,18 +38,30 @@ SUPERSEDED = [
     (r"18\.0\s*[/-]\s*3\.4\s*[/-]\s*78\.6", "18.0 / 3.4 / 78.6 territorial", "18.1 / 3.2 / 78.7", "Task 4, route-scaled shipping"),
     (r"\b4[,.]?164\b", "C$4,164bn ECCC 2% damages (whole CO2e at SC-CO2)", "C$4,073bn", "Task 3 per-gas pricing, then Task 4"),
     (r"\b258\.9\b", "258.9 Mt/yr life-average", "258.5 Mt/yr", "Task 4, route-scaled shipping"),
-    (r"10[,.]?704\.7", "10,704.7 Mt lifetime", "9,298.1 Mt", "superseded before this task sequence"),
-    (r"\b272\.0\b", "272.0 Mt peak", "298.2 Mt in 2037", "superseded before this task sequence"),
+    (r"10[,.]?704\.7", "10,704.7 Mt lifetime", "7,254.2 Mt", "superseded before this task sequence"),
+    (r"\b272\.0\b", "272.0 Mt peak", "238.6 Mt in 2037", "superseded before this task sequence"),
+    # Discovery LNG returned to cancelled, 1 September 2026.
+    (r"9[,.]?298\.1", "9,298.1 Mt lifetime (Discovery counted as early_proposed)", "7,254.2 Mt", "Discovery returned to cancelled"),
+    (r"\b298\.2\b", "298.2 Mt peak (Discovery in)", "238.6 Mt in 2037", "Discovery returned to cancelled"),
+    (r"8[,.]?955\.2", "8,955.2 Mt CO2-only (Discovery in)", "6,987.7 Mt", "Discovery returned to cancelled"),
+    (r"18\.1\s*[/-]\s*3\.2\s*[/-]\s*78\.7", "18.1 / 3.2 / 78.7 territorial", "18.1 / 3.2 / 78.8", "Discovery returned to cancelled"),
+    (r"\b4[,.]?073\b", "C$4,073bn ECCC 2% damages (Discovery in)", "C$3,143bn", "Discovery returned to cancelled"),
+    (r"\b258\.5\b", "258.5 Mt/yr life-average (Discovery in)", "207.4 Mt/yr", "Discovery returned to cancelled"),
+    (r"\b100\.1\b", "100.1 mtpa export capacity (ten projects)", "80.1 mtpa (nine projects)", "Discovery returned to cancelled"),
+    (r"11[,.]?505", "11,505 kt CH4 (Discovery in)", "8,942 kt", "Discovery returned to cancelled"),
+    # GWP20 scenario recomputed on the methane portion only.
+    (r"upstream 0\.33\b", "upstream 0.33 GWP20 (whole factor x1.5)", "0.428 (methane portion only)", "GWP20 recomputed on the methane portion"),
 ]
 
 CURRENT = {
-    "lifetime CO2e": "9,298.1 Mt",
-    "lifetime CO2 only": "8,955.2 Mt (plus 11,505 kt CH4)",
-    "peak": "298.2 Mt in 2037",
-    "territorial CAN / BUNK / FOR": "18.1 / 3.2 / 78.7 %",
-    "ECCC 2% damages": "C$4,073 bn",
+    "lifetime CO2e": "7,254.2 Mt",
+    "lifetime CO2 only": "6,987.7 Mt (plus 8,942 kt CH4)",
+    "peak": "238.6 Mt in 2037",
+    "territorial CAN / BUNK / FOR": "18.1 / 3.2 / 78.8 %",
+    "ECCC 2% damages": "C$3,143 bn",
     "committed": "1,869.5 Mt, C$749 bn",
     "committed plus advanced": "3,805.7 Mt, C$1,579 bn",
+    "export capacity": "80.1 mtpa across nine projects",
 }
 
 TEXT_SUFFIXES = {".md", ".py", ".txt", ".cff", ".yml", ".yaml"}
@@ -60,17 +72,34 @@ ALLOWED = {
     "tools/stale_figure_inventory.py",
     # Names the exact README string it replaced, so it must quote the old split.
     "tools/update_data_inputs_readme_task4.py",
+    # Record what they changed, so they must quote the values they moved away from.
+    "tools/fix_audit_findings.py",
+    "tools/update_chains_applies_to.py",
     "build_results.py",
     "Outputs/STALE_FIGURE_INVENTORY.md",
-    # Dated diagnostics, each carrying a superseded-snapshot banner.
+    # Dated diagnostics and audits, each carrying a superseded-snapshot banner.
     "Outputs/SCOPE_DIAGNOSTIC.md",
     "Outputs/OIL_COMPARATOR_AUDIT.md",
+    "Outputs/SOURCING_AUDIT.md",
+    "Outputs/DECK_RECONCILIATION.md",
 }
 ALLOWED_PREFIXES = ("Outputs/BASELINE_", "Outputs/CHANGE_REPORT_")
 
+# A file may quote one specific superseded value on purpose without being
+# exempted from every other check. Keyed (path, superseded label).
+ALLOWED_PAIRS = {
+    # One deliberate before/after sentence about the Discovery removal.
+    ("README.md", "9,298.1 Mt lifetime (Discovery counted as early_proposed)"),
+    ("README.md", "100.1 mtpa export capacity (ten projects)"),
+    # The scenarios section explains what 0.33 was and why it moved.
+    ("README.md", "upstream 0.33 GWP20 (whole factor x1.5)"),
+}
 
-def _allowed(rel: str) -> bool:
-    return rel in ALLOWED or rel.startswith(ALLOWED_PREFIXES)
+
+def _allowed(rel: str, label: str | None = None) -> bool:
+    if rel in ALLOWED or rel.startswith(ALLOWED_PREFIXES):
+        return True
+    return label is not None and (rel, label) in ALLOWED_PAIRS
 
 
 def _iter_files():
@@ -121,7 +150,7 @@ def main() -> None:
             continue
         for pattern, label, _cur, _when in SUPERSEDED:
             if re.search(pattern, text):
-                findings[label].append((rel, kind, _allowed(rel)))
+                findings[label].append((rel, kind, _allowed(rel, label)))
 
     lines = []
     lines.append("# Stale figure inventory")
@@ -133,11 +162,12 @@ def main() -> None:
     )
     lines.append("")
     lines.append(
-        "The previous version of this file was a hand-written snapshot and had "
-        "itself gone stale: it treated 9,558.2 Mt, 309.1 Mt and "
-        "18.5 / 5.6 / 75.9 as current, two scope changes after they stopped "
-        "being so. This one is generated, so it can be re-run after any "
-        "re-lock."
+        "Generated, not hand-written. An earlier hand-written version of this "
+        "file went stale itself, twice: it treated 9,558.2 Mt and 309.1 Mt as "
+        "current after they had been superseded, and a later generated run "
+        "still listed 9,298.1 Mt as current after Discovery LNG was returned "
+        "to cancelled. Re-run this script after every re-lock; that is the "
+        "only thing that keeps it honest."
     )
     lines.append("")
     lines.append("## Current locked values")

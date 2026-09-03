@@ -1,6 +1,6 @@
 """Placeholder first-export-year sensitivity (Parameters sheet).
 
-Five headline-scope export assets have a blank Asset Register
+Four headline-scope export assets have a blank Asset Register
 first_export_year. The named parameter assumed_first_export_year_if_missing
 fills that gap. With licence-end stops on the licensed terminals, the
 panel tail is entirely this placeholder.
@@ -23,7 +23,20 @@ from src.trajectories import (
     panel_peak,
 )
 
-PLACEHOLDER_START_YEARS = (2030, 2033, 2035)
+
+def _placeholder_years(params: dict) -> tuple[int, ...]:
+    """Central year plus the sensitivity years from Parameters."""
+    named = int(get_param(params, "assumed_first_export_year_if_missing"))
+    raw = str(get_param(params, "placeholder_sensitivity_years"))
+    extra = tuple(int(x.strip()) for x in raw.split(",") if x.strip())
+    years = (named,) + extra
+    for y in extra:
+        if y <= named:
+            raise ValueError(
+                f"placeholder_sensitivity_years {raw} must all be after "
+                f"assumed_first_export_year_if_missing ({named})."
+            )
+    return years
 
 
 def placeholder_contribution(
@@ -67,6 +80,7 @@ def run_placeholder_start_sensitivity(
         raise AssertionError(
             f"Central assumed_first_export_year_if_missing is {named}, not 2030."
         )
+    years = _placeholder_years(inputs["params"])
 
     contrib = placeholder_contribution(central_panel, inputs["assets"])
     lifetime_central = panel_lifetime_mt(central_panel, DEFAULT_SCENARIO)
@@ -74,7 +88,7 @@ def run_placeholder_start_sensitivity(
     placeholder_pct = 100.0 * placeholder_mt / lifetime_central
 
     rows = []
-    for start in PLACEHOLDER_START_YEARS:
+    for start in years:
         if start == named:
             panel_s = central_panel
             ld_s = central_ld
@@ -137,7 +151,8 @@ def format_placeholder_markdown(sens: dict) -> list[str]:
     lines.append("")
     lines.append(
         f"Parameter `assumed_first_export_year_if_missing` = **{sens['named_start']}** "
-        "(Parameters sheet). Six in-scope assets have a blank `first_export_year`. "
+        f"(Parameters sheet). {len(by_asset)} headline-scope assets have a blank "
+        f"`first_export_year`. "
         "With licence-end stops on licensed terminals, every dated end year is "
         "2056–2066; the panel tail is entirely this placeholder."
     )

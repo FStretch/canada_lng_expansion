@@ -7,7 +7,7 @@ matter to this model:
 
 **Case A, Western Canadian supply.** Gas reaches the Quebec north shore from the
 Western Canada Sedimentary Basin. The pipeline haul is far longer than the
-670 km Coastal GasLink line the pipeline_transport factor was validated against,
+670 km Coastal GasLink line the pipeline_transport factor is scaled against,
 so pipeline intensity should scale with distance. Territory stays CAN for both
 upstream and pipeline.
 
@@ -36,8 +36,9 @@ from src.scope import headline_scope_sets, row_in_headline_scope
 from src.trajectories import _chain_intensity_split, panel_lifetime_mt
 
 KINO_ASKI_ID = "marinvest_baie_comeau"
-# Coastal GasLink is the line the 0.10 pipeline_transport factor was validated
-# against (Supporting Infrastructure sheet: 670 km, 1.47 vs 1.48 MtCO2e/yr).
+# Coastal GasLink is the line the 0.10 pipeline_transport factor is scaled
+# against (Supporting Infrastructure sheet: 670 km). The 1.47 vs 1.48
+# MtCO2e/yr check confirms that scaling arithmetic, not the choice of 0.10.
 CGL_CALIBRATION_KM = 670.0
 ILLUSTRATIVE_MULTIPLIERS = (3.0, 5.0)
 
@@ -202,8 +203,8 @@ def format_feedgas_markdown(sens: dict, inputs: dict) -> list[str]:
     lines.append(
         f"**Case A, Western Canadian supply.** Pipeline transport is scaled by "
         f"distance against the {sens['cgl_km']:.0f} km Coastal GasLink line "
-        f"that the {sens['pipeline_central']:.2f} tCO2e/t pipeline factor was "
-        f"validated on. **No cited distance is available**: no route to the "
+        f"that the {sens['pipeline_central']:.2f} tCO2e/t pipeline factor is "
+        f"scaled against. **No cited distance is available**: no route to the "
         f"Quebec north shore is defined, and the CER's pipeline profile for the "
         f"TransCanada Canadian Mainline publishes only a 14,123 km total "
         f"regulated system length covering all segments including deactivated "
@@ -254,9 +255,12 @@ def format_feedgas_markdown(sens: dict, inputs: dict) -> list[str]:
         "upstream factor is derived from Canada Energy Regulator British "
         "Columbia oil and gas production, processing and transmission "
         "emissions against BC marketable gas, corrected for measured methane. "
-        "The pipeline factor is a literature band validated against the British "
-        "Columbia assessment of Coastal GasLink. Both are British Columbia "
-        "figures. For the eight Pacific-coast assets that is the right basis. "
+        "The pipeline factor is an assumed 0.10 tCO2e/t. The British "
+        "Columbia assessment of Coastal GasLink is used as a scaling check "
+        "(1.47 vs 1.48 MtCO2e/yr on Phase 1 throughput), not as an independent "
+        "measurement of the factor. Both the factor and the check are British "
+        "Columbia figures. For the seven Pacific-coast assets that is the right "
+        "geography. "
         "For the two Atlantic projects it is a **substitution**, and the "
         "direction of bias differs:"
     )
@@ -265,7 +269,7 @@ def format_feedgas_markdown(sens: dict, inputs: dict) -> list[str]:
         "- **Kino Aski (Baie-Comeau, 15 mtpa).** If the feedgas is Western "
         "Canadian, the upstream factor is right but the pipeline factor is "
         "**too low**, because a haul to the Quebec north shore is several times "
-        "the 670 km the factor was calibrated on: the illustrative band above "
+        "the 670 km the factor is scaled against: the illustrative band above "
         "puts the understatement at roughly "
         f"{cases.loc[cases['case'].str.startswith('A_'), 'kino_aski_delta_mtco2e'].min():,.0f} "
         f"to "

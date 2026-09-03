@@ -22,16 +22,27 @@ import numpy as np
 import pandas as pd
 
 from src.figures_report import C, _save, _setup_style, _write_csv
-from src.inputs import ALL_STAGES
+from src.inputs import ALL_STAGES, get_param
 
-# Howarth 2024 Table 3, average 38-day voyage, four tanker types, GWP20.
-HOWARTH_GWP20_T_PER_T = (7.37, 8.03)  # 7,370–8,028 gCO2e/kg LNG
-# Roman-White et al. 2021 Table 1, China, GWP100, cradle → regasification.
-# P2.5 / expected / P97.5. Expected is their published statistic, not a midpoint.
-ROMAN_WHITE_W2R_T_PER_T = (0.94, 1.19, 1.51)
-# Balcombe et al. 2016: literature range for liquefaction + tanker + regas only.
-BALCOMBE_LNG_STAGES_G_PER_MJ_HHV = (11.2, 31.1)
-HHV_MJ_PER_KG = 55.0  # Balcombe reports HHV; not this model's lng_energy_content=52
+
+def _lca_comparators(params: dict) -> dict:
+    """Howarth / Roman-White / Balcombe comparators from the Parameters sheet."""
+    return {
+        "howarth": (
+            float(get_param(params, "lca_howarth_gwp20_low")),
+            float(get_param(params, "lca_howarth_gwp20_high")),
+        ),
+        "roman_white": (
+            float(get_param(params, "lca_roman_white_w2r_p025")),
+            float(get_param(params, "lca_roman_white_w2r_expected")),
+            float(get_param(params, "lca_roman_white_w2r_p975")),
+        ),
+        "balcombe_g": (
+            float(get_param(params, "lca_balcombe_lng_stages_low_g_per_mj_hhv")),
+            float(get_param(params, "lca_balcombe_lng_stages_high_g_per_mj_hhv")),
+        ),
+        "hhv": float(get_param(params, "lca_hhv_mj_per_kg")),
+    }
 
 
 def export_stage_intensity(inputs: dict) -> dict[str, float]:
@@ -53,7 +64,15 @@ def intensity_on_stages(stage_i: dict[str, float], stages: tuple[str, ...]) -> f
 
 def build_lca_comparison(inputs: dict) -> dict[str, pd.DataFrame]:
     si = export_stage_intensity(inputs)
-    assert abs(si["liquefaction"] - 0.29) < 1e-12, si["liquefaction"]
+    liq_param = float(get_param(inputs["params"], "liquefaction_gas_turbine"))
+    if abs(si["liquefaction"] - liq_param) > 1e-12:
+        raise AssertionError(
+            f"Liquefaction central is {si['liquefaction']}, not {liq_param}."
+        )
+    cmp = _lca_comparators(inputs["params"])
+    howarth = cmp["howarth"]
+    roman_white = cmp["roman_white"]
+    hhv = cmp["hhv"]
     w2r_stages = (
         "upstream_production",
         "pipeline_transport",
@@ -65,9 +84,7 @@ def build_lca_comparison(inputs: dict) -> dict[str, pd.DataFrame]:
     model_full = intensity_on_stages(si, ALL_STAGES)
     model_w2r = intensity_on_stages(si, w2r_stages)
     model_lng = intensity_on_stages(si, lng_only)
-    balcombe_t = tuple(
-        g * HHV_MJ_PER_KG / 1000.0 for g in BALCOMBE_LNG_STAGES_G_PER_MJ_HHV
-    )
+    balcombe_t = tuple(g * hhv / 1000.0 for g in cmp["balcombe_g"])
 
     included = pd.DataFrame(
         [
@@ -122,9 +139,9 @@ def build_lca_comparison(inputs: dict) -> dict[str, pd.DataFrame]:
                 "upstream_tCO2e_per_t": np.nan,
                 "combustion_included": False,
                 "shipping_included": True,
-                "total_low": ROMAN_WHITE_W2R_T_PER_T[0],
-                "total_central": ROMAN_WHITE_W2R_T_PER_T[1],
-                "total_high": ROMAN_WHITE_W2R_T_PER_T[2],
+                "total_low": roman_white[0],
+                "total_central": roman_white[1],
+                "total_high": roman_white[2],
                 "gwp": "GWP100",
                 "axis_group": "w2r_gwp100",
                 "is_this_model": False,
@@ -173,12 +190,13 @@ def build_lca_comparison(inputs: dict) -> dict[str, pd.DataFrame]:
                 "axis_group": "lng_stages_gwp100",
                 "is_this_model": False,
                 "source": (
-                    f"ACS Sustainable Chem. Eng.; 11.2–31.1 gCO2e/MJ HHV × "
-                    f"{HHV_MJ_PER_KG:g} MJ/kg HHV. Not Balcombe's own single-chain LCA."
+                    f"ACS Sustainable Chem. Eng.; {cmp['balcombe_g'][0]:g}–"
+                    f"{cmp['balcombe_g'][1]:g} gCO2e/MJ HHV × "
+                    f"{hhv:g} MJ/kg HHV. Not Balcombe's own single-chain LCA."
                 ),
                 "alignment_note": (
                     "Range of other studies' LNG stages. Converted from HHV with "
-                    f"{HHV_MJ_PER_KG:g} MJ/kg. No midpoint plotted. "
+                    f"{hhv:g} MJ/kg. No midpoint plotted. "
                     "Roman-White 2021 is the Balcombe-coauthored single-chain LCA."
                 ),
             },
@@ -191,9 +209,9 @@ def build_lca_comparison(inputs: dict) -> dict[str, pd.DataFrame]:
                 "upstream_tCO2e_per_t": np.nan,
                 "combustion_included": True,
                 "shipping_included": True,
-                "total_low": HOWARTH_GWP20_T_PER_T[0],
+                "total_low": howarth[0],
                 "total_central": np.nan,
-                "total_high": HOWARTH_GWP20_T_PER_T[1],
+                "total_high": howarth[1],
                 "gwp": "GWP20",
                 "axis_group": "full_gwp20",
                 "is_this_model": False,

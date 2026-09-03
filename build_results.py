@@ -117,27 +117,26 @@ BEFORE = {
 EXPECTED_EXPORT_BY_CALC = {
     "operating": 14.0,
     "under_construction": 5.4,
-    "proposed": 80.7,
+    "proposed": 60.7,
 }
-EXPECTED_EXPORT_TOTAL = 100.1
-EXPECTED_EARLY_EXPORT = 54.7
+EXPECTED_EXPORT_TOTAL = 80.1
+EXPECTED_EARLY_EXPORT = 34.7
 EXPECTED_ADVANCED_EXPORT = 26.0
 # Life-average territorial shares, one decimal. Tied to the Data Inputs README
 # and the repo README so those documents cannot drift from the model.
 # Lock history:
 #   all assets:          CAN 18.5 / BUNK 5.6 / FOR 75.9; lifetime 9558.2; peak 309.1 (2037)
 #   export-scope filter: CAN 18.0 / BUNK 3.4 / FOR 78.6; lifetime 9315.3; peak 298.7 (2037)
-#   route-scaled shipping (Task 4): the values below. Shipping intensity is now
-#   shipping.central x route_distance_nm / route_bc_to_northeast_asia_nm, so the
-#   two Atlantic assets (Kino Aski 2,980 nm, Fermeuse 2,470 nm) carry less
-#   shipping than the eight BC assets at the 3,800 nm basis. BUNK falls, the
-#   other two shares rise slightly on the smaller total.
-EXPECTED_TERRITORIAL_SHARE_PCT = {"CAN": 18.1, "BUNK": 3.2, "FOR": 78.7}
-EXPECTED_LIFETIME_MT = 9298.1
+#   route-scaled shipping: CAN 18.1 / BUNK 3.2 / FOR 78.7; lifetime 9298.1; peak 298.2 (2037)
+#   Discovery returned to cancelled (1 Sep 2026): values below. Discovery was
+#   20 mtpa / 2,043.9 Mt. FOR rounds to 78.8 on the smaller set.
+EXPECTED_TERRITORIAL_SHARE_PCT = {"CAN": 18.1, "BUNK": 3.2, "FOR": 78.8}
+EXPECTED_LIFETIME_MT = 7254.2
 EXPECTED_PEAK_YEAR = 2037
-EXPECTED_PEAK_MT = 298.2
+EXPECTED_PEAK_MT = 238.6
 
-# The paper set, locked 29 August 2026 (Task 5). The paper reports the central
+# The paper set, locked 1 September 2026 (Discovery cancelled; GWP20 methane-
+# only; Monte Carlo triangles read from the workbooks). The paper reports the central
 # case — the point estimate from the central factor values — with the Monte
 # Carlo 5th to 95th percentile as its interval. The MC median is stated once,
 # with the reason it sits above the central: the stage triangles are
@@ -148,7 +147,7 @@ EXPECTED_PEAK_MT = 298.2
 # SHA-256 of Outputs/paper_set_locked.csv, the rounded canonical copy of the
 # paper set. Re-lock it in the same commit as EXPECTED_BUILD_OUT, never alone.
 EXPECTED_PAPER_SET_SHA256 = (
-    "9e33c6914c18219b6a066d7c7afab048102ffd53d832d8c7a2d2f3e6272a0946"
+    "58236e9bbc617ca33bf6e0b0f8ccc0ea056cf853f5c47260b289f9316012985c"
 )
 
 EXPECTED_BUILD_OUT = {
@@ -167,11 +166,11 @@ EXPECTED_BUILD_OUT = {
         "damages_cad_bn": 1579,
     },
     "full": {
-        "lifetime_mt": 9298.1,
-        "lifetime_co2_only_mt": 8955.2,
+        "lifetime_mt": 7254.2,
+        "lifetime_co2_only_mt": 6987.7,
         "peak_year": 2037,
-        "peak_mt": 298.2,
-        "damages_cad_bn": 4073,
+        "peak_mt": 238.6,
+        "damages_cad_bn": 3143,
     },
 }
 
@@ -831,44 +830,32 @@ def write_review_summary(
         lines.append(
             f"That scenario's lifetime is "
             f"**{gwp20_rec['scenario_route_mt']:,.1f} Mt** with upstream at "
-            f"{gwp20_rec['scenario_upstream_factor']:.2f} and every other stage "
-            f"central. Rebuilding it from the Task 1 CH4 mass "
-            f"(`co2_mt + ch4_mass_kt/1000 x gwp20_ch4`, "
+            f"{gwp20_rec['scenario_upstream_factor']:.3f} and every other stage "
+            f"central. The workbook now re-weights only the methane portion of "
+            f"upstream: non-methane inventory stays at "
+            f"{gwp20_rec['inventory_upstream_factor']:.2f} × (1 − "
+            f"upstream_ch4_share), and the methane portion is multiplied by 1.5 "
+            f"then by gwp20/gwp100 (82.5/29.8). Rebuilding from the Task 1 CH4 "
+            f"mass (`co2_mt + ch4_mass_kt/1000 x gwp20_ch4`, "
             f"gwp20 = {gwp20_rec['gwp20_ch4']:g}) gives "
             f"**{gwp20_rec['ch4_mass_route_mt']:,.1f} Mt**, "
-            f"**{gwp20_rec['difference_pct']:+.1f}%** apart. That is well over "
-            f"0.1%, so the two routes are reported rather than forced together. "
-            f"Two reasons, in order of size:"
+            f"**{gwp20_rec['difference_pct']:+.1f}%** apart. The remaining gap "
+            f"is shipping methane slip, which the named scenario does not "
+            f"re-weight ({gwp20_rec['shipping_uplift_mt']:,.1f} Mt). The two "
+            f"routes are reported rather than forced together."
         )
         lines.append("")
         lines.append(
-            f"1. **The workbook's 0.33 is not a GWP20 re-weighting.** It is "
-            f"`inventory_as_reported x 1.5` = "
-            f"{gwp20_rec['inventory_upstream_factor']:.2f} x 1.5, the whole "
-            f"factor scaled. Re-weighting only the methane portion at GWP20 "
-            f"gives an upstream factor of "
-            f"{gwp20_rec['mass_route_upstream_factor']:.3f}, worth "
-            f"{gwp20_rec['upstream_uplift_mt']:,.1f} Mt over the central case "
-            f"against the scenario's "
-            f"{gwp20_rec['scenario_route_mt'] - gwp20_rec['central_route_mt']:,.1f} "
-            f"the mass route lands at "
-            f"{gwp20_rec['upstream_only_mass_route_mt']:,.1f} Mt, still "
-            f"{gwp20_rec['upstream_only_difference_pct']:+.1f}% apart."
-        )
-        lines.append(
-            f"2. **The scenario does not touch shipping.** The mass route "
-            f"re-weights shipping methane slip too, worth a further "
-            f"{gwp20_rec['shipping_uplift_mt']:,.1f} Mt."
-        )
-        lines.append("")
-        lines.append(
-            "The repository README describes the GWP20 uplift as applying to "
-            "\"the methane portion of upstream and pipeline emissions only\". "
-            "**No pipeline methane portion is defined anywhere in the workbook**, "
-            "and the code changes only the upstream factor, so the pipeline half "
-            "of that sentence is not implemented. It is recorded here rather than "
-            "invented. `near_term_methane_gwp20` remains a named scenario as the "
-            "workbook defines it; the CH4-mass route is not substituted for it."
+            "The CH4-mass route's implied methane-only GWP20 upstream factor is "
+            f"{gwp20_rec['mass_route_upstream_factor']:.3f}, against the workbook's "
+            f"{gwp20_rec['scenario_upstream_factor']:.3f}. They differ because the "
+            "workbook starts from the inventory factor and an assumed 30% methane "
+            "share, while the mass route starts from the central-case CH4 mass "
+            "(inventory CO2 plus the 1.5× methane correction already in "
+            "`measurement_central`). **No pipeline methane portion is defined "
+            "anywhere in the workbook**, so pipeline is not re-weighted. "
+            "`near_term_methane_gwp20` remains a named scenario as the workbook "
+            "defines it; the CH4-mass route is not substituted for it."
         )
         lines.append("")
 
@@ -882,7 +869,7 @@ def write_review_summary(
         up = inputs["upstream_by_scenario"][scen]
         life = panel_lifetime_mt(panel, scen)
         lines.append(
-            f"| {scen} | {up:.2f} | {float(s['annual_total'].sum())/1e6:.1f} | "
+            f"| {scen} | {up:.3f} | {float(s['annual_total'].sum())/1e6:.1f} | "
             f"{life:.1f} | "
             f"{float(s['canada_territorial'].sum())/1e6:.1f} |"
         )
@@ -1353,8 +1340,8 @@ def main() -> None:
     )
 
     assert set(sample["chain"].unique()) == {"export"}
-    assert int(sample["project_id"].nunique()) == 10, sample["project_id"].unique()
-    print("[validate] headline sample is 10 export assets PASS")
+    assert int(sample["project_id"].nunique()) == 9, sample["project_id"].unique()
+    print("[validate] headline sample is 9 export assets PASS")
 
     # No watch group in calculation
     assert "watch" not in set(sample["calc_group"].unique()), sample["calc_group"].unique()
@@ -1399,7 +1386,7 @@ def main() -> None:
         f"(total {export_total:.1f} mtpa) PASS"
     )
 
-    # Proposed export: 26 advanced + 54.7 early (Kino Aski 15 mtpa)
+    # Proposed export: 26 advanced + 34.7 early (Kino Aski 15 mtpa)
     prop_exp = sample.loc[
         (sample["chain"] == "export") & (sample["calc_group"] == "proposed")
     ]

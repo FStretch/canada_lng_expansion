@@ -1,4 +1,4 @@
 category,code,annual_mtco2e_yr,note,share_pct,value_kind,scenario
-Canada territorial,CAN,46.675738416605604,Counted in Canada's inventory,18.058207521099003,life_average_annual_mt,measurement_central
-International bunkers,BUNK,8.32103228206092,Attributed to no country under UNFCCC accounting,3.219294066610027,life_average_annual_mt,measurement_central
-Foreign territorial,FOR,203.47704715989008,Counted in destination countries,78.72249841229097,life_average_annual_mt,measurement_central
+Canada territorial,CAN,37.463898416605616,Counted in Canada's inventory,18.065608901835663,life_average_annual_mt,measurement_central
+International bunkers,BUNK,6.593812282060921,Attributed to no country under UNFCCC accounting,3.17962729172449,life_average_annual_mt,measurement_central
+Foreign territorial,FOR,163.31918215989012,Counted in destination countries,78.75476380643985,life_average_annual_mt,measurement_central

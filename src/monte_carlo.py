@@ -1,9 +1,10 @@
 """Decoupled Monte Carlo: sample physics, then price with a frozen ECCC vector.
 
-Liquefaction is held at 0.29 (electric 0.12 is a discrete counterfactual).
-Howarth 0.55 is a named point sensitivity, not a draw. upstream_ch4_share
-is held at 0.30 so the 0.22 × 1.5 construction is not double-counted.
-Utilisation ramp rates are held: no published range.
+Triangles are read from the workbooks: upstream from the inventory / central /
+GWP20 scenario values (Howarth is a named point, not a draw); other stages from
+Emission Factors low / central / high; FID and life from Parameters. Liquefaction
+is held at Emission Factors central. Utilisation ramp rates are held: no
+published range.
 """
 
 from __future__ import annotations
@@ -37,13 +38,6 @@ MC_SEED_PARAM = "monte_carlo_seed"
 MC_DRAWS_PARAM = "monte_carlo_n_draws"
 ECCC_RATE = 2.0
 HOWARTH_SCENARIO = "howarth_high"
-
-# Upstream triangle is inventory / central / GWP20-equivalent factor.
-# Howarth 0.55 is excluded (different method).
-UPSTREAM_TRI = (0.22, 0.25, 0.33)
-FID_TRI = (3.0, 5.0, 7.0)
-LIFE_TRI = (30.0, 40.0, 50.0)
-LIQUEFACTION_FIXED = 0.29
 
 BUILD_OUTS = (
     "committed",
@@ -89,6 +83,41 @@ def _tri(factors: pd.DataFrame, stage: str) -> tuple[float, float, float]:
     if not (low <= mode <= high):
         raise ValueError(f"{stage} triangle {low}, {mode}, {high} is not ordered.")
     return low, mode, high
+
+
+def _upstream_tri(inputs: dict) -> tuple[float, float, float]:
+    """Inventory / central / GWP20 scenario. Howarth is a named point."""
+    u = inputs["upstream_by_scenario"]
+    low = float(u["inventory_as_reported"])
+    mode = float(u[DEFAULT_SCENARIO])
+    high = float(u["near_term_methane_gwp20"])
+    if not (low <= mode <= high):
+        raise ValueError(
+            f"upstream triangle {low}, {mode}, {high} is not ordered."
+        )
+    return low, mode, high
+
+
+def _fid_tri(params: dict) -> tuple[float, float, float]:
+    tri = (
+        float(get_param(params, "fid_delay_low")),
+        float(get_param(params, "fid_delay_mid")),
+        float(get_param(params, "fid_delay_high")),
+    )
+    if not (tri[0] <= tri[1] <= tri[2]):
+        raise ValueError(f"FID triangle {tri} is not ordered.")
+    return tri
+
+
+def _life_tri(params: dict) -> tuple[float, float, float]:
+    tri = (
+        float(get_param(params, "lifespan_sensitivity_low")),
+        float(get_param(params, "lifecycle_years_default")),
+        float(get_param(params, "lifespan_sensitivity_high")),
+    )
+    if not (tri[0] <= tri[1] <= tri[2]):
+        raise ValueError(f"life triangle {tri} is not ordered.")
+    return tri
 
 
 def _compile_assets(inputs: dict) -> list[AssetSpec]:
@@ -415,10 +444,11 @@ def run_monte_carlo(
     params = inputs["params"]
     factors = inputs["factors"]
     liq = float(factors.loc["liquefaction", "central"])
-    if abs(liq - LIQUEFACTION_FIXED) > 1e-12:
+    liq_param = float(get_param(params, "liquefaction_gas_turbine"))
+    if abs(liq - liq_param) > 1e-12:
         raise AssertionError(
-            f"Liquefaction central is {liq}, not {LIQUEFACTION_FIXED}. "
-            "Monte Carlo will not run if the headline factor has moved."
+            f"Liquefaction central is {liq}, not Parameters liquefaction_gas_turbine "
+            f"{liq_param}. Monte Carlo will not run if the two have drifted."
         )
     seed = int(get_param(params, MC_SEED_PARAM))
     n_draws = int(get_param(params, MC_DRAWS_PARAM))
@@ -472,15 +502,19 @@ def run_monte_carlo(
             f"(max abs {max_abs_co2} Mt in a year)."
         )
 
+    up_tri = _upstream_tri(inputs)
+    fid_tri = _fid_tri(params)
+    life_tri = _life_tri(params)
+
     rng = np.random.default_rng(seed)
     t0 = perf_counter()
-    upstream = rng.triangular(*UPSTREAM_TRI, size=n_draws)
+    upstream = rng.triangular(*up_tri, size=n_draws)
     stage_draws = {
         stage: rng.triangular(*stage_bounds[stage], size=n_draws)
         for stage in SAMPLED_STAGES
     }
-    life_draw = np.rint(rng.triangular(*LIFE_TRI, size=n_draws)).astype(int)
-    delay_draw = np.rint(rng.triangular(*FID_TRI, size=n_draws)).astype(int)
+    life_draw = np.rint(rng.triangular(*life_tri, size=n_draws)).astype(int)
+    delay_draw = np.rint(rng.triangular(*fid_tri, size=n_draws)).astype(int)
     yearly, yearly_co2, yearly_ch4 = _simulate(
         specs,
         years,
@@ -552,14 +586,17 @@ def run_monte_carlo(
     param_rows = [
         {
             "parameter": "upstream_production",
-            "distribution": f"triangular{UPSTREAM_TRI}",
-            "source": "inventory 0.22 / central 0.25 / GWP20-equivalent 0.33; Howarth 0.55 excluded",
+            "distribution": f"triangular{up_tri}",
+            "source": (
+                "Scenarios: inventory_as_reported / measurement_central / "
+                "near_term_methane_gwp20. Howarth 0.55 is a named point, not a draw."
+            ),
             "sampled": True,
         },
         {
             "parameter": "liquefaction",
-            "distribution": "fixed 0.29",
-            "source": "Emission Factors central; 0.12 is electric, not an uncertainty band",
+            "distribution": "fixed at Emission Factors central",
+            "source": "Emission Factors liquefaction central, asserted equal to Parameters liquefaction_gas_turbine. Electric 0.12 is a discrete counterfactual, not an uncertainty band.",
             "sampled": False,
         },
         *[
@@ -587,13 +624,13 @@ def run_monte_carlo(
         },
         {
             "parameter": "fid_delay_mid",
-            "distribution": f"triangular{FID_TRI}, rounded to int",
+            "distribution": f"triangular{fid_tri}, rounded to int",
             "source": "Parameters fid_delay_low / mid / high; applied to non-FID assets",
             "sampled": True,
         },
         {
             "parameter": "lifecycle_years_default",
-            "distribution": f"triangular{LIFE_TRI}, rounded to int",
+            "distribution": f"triangular{life_tri}, rounded to int",
             "source": (
                 "Parameters lifespan_sensitivity_low / default / high. "
                 f"Sampled for: {', '.join(sampled_life_ids) or 'none'}. "
@@ -660,7 +697,7 @@ def format_mc_markdown(mc: dict, published: dict | None = None) -> list[str]:
         f"{mc['n_draws']:,} draws, seed `{mc['seed']}`. "
         f"Physics {mc['physics_seconds']:.2f}s; pricing {mc['price_seconds']:.2f}s. "
         f"Kernel vs published panel max abs {mc['kernel_panel_max_abs_mt']:.1e} Mt. "
-        "Liquefaction held at 0.29. Howarth 0.55 is a named point, not a draw. "
+        "Liquefaction held at Emission Factors central. Howarth 0.55 is a named point, not a draw. "
         "Draws are on the headline scope (export chain). "
         "Each draw carries its own upstream and shipping factor, so its CH4 "
         "mass moves with it; damages are CO2 at SC-CO2 plus CH4 mass at "

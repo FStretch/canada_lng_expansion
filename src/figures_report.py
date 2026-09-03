@@ -589,7 +589,10 @@ def figure_7_oil_comparison(
         {
             "item": f"TMX full system ({tmx_full_bpd:,.0f} bpd)",
             "lifecycle_gtco2e": tmx_full,
-            "method": "bpd × tmx_oil_lifecycle_per_barrel × 365 × lifecycle_years_default",
+            "method": (
+                "bpd × (tmx_oil_upstream + transport + combustion) × "
+                "days_per_year × lifecycle_years_default. Nameplate, no ramp."
+            ),
             "unvalidated": False,
             "capacity_note": f"tmx_total_system_bpd={tmx_full_bpd}",
         },
@@ -659,8 +662,14 @@ def figure_7_oil_comparison(
         f"Figure 7 · Scenario: {DEFAULT_SCENARIO}. Lifecycle totals (GtCO₂e), not "
         "calendar-year trajectories. LNG from the calendar-panel lifetime sum "
         "(legacy facilities contribute annual only and are excluded from Gt). "
-        "Oil rows use Parameters tmx_oil_lifecycle_per_barrel. "
-        "Alberta–BC bitumen pipeline is NEW and UNVALIDATED.",
+        "Oil rows use Parameters tmx_oil_upstream + transport + combustion "
+        f"(sum {float(get_param(params, 'tmx_oil_lifecycle_per_barrel')):g} tCO2e/bbl) "
+        f"× {int(get_param(params, 'days_per_year'))} days × "
+        f"{int(get_param(params, 'lifecycle_years_default'))} years at nameplate. "
+        "LNG carries a ramp, a utilisation curve and an FID delay; oil does not. "
+        "That understates LNG relative to oil by roughly 19%. "
+        "Alberta–BC bitumen pipeline is NEW and UNVALIDATED; it uses the same "
+        "TMX mixed-slate factor, which is too light for a dedicated dilbit line.",
     )
     out = fig_dir / "fig07_oil_infrastructure_comparison.png"
     _save(fig, out)

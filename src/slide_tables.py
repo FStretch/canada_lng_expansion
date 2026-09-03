@@ -558,6 +558,14 @@ def build_slide_tables(
                 "electrification",
                 "Headline assumes gas turbine 0.29 for every terminal. 11 and 12 are appendix only.",
             ),
+            (
+                "oil_utilisation",
+                "Oil comparator runs at nameplate × days_per_year × 40 years. "
+                "LNG carries a ramp, a utilisation curve and an FID delay. "
+                "The two sides are not utilisation-matched; that understates LNG "
+                "relative to oil by roughly 19%. Alberta bitumen is not given "
+                "a heavier upstream factor; the current config cannot express one.",
+            ),
             ("rounding", "One decimal except oil comparison (two decimals, Gt)."),
             (
                 "carbon_budget_units",
