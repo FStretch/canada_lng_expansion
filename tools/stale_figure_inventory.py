@@ -108,7 +108,6 @@ ALLOWED = {
     "build_results.py",
     "Outputs/STALE_FIGURE_INVENTORY.md",
     # Dated diagnostics and audits, each carrying a superseded-snapshot banner.
-    "Outputs/SCOPE_DIAGNOSTIC.md",
     "Outputs/OIL_COMPARATOR_AUDIT.md",
     "Outputs/SOURCING_AUDIT.md",
     "Outputs/DECK_RECONCILIATION.md",

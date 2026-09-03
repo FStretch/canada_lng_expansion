@@ -6,8 +6,6 @@ import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 
-import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 
 from src.inputs import (
@@ -87,7 +85,6 @@ SLIDE_TABLES = OUT / "SLIDE_TABLES.xlsx"
 SI_TABLE_CSV = OUT / "si_table_assets.csv"
 BENCHMARK_CSV = OUT / "benchmark_comparison.csv"
 SUMMARY_MD = OUT / "RESULTS_SUMMARY.md"
-FIGURE = OUT / "figures" / "operating_vs_proposed.png"
 FIGURE_DIR = OUT / "figures"
 FIGURE_DATA = OUT / "figure_data"
 PAPER_SET_CSV = OUT / "figure_data" / "paper_set.csv"
@@ -356,50 +353,6 @@ def paper_set_table(
             ),
         })
     return pd.DataFrame(rows)
-
-
-def write_figure(by_project: pd.DataFrame, path: Path) -> None:
-    """Export-chain operating / under construction / proposed (early inside proposed)."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    sample = by_project.loc[
-        (~by_project["excluded_from_totals"])
-        & (by_project["scenario"] == DEFAULT_SCENARIO)
-        & (by_project["chain"] == "export")
-    ]
-    buckets = [
-        ("operating", "Operating now"),
-        ("under_construction", "Under construction"),
-        ("proposed", "Proposed"),
-    ]
-    labels, s12, s3, caps = [], [], [], []
-    for cg, label in buckets:
-        g = sample.loc[sample["calc_group"] == cg]
-        cap = float(g["capacity_mtpa"].sum())
-        labels.append(label)
-        s12.append(float(g["scope_1_2"].sum()) / 1e6)
-        s3.append(float(g["scope_3"].sum()) / 1e6)
-        caps.append(cap)
-    x = np.arange(3)
-    fig, ax = plt.subplots(figsize=(9.5, 6.2))
-    ax.bar(x, s12, 0.55, label="Scope 1+2", color="#1f4e5f")
-    ax.bar(x, s3, 0.55, bottom=s12, label="Scope 3", color="#c47b3a")
-    ax.set_ylabel("Life-average annual emissions (MtCO2e / year)")
-    ax.set_xticks(x, labels)
-    ax.legend(frameon=False, loc="upper left")
-    ymax = max(a + b for a, b in zip(s12, s3))
-    ax.set_ylim(0, ymax * 1.22)
-    for i, (a, b, cap) in enumerate(zip(s12, s3, caps)):
-        ax.text(i, a + b + ymax * 0.03, f"{a + b:.1f} MtCO2e/yr", ha="center", fontsize=10)
-        ax.text(i, -ymax * 0.08, f"{cap:g} mtpa", ha="center", va="top", fontsize=10)
-    ax.set_title("Canada LNG export chain: operating versus proposed")
-    fig.text(
-        0.5, 0.02,
-        f"Scenario: {DEFAULT_SCENARIO}. Export chain; proposed includes advanced + early.",
-        ha="center", fontsize=9, color="#444",
-    )
-    fig.subplots_adjust(bottom=0.16, top=0.9)
-    fig.savefig(path, dpi=160, bbox_inches="tight")
-    plt.close(fig)
 
 
 def write_review_summary(
@@ -1863,7 +1816,6 @@ def main() -> None:
         mc["howarth"].to_excel(writer, sheet_name="MC Howarth", index=False)
         mc["parameters"].to_excel(writer, sheet_name="MC Parameters", index=False)
 
-    write_figure(by_project, FIGURE)
     fig10 = figure_10_lca_comparison(inputs, FIGURE_DIR, FIGURE_DATA)
     write_review_summary(
         SUMMARY_MD,
