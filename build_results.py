@@ -128,15 +128,19 @@ EXPECTED_ADVANCED_EXPORT = 26.0
 #   all assets:          CAN 18.5 / BUNK 5.6 / FOR 75.9; lifetime 9558.2; peak 309.1 (2037)
 #   export-scope filter: CAN 18.0 / BUNK 3.4 / FOR 78.6; lifetime 9315.3; peak 298.7 (2037)
 #   route-scaled shipping: CAN 18.1 / BUNK 3.2 / FOR 78.7; lifetime 9298.1; peak 298.2 (2037)
-#   Discovery returned to cancelled (1 Sep 2026): values below. Discovery was
-#   20 mtpa / 2,043.9 Mt. FOR rounds to 78.8 on the smaller set.
-EXPECTED_TERRITORIAL_SHARE_PCT = {"CAN": 18.1, "BUNK": 3.2, "FOR": 78.8}
-EXPECTED_LIFETIME_MT = 7254.2
+#   Discovery returned to cancelled (1 Sep 2026): CAN 18.1 / BUNK 3.2 / FOR 78.8;
+#   lifetime 7254.2; peak 238.6 (2037). Discovery was 20 mtpa / 2,043.9 Mt.
+#   Regasification 0.04 -> 0.021 (3 Sep 2026): values below. The old 0.04 was
+#   uncited and sat above the top of the IEA range; 0.021 is Gan et al. 2024.
+#   Regasification is FOR-tagged, so cutting it moves weight from FOR to CAN.
+EXPECTED_TERRITORIAL_SHARE_PCT = {"CAN": 18.2, "BUNK": 3.2, "FOR": 78.6}
+EXPECTED_LIFETIME_MT = 7215.3
 EXPECTED_PEAK_YEAR = 2037
-EXPECTED_PEAK_MT = 238.6
+EXPECTED_PEAK_MT = 237.3
 
-# The paper set, locked 1 September 2026 (Discovery cancelled; GWP20 methane-
-# only; Monte Carlo triangles read from the workbooks). The paper reports the central
+# The paper set, locked 3 September 2026 (Discovery cancelled; GWP20 methane-
+# only; Monte Carlo triangles read from the workbooks; regasification and the
+# combustion range bounds moved onto cited values). The paper reports the central
 # case — the point estimate from the central factor values — with the Monte
 # Carlo 5th to 95th percentile as its interval. The MC median is stated once,
 # with the reason it sits above the central: the stage triangles are
@@ -147,30 +151,30 @@ EXPECTED_PEAK_MT = 238.6
 # SHA-256 of Outputs/paper_set_locked.csv, the rounded canonical copy of the
 # paper set. Re-lock it in the same commit as EXPECTED_BUILD_OUT, never alone.
 EXPECTED_PAPER_SET_SHA256 = (
-    "58236e9bbc617ca33bf6e0b0f8ccc0ea056cf853f5c47260b289f9316012985c"
+    "5d20d7fe67d99fde0cdbc33b51daf6b92d4ca45ad3bbc49835eb30319eca7f4d"
 )
 
 EXPECTED_BUILD_OUT = {
     "committed": {
-        "lifetime_mt": 1869.5,
-        "lifetime_co2_only_mt": 1799.6,
+        "lifetime_mt": 1859.5,
+        "lifetime_co2_only_mt": 1789.6,
         "peak_year": 2030,
-        "peak_mt": 58.3,
-        "damages_cad_bn": 749,
+        "peak_mt": 58.0,
+        "damages_cad_bn": 745,
     },
     "committed_plus_advanced": {
-        "lifetime_mt": 3805.7,
-        "lifetime_co2_only_mt": 3663.5,
+        "lifetime_mt": 3785.4,
+        "lifetime_co2_only_mt": 3643.1,
         "peak_year": 2037,
-        "peak_mt": 135.8,
-        "damages_cad_bn": 1579,
+        "peak_mt": 135.0,
+        "damages_cad_bn": 1570,
     },
     "full": {
-        "lifetime_mt": 7254.2,
-        "lifetime_co2_only_mt": 6987.7,
+        "lifetime_mt": 7215.3,
+        "lifetime_co2_only_mt": 6948.8,
         "peak_year": 2037,
-        "peak_mt": 238.6,
-        "damages_cad_bn": 3143,
+        "peak_mt": 237.3,
+        "damages_cad_bn": 3126,
     },
 }
 
@@ -2030,7 +2034,7 @@ def main() -> None:
         "scope and territorial splits sum to total — all PASS"
     )
     print("\nReport figures written:")
-    for key in ("fig1", "fig2", "fig3", "fig4", "fig5", "fig6", "fig7", "fig8"):
+    for key in ("fig1", "fig2", "fig3", "fig4", "fig5", "fig6", "fig8"):
         r = fig_results[key]
         print(f"  {r['path'].name}")
         print(f"    csv: {r['csv'].name}")

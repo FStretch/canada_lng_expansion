@@ -10,13 +10,11 @@ import pandas as pd
 from src.inputs import DEFAULT_SCENARIO, INTENSITY_SCENARIOS, get_param
 from src.model import CHAINS, GROUPS, carbon_budget_shares, electrification_counterfactual
 from src.lca_comparison import build_lca_comparison
-from src.report_params import resolve_report_params
 from src.scope import headline_sample
 from src.trajectories import (
     annual_series,
     canada_pathway_series,
     cumulative_case_series,
-    oil_lifecycle_gt,
     panel_gas_totals,
     panel_lifetime_mt,
     panel_n_emitting,
@@ -387,6 +385,7 @@ def build_slide_tables(
             ]
         )
 
+    elec = float(cf["electric_intensity"])
     gas = float(head["canada_territorial_gas_mtco2e_yr"])
     claimed = float(head["canada_territorial_claimed_electric_mtco2e_yr"])
     alle = float(head["canada_territorial_all_electric_mtco2e_yr"])
@@ -406,7 +405,7 @@ def build_slide_tables(
                 "vs_gas_MtCO2e_yr": _r1(claimed - gas),
                 "share_of_inventory_pct": _r1(100 * claimed / national),
                 "share_of_2030_target_low_pct": _r1(100 * claimed / t_low),
-                "note": "0.12 only for previously electric_committed/planned: "
+                "note": f"{elec:g} only for previously electric_committed/planned: "
                 + ", ".join(cf["claimed_project_ids"]),
             },
             {
@@ -415,7 +414,7 @@ def build_slide_tables(
                 "vs_gas_MtCO2e_yr": _r1(alle - gas),
                 "share_of_inventory_pct": _r1(100 * alle / national),
                 "share_of_2030_target_low_pct": _r1(100 * alle / t_low),
-                "note": "Liquefaction 0.12 tCO2e/t on every chain that includes it",
+                "note": f"Liquefaction {elec:g} tCO2e/t on every chain that includes it",
             },
         ]
     )
@@ -498,42 +497,6 @@ def build_slide_tables(
         )
     tables["14_CAN_trajectories"] = pd.DataFrame(can_rows)
 
-    report, _ = resolve_report_params(params)
-    tmx_full_bpd = float(get_param(params, "tmx_total_system_bpd"))
-    tmx_exp_bpd = float(report["tmx_expansion_bpd"])
-    ab_bc_bpd = float(report["alberta_bc_bitumen_pipeline_bpd"])
-    lng_all_gt = lifecycle / 1e3
-    lng_prop_gt = panel_lifetime_mt(panel, DEFAULT_SCENARIO, calc_group="proposed") / 1e3
-    tables["15_Oil_comparison"] = pd.DataFrame(
-        [
-            {
-                "item": "Canadian LNG, all assets",
-                "lifecycle_GtCO2e": _r2(lng_all_gt),
-                "unvalidated": False,
-            },
-            {
-                "item": "Canadian LNG, proposed only",
-                "lifecycle_GtCO2e": _r2(lng_prop_gt),
-                "unvalidated": False,
-            },
-            {
-                "item": f"TMX full system ({tmx_full_bpd:,.0f} bpd)",
-                "lifecycle_GtCO2e": _r2(oil_lifecycle_gt(tmx_full_bpd, params)),
-                "unvalidated": False,
-            },
-            {
-                "item": f"TMX expansion only ({tmx_exp_bpd:,.0f} bpd)",
-                "lifecycle_GtCO2e": _r2(oil_lifecycle_gt(tmx_exp_bpd, params)),
-                "unvalidated": False,
-            },
-            {
-                "item": str(report["alberta_bc_bitumen_pipeline_label"]),
-                "lifecycle_GtCO2e": _r2(oil_lifecycle_gt(ab_bc_bpd, params)),
-                "unvalidated": True,
-            },
-        ]
-    )
-
     tables["16_Notes"] = pd.DataFrame(
         [
             ("scenario", DEFAULT_SCENARIO),
@@ -559,14 +522,13 @@ def build_slide_tables(
                 "Headline assumes gas turbine 0.29 for every terminal. 11 and 12 are appendix only.",
             ),
             (
-                "oil_utilisation",
-                "Oil comparator runs at nameplate × days_per_year × 40 years. "
-                "LNG carries a ramp, a utilisation curve and an FID delay. "
-                "The two sides are not utilisation-matched; that understates LNG "
-                "relative to oil by roughly 19%. Alberta bitumen is not given "
-                "a heavier upstream factor; the current config cannot express one.",
+                "oil_comparator",
+                "RETIRED 3 September 2026. The Trans Mountain comparison was "
+                "dropped from the deck, so figure 7, slide table 15 and the "
+                "tmx_oil_* parameters were removed from the model rather than "
+                "left generating an unpublished figure on unsourced addends.",
             ),
-            ("rounding", "One decimal except oil comparison (two decimals, Gt)."),
+            ("rounding", "One decimal throughout."),
             (
                 "carbon_budget_units",
                 "GCB 2025 remaining budgets are CO2; lifetime totals are GWP100 CO2e. "
@@ -684,8 +646,6 @@ FIGURE_SHEET_NAMES = {
     "fig04_pathway_vs_territorial_lng.csv": "fig04_pathway_CAN",
     "fig05_pathway_three_upstream.csv": "fig05_pathway_scenarios",
     "fig06_pathway_vs_total_lng.csv": "fig06_pathway_total",
-    "fig07_oil_infrastructure_comparison.csv": "fig07_oil",
-    "fig07_report_parameters_used.csv": "fig07_oil_params",
     "fig08_electrification_can_average.csv": "fig08_elec_average",
     "fig08_electrification_can_by_group.csv": "fig08_elec_by_group",
     "fig08_electrification_can_trajectories.csv": "fig08_elec_traj",

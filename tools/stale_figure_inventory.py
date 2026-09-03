@@ -51,16 +51,25 @@ SUPERSEDED = [
     (r"11[,.]?505", "11,505 kt CH4 (Discovery in)", "8,942 kt", "Discovery returned to cancelled"),
     # GWP20 scenario recomputed on the methane portion only.
     (r"upstream 0\.33\b", "upstream 0.33 GWP20 (whole factor x1.5)", "0.428 (methane portion only)", "GWP20 recomputed on the methane portion"),
+    # Regasification and combustion range moved onto cited values, 3 September 2026.
+    (r"7[,.]?254\.2", "7,254.2 Mt lifetime (regasification 0.04)", "7,215.3 Mt", "regasification 0.04 -> 0.021"),
+    (r"\b238\.6\b", "238.6 Mt peak (regasification 0.04)", "237.3 Mt in 2037", "regasification 0.04 -> 0.021"),
+    (r"6[,.]?987\.7", "6,987.7 Mt CO2-only (regasification 0.04)", "6,948.8 Mt", "regasification 0.04 -> 0.021"),
+    (r"18\.1\s*[/-]\s*3\.2\s*[/-]\s*78\.8", "18.1 / 3.2 / 78.8 territorial", "18.2 / 3.2 / 78.6", "regasification 0.04 -> 0.021 (regas is FOR-tagged)"),
+    (r"\b3[,.]?143\b", "C$3,143bn ECCC 2% damages (regasification 0.04)", "C$3,126bn", "regasification 0.04 -> 0.021"),
+    (r"\b207\.4\b", "207.4 Mt/yr life-average (regasification 0.04)", "206.3 Mt/yr", "regasification 0.04 -> 0.021"),
+    (r"regasification 0\.04|regas 0\.04", "regasification central 0.04 (uncited)", "0.021 (Gan et al. 2024)", "moved onto a cited value"),
+    (r"combustion (?:range )?2\.50|2\.50\s*/\s*3\.00", "combustion range low 2.50 (uncited)", "2.58 (IPCC 2006 uncertainty band)", "moved onto a cited derivation"),
 ]
 
 CURRENT = {
-    "lifetime CO2e": "7,254.2 Mt",
-    "lifetime CO2 only": "6,987.7 Mt (plus 8,942 kt CH4)",
-    "peak": "238.6 Mt in 2037",
-    "territorial CAN / BUNK / FOR": "18.1 / 3.2 / 78.8 %",
-    "ECCC 2% damages": "C$3,143 bn",
-    "committed": "1,869.5 Mt, C$749 bn",
-    "committed plus advanced": "3,805.7 Mt, C$1,579 bn",
+    "lifetime CO2e": "7,215.3 Mt",
+    "lifetime CO2 only": "6,948.8 Mt (plus 8,942 kt CH4)",
+    "peak": "237.3 Mt in 2037",
+    "territorial CAN / BUNK / FOR": "18.2 / 3.2 / 78.6 %",
+    "ECCC 2% damages": "C$3,126 bn",
+    "committed": "1,859.5 Mt, C$745 bn",
+    "committed plus advanced": "3,785.4 Mt, C$1,570 bn",
     "export capacity": "80.1 mtpa across nine projects",
 }
 
@@ -75,6 +84,7 @@ ALLOWED = {
     # Record what they changed, so they must quote the values they moved away from.
     "tools/fix_audit_findings.py",
     "tools/update_chains_applies_to.py",
+    "tools/apply_found_citations.py",
     "build_results.py",
     "Outputs/STALE_FIGURE_INVENTORY.md",
     # Dated diagnostics and audits, each carrying a superseded-snapshot banner.
@@ -82,6 +92,7 @@ ALLOWED = {
     "Outputs/OIL_COMPARATOR_AUDIT.md",
     "Outputs/SOURCING_AUDIT.md",
     "Outputs/DECK_RECONCILIATION.md",
+    "Outputs/CITATIONS_WANTED.md",
 }
 ALLOWED_PREFIXES = ("Outputs/BASELINE_", "Outputs/CHANGE_REPORT_")
 
@@ -93,6 +104,11 @@ ALLOWED_PAIRS = {
     ("README.md", "100.1 mtpa export capacity (ten projects)"),
     # The scenarios section explains what 0.33 was and why it moved.
     ("README.md", "upstream 0.33 GWP20 (whole factor x1.5)"),
+    # The emission-factor section explains both 3 September moves.
+    ("README.md", "regasification central 0.04 (uncited)"),
+    ("README.md", "combustion range low 2.50 (uncited)"),
+    ("Outputs/CITATIONS_WANTED.md", "regasification central 0.04 (uncited)"),
+    ("Outputs/CITATIONS_WANTED.md", "combustion range low 2.50 (uncited)"),
 }
 
 

@@ -1,5 +1,11 @@
 # Citations wanted
 
+> **Answered 3 September 2026 — this list is the ask, not the outcome.** Items 3, 4, 5, 7, 8, 9,
+> 11 and 12 are closed or resolved; see `Outputs/CHANGE_REPORT_2026-09-03b.md` for what was
+> adopted and what it moved. Items 1, 2 and 6 (pipeline 0.10 and its range, liquefaction
+> range_high 0.36) and items 10, 13–18 are **still open**. The headline figures quoted below
+> (7,254.2 Mt lifetime) are the pre-3-September lock; current is **7,215.3 Mt**.
+
 Generated 3 September 2026 against the current workbooks (post sourcing-audit fixes).
 
 Every number below is either **unsourced** (no document states it) or **declared as an

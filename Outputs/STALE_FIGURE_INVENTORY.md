@@ -8,13 +8,13 @@ Generated, not hand-written. An earlier hand-written version of this file went s
 
 | quantity | value |
 |---|---|
-| lifetime CO2e | **7,254.2 Mt** |
-| lifetime CO2 only | **6,987.7 Mt (plus 8,942 kt CH4)** |
-| peak | **238.6 Mt in 2037** |
-| territorial CAN / BUNK / FOR | **18.1 / 3.2 / 78.8 %** |
-| ECCC 2% damages | **C$3,143 bn** |
-| committed | **1,869.5 Mt, C$749 bn** |
-| committed plus advanced | **3,805.7 Mt, C$1,579 bn** |
+| lifetime CO2e | **7,215.3 Mt** |
+| lifetime CO2 only | **6,948.8 Mt (plus 8,942 kt CH4)** |
+| peak | **237.3 Mt in 2037** |
+| territorial CAN / BUNK / FOR | **18.2 / 3.2 / 78.6 %** |
+| ECCC 2% damages | **C$3,126 bn** |
+| committed | **1,859.5 Mt, C$745 bn** |
+| committed plus advanced | **3,785.4 Mt, C$1,570 bn** |
 | export capacity | **80.1 mtpa across nine projects** |
 
 ## Superseded values, and where they still appear
@@ -40,6 +40,14 @@ Generated, not hand-written. An earlier hand-written version of this file went s
 | 100.1 mtpa export capacity (ten projects) | 80.1 mtpa (nine projects) | Discovery returned to cancelled | **none** | `README.md`, `Outputs/BASELINE_2026-08-29.md`, `Outputs/CHANGE_REPORT_2026-08-29.md`, `Outputs/CHANGE_REPORT_2026-09-03.md`, `Outputs/DECK_RECONCILIATION.md`, `Outputs/SCOPE_DIAGNOSTIC.md`, `Outputs/SOURCING_AUDIT.md`, `Outputs/STALE_FIGURE_INVENTORY.md`, `tools/stale_figure_inventory.py`, `tools/update_chains_applies_to.py` |
 | 11,505 kt CH4 (Discovery in) | 8,942 kt | Discovery returned to cancelled | **none** | `Outputs/CHANGE_REPORT_2026-08-29.md`, `Outputs/CHANGE_REPORT_2026-09-03.md`, `Outputs/STALE_FIGURE_INVENTORY.md`, `tools/stale_figure_inventory.py` · data series (not published text): `Outputs/figure_data/mc_draws.csv` |
 | upstream 0.33 GWP20 (whole factor x1.5) | 0.428 (methane portion only) | GWP20 recomputed on the methane portion | **none** | `Outputs/STALE_FIGURE_INVENTORY.md`, `tools/stale_figure_inventory.py` |
+| 7,254.2 Mt lifetime (regasification 0.04) | 7,215.3 Mt | regasification 0.04 -> 0.021 | **none** | `build_results.py`, `Outputs/CHANGE_REPORT_2026-09-03.md`, `Outputs/CHANGE_REPORT_2026-09-03b.md`, `Outputs/CITATIONS_WANTED.md`, `Outputs/DECK_RECONCILIATION.md`, `Outputs/SOURCING_AUDIT.md`, `Outputs/STALE_FIGURE_INVENTORY.md`, `tools/stale_figure_inventory.py` · data series (not published text): `Outputs/figure_data/mc_draws.csv` |
+| 238.6 Mt peak (regasification 0.04) | 237.3 Mt in 2037 | regasification 0.04 -> 0.021 | **none** | `build_results.py`, `Outputs/CHANGE_REPORT_2026-09-03.md`, `Outputs/CHANGE_REPORT_2026-09-03b.md`, `Outputs/DECK_RECONCILIATION.md`, `Outputs/SOURCING_AUDIT.md`, `Outputs/STALE_FIGURE_INVENTORY.md`, `tools/stale_figure_inventory.py` |
+| 6,987.7 Mt CO2-only (regasification 0.04) | 6,948.8 Mt | regasification 0.04 -> 0.021 | **none** | `Outputs/CHANGE_REPORT_2026-09-03.md`, `Outputs/CHANGE_REPORT_2026-09-03b.md`, `Outputs/STALE_FIGURE_INVENTORY.md`, `tools/stale_figure_inventory.py` · data series (not published text): `Outputs/figure_data/mc_draws.csv` |
+| 18.1 / 3.2 / 78.8 territorial | 18.2 / 3.2 / 78.6 | regasification 0.04 -> 0.021 (regas is FOR-tagged) | **none** | `Outputs/CHANGE_REPORT_2026-09-03.md`, `Outputs/CHANGE_REPORT_2026-09-03b.md`, `Outputs/STALE_FIGURE_INVENTORY.md`, `tools/stale_figure_inventory.py` |
+| C$3,143bn ECCC 2% damages (regasification 0.04) | C$3,126bn | regasification 0.04 -> 0.021 | **none** | `Outputs/CHANGE_REPORT_2026-09-03.md`, `Outputs/CHANGE_REPORT_2026-09-03b.md`, `Outputs/DECK_RECONCILIATION.md`, `Outputs/SOURCING_AUDIT.md` · data series (not published text): `Outputs/figure_data/mc_draws.csv` |
+| 207.4 Mt/yr life-average (regasification 0.04) | 206.3 Mt/yr | regasification 0.04 -> 0.021 | **none** | `Outputs/CHANGE_REPORT_2026-09-03.md`, `Outputs/CHANGE_REPORT_2026-09-03b.md`, `Outputs/STALE_FIGURE_INVENTORY.md`, `tools/stale_figure_inventory.py` |
+| regasification central 0.04 (uncited) | 0.021 (Gan et al. 2024) | moved onto a cited value | **none** | `Outputs/CHANGE_REPORT_2026-09-03.md`, `Outputs/CHANGE_REPORT_2026-09-03b.md`, `Outputs/CITATIONS_WANTED.md`, `Outputs/SOURCING_AUDIT.md`, `Outputs/STALE_FIGURE_INVENTORY.md`, `tools/stale_figure_inventory.py` |
+| combustion range low 2.50 (uncited) | 2.58 (IPCC 2006 uncertainty band) | moved onto a cited derivation | **none** | `Outputs/CHANGE_REPORT_2026-09-03.md`, `Outputs/CITATIONS_WANTED.md`, `Outputs/SOURCING_AUDIT.md`, `tools/apply_found_citations.py` |
 
 **No live hits.** Every remaining occurrence is a deliberate record of what a number used to be: the lock history comment in `build_results.py`, the baseline record, the change report, or this script's own value table. Monte Carlo draw files may contain coincidental samples near a superseded figure; those are data, not published text.
 

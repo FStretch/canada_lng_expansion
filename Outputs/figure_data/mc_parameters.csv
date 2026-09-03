@@ -3,8 +3,8 @@ upstream_production,"triangular(0.22, 0.25, 0.428)","Scenarios: inventory_as_rep
 liquefaction,fixed at Emission Factors central,"Emission Factors liquefaction central, asserted equal to Parameters liquefaction_gas_turbine. Electric 0.12 is a discrete counterfactual, not an uncertainty band.",False
 pipeline_transport,"triangular(0.05, 0.1, 0.18)",Emission Factors range_low / central / range_high,True
 shipping,"triangular(0.05, 0.12, 0.31)",Emission Factors range_low / central / range_high,True
-regasification,"triangular(0.02, 0.04, 0.06)",Emission Factors range_low / central / range_high,True
-combustion,"triangular(2.5, 2.75, 3.0)",Emission Factors range_low / central / range_high,True
+regasification,"triangular(0.011, 0.021, 0.0275)",Emission Factors range_low / central / range_high,True
+combustion,"triangular(2.58, 2.75, 3.0)",Emission Factors range_low / central / range_high,True
 shipping_route_scale,fixed per asset,"route_distance_nm / route_bc_to_northeast_asia_nm; the shipping triangle is drawn on the BC basis and then scaled. lng_canada_phase_1=1.000, cedar_lng=1.000, woodfibre_lng=1.000, lng_canada_phase_2=1.000, ksi_lisims_lng=1.000, marinvest_baie_comeau=0.784, summit_lake_pg_lng=1.000, fermeuse_energy_flng=0.650, kanata_lng=1.000",False
 fid_delay_mid,"triangular(3.0, 5.0, 7.0), rounded to int",Parameters fid_delay_low / mid / high; applied to non-FID assets,True
 lifecycle_years_default,"triangular(30.0, 40.0, 50.0), rounded to int","Parameters lifespan_sensitivity_low / default / high. Sampled for: marinvest_baie_comeau, fermeuse_energy_flng, kanata_lng. Licence terms and stated project lives held.",True

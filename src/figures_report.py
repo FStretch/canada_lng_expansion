@@ -15,13 +15,11 @@ from matplotlib.lines import Line2D
 
 from src.inputs import DEFAULT_SCENARIO, get_param
 from src.model import GROUPS, electrification_counterfactual
-from src.report_params import resolve_report_params
 from src.scope import headline_sample
 from src.trajectories import (
     annual_series,
     canada_pathway_series,
     cumulative_case_series,
-    oil_lifecycle_gt,
     panel_lifetime_mt,
 )
 
@@ -520,177 +518,6 @@ def figure_6_pathway_vs_total(
 # Figure 7 — oil infrastructure comparison (lifecycle Gt, calendar panel)
 # ---------------------------------------------------------------------------
 
-def figure_7_oil_comparison(
-    by_project: pd.DataFrame,
-    inputs: dict,
-    fig_dir: Path,
-    data_dir: Path,
-    panel: pd.DataFrame | None = None,
-) -> dict:
-    sample = headline_sample(by_project, DEFAULT_SCENARIO)
-    if panel is not None:
-        lng_all = panel_lifetime_mt(panel, DEFAULT_SCENARIO) / 1e3
-        lng_prop = panel_lifetime_mt(
-            panel, DEFAULT_SCENARIO, calc_group="proposed"
-        ) / 1e3
-        method_note = "calendar panel sum (excludes legacy)"
-    else:
-        lng_all = float(sample["lifecycle_total"].sum(min_count=1)) / 1e9
-        if pd.isna(lng_all):
-            lng_all = 0.0
-        lng_prop = float(
-            sample.loc[sample["calc_group"] == "proposed", "lifecycle_total"].sum(
-                min_count=1
-            )
-        ) / 1e9
-        if pd.isna(lng_prop):
-            lng_prop = 0.0
-        method_note = "model lifecycle total (excludes legacy nulls)"
-
-    params = inputs["params"]
-    report, audit = resolve_report_params(params)
-    audit = [
-        {
-            "parameter": "assumed_first_export_year_if_missing",
-            "value": int(get_param(params, "assumed_first_export_year_if_missing")),
-            "unit": "year",
-            "source": (
-                "Parameters sheet. Fills blank Asset Register first_export_year "
-                "for six in-scope assets. The published panel tail is this placeholder."
-            ),
-            "origin": "Parameters sheet",
-            "unvalidated": False,
-        }
-    ] + audit
-    tmx_full_bpd = float(get_param(params, "tmx_total_system_bpd"))
-    tmx_exp_bpd = float(report["tmx_expansion_bpd"])
-    ab_bc_bpd = float(report["alberta_bc_bitumen_pipeline_bpd"])
-    ab_label = str(report["alberta_bc_bitumen_pipeline_label"])
-
-    tmx_full = oil_lifecycle_gt(tmx_full_bpd, params)
-    tmx_exp = oil_lifecycle_gt(tmx_exp_bpd, params)
-    ab_bc = oil_lifecycle_gt(ab_bc_bpd, params)
-
-    rows = pd.DataFrame([
-        {
-            "item": "Canadian LNG, all assets",
-            "lifecycle_gtco2e": lng_all,
-            "method": method_note,
-            "unvalidated": False,
-            "capacity_note": "export headline capacity; emissions are export-chain headline scope",
-        },
-        {
-            "item": "Canadian LNG, proposed only",
-            "lifecycle_gtco2e": lng_prop,
-            "method": method_note + ", calc_group=proposed",
-            "unvalidated": False,
-            "capacity_note": "",
-        },
-        {
-            "item": f"TMX full system ({tmx_full_bpd:,.0f} bpd)",
-            "lifecycle_gtco2e": tmx_full,
-            "method": (
-                "bpd × (tmx_oil_upstream + transport + combustion) × "
-                "days_per_year × lifecycle_years_default. Nameplate, no ramp."
-            ),
-            "unvalidated": False,
-            "capacity_note": f"tmx_total_system_bpd={tmx_full_bpd}",
-        },
-        {
-            "item": f"TMX expansion only ({tmx_exp_bpd:,.0f} bpd)",
-            "lifecycle_gtco2e": tmx_exp,
-            "method": "same oil method; tmx_expansion_bpd",
-            "unvalidated": False,
-            "capacity_note": f"tmx_expansion_bpd={tmx_exp_bpd}",
-        },
-        {
-            "item": ab_label,
-            "lifecycle_gtco2e": ab_bc,
-            "method": "same oil method; alberta_bc_bitumen_pipeline_bpd — NEW, UNVALIDATED",
-            "unvalidated": True,
-            "capacity_note": (
-                f"alberta_bc_bitumen_pipeline_bpd={ab_bc_bpd}; "
-                "MPO submission 2 July 2026; Bruderheim–Delta BC"
-            ),
-        },
-    ])
-    rows["value_kind"] = "lifecycle total (GtCO₂e)"
-    rows["scenario"] = DEFAULT_SCENARIO
-    _write_csv(rows, data_dir / "fig07_oil_infrastructure_comparison.csv")
-    _write_csv(pd.DataFrame(audit), data_dir / "fig07_report_parameters_used.csv")
-
-    _setup_style()
-    fig, ax = plt.subplots(figsize=(9.2, 5.0))
-    plot_df = rows.iloc[::-1].reset_index(drop=True)
-    colors = []
-    for u in plot_df["unvalidated"]:
-        colors.append(C["orange"] if u else C["blue"])
-    y = np.arange(len(plot_df))
-    ax.barh(y, plot_df["lifecycle_gtco2e"], color=colors, height=0.62)
-    # hatch the unvalidated bar so colour is not the only cue
-    for i, r in enumerate(plot_df.itertuples()):
-        if r.unvalidated:
-            ax.barh(
-                i,
-                r.lifecycle_gtco2e,
-                height=0.62,
-                facecolor="none",
-                edgecolor=C["black"],
-                hatch="///",
-                linewidth=0.8,
-            )
-        ax.text(
-            r.lifecycle_gtco2e + 0.08,
-            i,
-            f"{r.lifecycle_gtco2e:.2f} Gt",
-            va="center",
-            fontsize=9,
-        )
-    ax.set_yticks(y, plot_df["item"])
-    ax.set_xlabel("Lifecycle emissions (GtCO₂e)")
-    ax.set_title("Lifecycle comparison: Canadian LNG and oil pipeline infrastructure")
-    ax.set_xlim(0, plot_df["lifecycle_gtco2e"].max() * 1.18)
-    legend_elems = [
-        Line2D([0], [0], color=C["blue"], lw=8, label="Published / model basis"),
-        Line2D(
-            [0], [0], color=C["orange"], lw=8, label="New — unvalidated (hatched)"
-        ),
-    ]
-    ax.legend(handles=legend_elems, frameon=False, loc="lower right")
-    _caption(
-        fig,
-        f"Figure 7 · Scenario: {DEFAULT_SCENARIO}. Lifecycle totals (GtCO₂e), not "
-        "calendar-year trajectories. LNG from the calendar-panel lifetime sum "
-        "(legacy facilities contribute annual only and are excluded from Gt). "
-        "Oil rows use Parameters tmx_oil_upstream + transport + combustion "
-        f"(sum {float(get_param(params, 'tmx_oil_lifecycle_per_barrel')):g} tCO2e/bbl) "
-        f"× {int(get_param(params, 'days_per_year'))} days × "
-        f"{int(get_param(params, 'lifecycle_years_default'))} years at nameplate. "
-        "LNG carries a ramp, a utilisation curve and an FID delay; oil does not. "
-        "That understates LNG relative to oil by roughly 19%. "
-        "Alberta–BC bitumen pipeline is NEW and UNVALIDATED; it uses the same "
-        "TMX mixed-slate factor, which is too light for a dedicated dilbit line.",
-    )
-    out = fig_dir / "fig07_oil_infrastructure_comparison.png"
-    _save(fig, out)
-    return {
-        "path": out,
-        "csv": data_dir / "fig07_oil_infrastructure_comparison.csv",
-        "key": {
-            "lng_all_gt": round(lng_all, 2),
-            "lng_proposed_gt": round(lng_prop, 2),
-            "tmx_full_gt": round(tmx_full, 2),
-            "tmx_expansion_gt": round(tmx_exp, 2),
-            "alberta_bc_gt": round(ab_bc, 2),
-            "alberta_bc_unvalidated": True,
-        },
-    }
-
-
-# ---------------------------------------------------------------------------
-# Figure 8 — appendix: gas vs electric, Canada territorial
-# ---------------------------------------------------------------------------
-
 def figure_8_electrification_appendix(
     inputs: dict,
     by_project: pd.DataFrame,
@@ -763,8 +590,9 @@ def figure_8_electrification_appendix(
             "canada_territorial_mtco2e_yr": claimed,
             "share_of_national_inventory": claimed / cf["national"],
             "note": (
-                "0.12 only for assets previously classified electric_committed or "
-                f"electric_planned: {', '.join(cf['claimed_project_ids'])}."
+                f"{elec_i:g} only for assets previously classified "
+                f"electric_committed or electric_planned: "
+                f"{', '.join(cf['claimed_project_ids'])}."
             ),
         },
         {
@@ -856,7 +684,7 @@ def figure_8_electrification_appendix(
             f"Appendix figure · Scenario: {DEFAULT_SCENARIO}. Liquefaction is tagged CAN, "
             f"so the {gas_i:.2f}→{elec_i:.2f} tCO2e/t switch lands entirely in Canada. "
             f"Headline case is gas turbine for every terminal. Claimed-electric restores "
-            f"0.12 only where the register previously recorded electric_committed or "
+            f"{elec_i:g} only where the register previously recorded electric_committed or "
             f"electric_planned ({len(cf['claimed_project_ids'])} assets). "
             "Electrification is not assumed in the main results."
         ),
@@ -928,9 +756,6 @@ def build_all_report_figures(
         inputs, fig_dir, data_dir, results["fig4"]["lng_series"]
     )
     results["fig6"] = figure_6_pathway_vs_total(inputs, fig_dir, data_dir)
-    results["fig7"] = figure_7_oil_comparison(
-        by_project, inputs, fig_dir, data_dir, panel=panel
-    )
     results["fig8"] = figure_8_electrification_appendix(
         inputs, by_project, fig_dir, data_dir
     )
@@ -964,7 +789,6 @@ def build_all_report_figures(
         "fig04_pathway_vs_territorial_lng.csv",
         "fig05_pathway_three_upstream.csv",
         "fig06_pathway_vs_total_lng.csv",
-        "fig07_oil_infrastructure_comparison.csv",
         "fig08_electrification_can_average.csv",
         "fig08_electrification_can_by_group.csv",
         "fig08_electrification_can_trajectories.csv",

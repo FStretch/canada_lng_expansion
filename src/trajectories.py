@@ -666,24 +666,3 @@ def canada_pathway_series(
             "milestone_years": ",".join(str(x) for x in ms_years),
         })
     return pd.DataFrame(rows)
-
-
-def oil_lifecycle_gt(bpd: float, params: dict) -> float:
-    """Nameplate oil: bpd × (upstream+transport+combustion) × days_per_year × life / 1e9.
-
-    Unlike LNG this has no ramp, utilisation curve or FID delay. Figure 7
-    states that asymmetry: it understates LNG relative to oil.
-    """
-    up = float(get_param(params, "tmx_oil_upstream_per_barrel"))
-    transport = float(get_param(params, "tmx_oil_transport_per_barrel"))
-    combustion = float(get_param(params, "tmx_oil_combustion_per_barrel"))
-    per_bbl = up + transport + combustion
-    recorded = float(get_param(params, "tmx_oil_lifecycle_per_barrel"))
-    if abs(per_bbl - recorded) > 1e-9:
-        raise ValueError(
-            "tmx_oil_lifecycle_per_barrel is "
-            f"{recorded}, but the three stage rows sum to {per_bbl}."
-        )
-    days = float(get_param(params, "days_per_year"))
-    life = float(get_param(params, "lifecycle_years_default"))
-    return float(bpd) * per_bbl * days * life / 1e9
