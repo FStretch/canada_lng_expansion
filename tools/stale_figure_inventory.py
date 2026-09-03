@@ -26,6 +26,10 @@ from pathlib import Path
 import openpyxl
 
 ROOT = Path(__file__).resolve().parents[1]
+import sys  # noqa: E402
+
+sys.path.insert(0, str(ROOT))
+from src.banners import DATED_DOCUMENTS, banner_of  # noqa: E402
 OUT = ROOT / "Outputs" / "STALE_FIGURE_INVENTORY.md"
 
 # (pattern, what it was, what replaced it, when it moved)
@@ -107,12 +111,14 @@ ALLOWED = {
     "tools/update_fid_delay_band.py",
     "build_results.py",
     "Outputs/STALE_FIGURE_INVENTORY.md",
-    # Dated diagnostics and audits, each carrying a superseded-snapshot banner.
-    "Outputs/OIL_COMPARATOR_AUDIT.md",
-    "Outputs/SOURCING_AUDIT.md",
-    "Outputs/DECK_RECONCILIATION.md",
     "Outputs/CITATIONS_WANTED.md",
 }
+# The dated documents (src/banners.DATED_DOCUMENTS) are exempt in the BODY
+# only: their text legitimately quotes the values it was written against.
+# The generated banner between the lock-banner markers is scanned in full,
+# because it is the one place that claims to state the present. A whole-file
+# exemption cannot tell those two things apart, and hid stale banners twice.
+BODY_ONLY_EXEMPT = set(DATED_DOCUMENTS)
 ALLOWED_PREFIXES = ("Outputs/BASELINE_", "Outputs/CHANGE_REPORT_")
 
 # A file may quote one specific superseded value on purpose without being
@@ -144,6 +150,23 @@ ALLOWED_PAIRS = {
     ("Outputs/PUBLICATION_AUDIT.md", "7,254.2 Mt lifetime (regasification 0.04)"),
     ("Outputs/PUBLICATION_AUDIT.md", "238.6 Mt peak (regasification 0.04)"),
     ("Outputs/PUBLICATION_AUDIT.md", "C$3,143bn ECCC 2% damages (regasification 0.04)"),
+    # The generated banners name the lock each document was written against.
+    # Those are historical facts, quoted on purpose, beside the current lock;
+    # src/banners.py is where that text lives.
+    *[
+        (rel, label)
+        for rel in (
+            "Outputs/SOURCING_AUDIT.md",
+            "Outputs/DECK_RECONCILIATION.md",
+            "src/banners.py",
+        )
+        for label in (
+            "9,298.1 Mt lifetime (Discovery counted as early_proposed)",
+            "298.2 Mt peak (Discovery in)",
+            "C$4,073bn ECCC 2% damages (Discovery in)",
+            "100.1 mtpa export capacity (ten projects)",
+        )
+    ],
 }
 
 
@@ -198,6 +221,15 @@ def main() -> None:
         try:
             text = path.read_text(encoding="utf-8", errors="replace")
         except OSError:
+            continue
+        if rel in BODY_ONLY_EXEMPT:
+            banner = banner_of(text) or ""
+            body = text.replace(banner, "", 1)
+            for pattern, label, _cur, _when in SUPERSEDED:
+                if re.search(pattern, banner):
+                    findings[label].append((rel + " [banner]", kind, (rel, label) in ALLOWED_PAIRS))
+                if re.search(pattern, body):
+                    findings[label].append((rel, kind, True))
             continue
         for pattern, label, _cur, _when in SUPERSEDED:
             if re.search(pattern, text):

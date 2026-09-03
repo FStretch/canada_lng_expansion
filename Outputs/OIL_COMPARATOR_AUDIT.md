@@ -1,5 +1,13 @@
 # Oil comparator audit
 
+<!-- lock-banner:start -->
+> **Dated document.** Audit of the oil-pipeline comparator behind figure 7, 25 August 2026.
+> Written against a model that still carried figure 7, `src/report_params.py` and the `tmx_*` and bitumen-pipeline parameters.
+> **The analysis this document audits has been retired.** Figure 7, `src/report_params.py`, `oil_lifecycle_gt` and the oil comparator parameters were removed on 3 September 2026 (`Outputs/CHANGE_REPORT_2026-09-03b.md`, section 5) because of the findings below: the factor had no citation, no URL and no vintage, and the bitumen-pipeline bar was an unvalidated first pass. This file is kept as the working behind that decision, not as a description of anything now in the model.
+> **Current lock:** **7,162.0 Mt** lifetime CO2e, **235.6 Mt** peak in 2037, **17.6 / 3.2 / 79.2** CAN / BUNK / FOR, **C$3,108 bn** ECCC damages, **80.1 mtpa** of export capacity.
+> This banner is generated from the lock in `build_results.py` and asserted on every run; edit nothing between the markers.
+<!-- lock-banner:end -->
+
 **Date:** 25 August 2026  
 **Scope:** Read-only. No files were modified except this note.  
 **Question that triggered this:** does the Trans Mountain figure include scope 3 (downstream combustion), and could the proposed Alberta–BC bitumen pipeline be added on the same basis?

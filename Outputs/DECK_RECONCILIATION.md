@@ -1,14 +1,12 @@
 # Deck reconciliation — present state of the register and model
 
-> **Superseded headline, updated 3 September 2026.** This document was written against the
-> pre-Discovery lock: **9,298.1 Mt** lifetime, **298.2 Mt** peak, **C$4,073 bn**
-> damages, 100.1 mtpa across ten projects. Its own findings were then applied
-> (`tools/fix_audit_findings.py`): Discovery LNG went back to cancelled and the
-> GWP20 scenario was recomputed on the methane portion only. Current locked
-> values are **7,254.2 Mt** lifetime, **238.6 Mt** peak in 2037, **C$3,143 bn**
-> damages, **80.1 mtpa across nine projects**. The findings and reasoning below
-> stand; the headline figures they are measured against have moved. See
-> `Outputs/CHANGE_REPORT_2026-09-03.md`.
+<!-- lock-banner:start -->
+> **Dated document.** Reconciliation of the model against an older presentation, 1 September 2026.
+> Written against the pre-Discovery lock: 9,298.1 Mt lifetime, 298.2 Mt peak, C$4,073 bn damages, 100.1 mtpa across ten projects.
+> Its own findings were then applied (`tools/fix_audit_findings.py`): Discovery LNG returned to cancelled and the GWP20 scenario was recomputed on the methane portion only. Every re-lock since is in the change reports of 3 September 2026. The reconciliation below stands as a record of what the deck said; the model figures it is compared against have moved.
+> **Current lock:** **7,162.0 Mt** lifetime CO2e, **235.6 Mt** peak in 2037, **17.6 / 3.2 / 79.2** CAN / BUNK / FOR, **C$3,108 bn** ECCC damages, **80.1 mtpa** of export capacity.
+> This banner is generated from the lock in `build_results.py` and asserted on every run; edit nothing between the markers.
+<!-- lock-banner:end -->
 
 **Date:** 1 September 2026  
 **Scope:** Read-only. This file is a dump of what the model now holds. **The presentation was not edited.** There is no `.pptx` in the repository. “Last export” here means the last generated `Outputs/SLIDE_TABLES.xlsx` / `Outputs/RESULTS_SUMMARY.md` (run 29 August 2026, paper set locked after Task 4 shipping scale). Older figures that are recoverable from git are noted.

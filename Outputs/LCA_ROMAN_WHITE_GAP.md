@@ -1,5 +1,13 @@
 # Task A diagnostic: gap vs Roman-White 2021
 
+<!-- lock-banner:start -->
+> **Dated document.** Diagnostic of the gap to Roman-White et al. (2021) on the aligned well-to-regasification boundary, 28 August 2026.
+> Written against a model well-to-regasification intensity of 0.80 tCO2e/t LNG, before regasification moved from 0.04 to 0.021 and pipeline transport from 0.10 to 0.074.
+> The stage mapping and the reasoning below stand; the model side of the comparison has moved. The current figure is in `Outputs/figure_data/fig10_lca_comparison.csv` and the six-row boundary-aligned comparison in `Outputs/benchmark_comparison.csv`.
+> **Current lock:** **7,162.0 Mt** lifetime CO2e, **235.6 Mt** peak in 2037, **17.6 / 3.2 / 79.2** CAN / BUNK / FOR, **C$3,108 bn** ECCC damages, **80.1 mtpa** of export capacity; well-to-regasification **0.76 tCO2e/t LNG**.
+> This banner is generated from the lock in `build_results.py` and asserted on every run; edit nothing between the markers.
+<!-- lock-banner:end -->
+
 Diagnostic only. No emission factor was changed. Liquefaction remains 0.29.
 
 On the aligned well-to-regasification GWP100 boundary this model is **0.80 tCO2e/t LNG** against Roman-White et al. 2021 expected **1.19** (P2.5–P97.5: 0.94–1.51). Gap to expected: **0.39**.

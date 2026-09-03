@@ -59,6 +59,7 @@ from src.trajectories import (
     panel_n_emitting,
     panel_peak,
 )
+from src.banners import stale_banners
 from src.model import (
     CHAINS,
     GROUPS,
@@ -161,6 +162,11 @@ EXPECTED_PAPER_SET_SHA256 = (
     "fd506c3a1cd8187d546a3a551719834f965d3167c4c55c4d7e0ca6bd0b0bbae6"
 )
 
+# Figure 10's model well-to-regasification intensity, GWP100, two decimals.
+# Locked 3 September 2026 so the Roman-White gap document's generated banner
+# rests on an asserted value, not a figure key nobody checks.
+EXPECTED_WELL_TO_REGAS_T_PER_T = 0.76
+
 EXPECTED_BUILD_OUT = {
     "committed": {
         "lifetime_mt": 1845.8,
@@ -184,6 +190,21 @@ EXPECTED_BUILD_OUT = {
         "damages_cad_bn": 3108,
     },
 }
+
+
+def current_lock() -> dict:
+    """The locked values as one dict, for the generated banners on the dated
+    documents (src/banners.py). Built from the EXPECTED_* constants above so a
+    banner can only ever say what the run asserts."""
+    return {
+        "lifetime_mt": EXPECTED_LIFETIME_MT,
+        "peak_mt": EXPECTED_PEAK_MT,
+        "peak_year": EXPECTED_PEAK_YEAR,
+        "territorial_pct": dict(EXPECTED_TERRITORIAL_SHARE_PCT),
+        "damages_cad_bn": EXPECTED_BUILD_OUT["full"]["damages_cad_bn"],
+        "export_mtpa": EXPECTED_EXPORT_TOTAL,
+        "well_to_regas_t_per_t": EXPECTED_WELL_TO_REGAS_T_PER_T,
+    }
 
 
 def gas_split_table(panel: pd.DataFrame, inputs: dict) -> pd.DataFrame:
@@ -1817,6 +1838,19 @@ def main() -> None:
         mc["parameters"].to_excel(writer, sheet_name="MC Parameters", index=False)
 
     fig10 = figure_10_lca_comparison(inputs, FIGURE_DIR, FIGURE_DATA)
+    w2r = fig10["key"]["model_well_to_regas_t_per_t"]
+    assert abs(w2r - EXPECTED_WELL_TO_REGAS_T_PER_T) < 1e-9, (
+        f"well-to-regasification {w2r} t/t; locked "
+        f"{EXPECTED_WELL_TO_REGAS_T_PER_T}. If deliberate, re-lock "
+        "EXPECTED_WELL_TO_REGAS_T_PER_T and run tools/refresh_banners.py."
+    )
+    print(f"[validate] well-to-regasification {w2r} t/t = lock PASS")
+    stale = stale_banners(ROOT, current_lock())
+    assert not stale, (
+        "dated-document banners do not match the lock: " + "; ".join(stale)
+        + ". Run python tools/refresh_banners.py and commit the result."
+    )
+    print("[validate] dated-document banners match the lock PASS")
     write_review_summary(
         SUMMARY_MD,
         inputs,
