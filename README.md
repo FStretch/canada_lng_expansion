@@ -13,14 +13,14 @@ construction and proposed. Headline results are the export chain.
 
 | build-out | lifetime CO2e Mt | lifetime CO2-only Mt | peak | ECCC 2% damages C$bn |
 |---|---|---|---|---|
-| Committed (operating + under construction, 3 assets) | **1,845.8** [1,815, 2,013] | **1,775.9** [1,727, 1,895] | **57.6** in 2030 [57, 63] | **739** [723, 796] |
-| Committed plus advanced (5 assets) | **3,757.5** [3,669, 4,125] | **3,615.3** [3,488, 3,890] | **134.0** in 2037 [132, 146] | **1,559** [1,517, 1,687] |
-| Full buildout (9 projects, 80.1 mtpa) | **7,162.0** [6,632, 8,222] | **6,895.6** [6,295, 7,775] | **235.6** in 2037 [232, 257] | **3,103** [2,804, 3,589] |
+| Committed (operating + under construction, 3 assets) | **1,845.8** [1,811, 2,005] | **1,781.7** [1,733, 1,901] | **57.6** in 2030 [57, 63] | **741** [724, 796] |
+| Committed plus advanced (5 assets) | **3,757.5** [3,604, 4,056] | **3,627.1** [3,446, 3,851] | **134.0** in 2037 [132, 146] | **1,561** [1,497, 1,669] |
+| Full buildout (9 projects, 80.1 mtpa) | **7,162.0** [6,494, 8,075] | **6,918.1** [6,197, 7,680] | **235.6** in 2037 [231, 256] | **3,108** [2,761, 3,548] |
 
-The Monte Carlo median sits above the central case (7,397.4 Mt at full buildout) because the
+The Monte Carlo median sits above the central case (7,257.1 Mt at full buildout) because the
 sampled stage triangles are right-skewed, shipping 0.05 / 0.12 / 0.31 especially. It is stated
 once, with that reason, and is not the reported figure. The upstream triangle high is the GWP20
-scenario factor (0.428), not Howarth 0.55.
+scenario factor (0.393), not Howarth 0.55.
 
 At full buildout:
 
@@ -29,7 +29,7 @@ At full buildout:
 | Headline annual (panel peak) | **235.6 MtCO2e** in 2037 |
 | life_average_annual_mt | **204.7 MtCO2e/yr** (not a calendar year) |
 | Lifetime emissions | **7,162.0 MtCO2e** (calendar panel 2025–2069) |
-| Lifetime, CO2 only | **6,895.6 MtCO2** (plus 8,942 kt CH4) |
+| Lifetime, CO2 only | **6,918.1 MtCO2** (plus 8,186 kt CH4) |
 | Export capacity | 80.1 mtpa across nine projects |
 | Scope 1 and 2 | 37.5 Mt/yr, 18.2% |
 | Scope 3 | 168.8 Mt/yr, 81.8% |
@@ -258,7 +258,7 @@ America.
 | Utilisation, steady state | 83.9% | IGU World LNG Report 2026, global average for 2025 |
 | LNG Canada Phase 1 ramp | 25 / 60 / 85% | Observed startup, first cargo June 2025 |
 | Saint John import | 2.5% flat | Repsol annual report, 8 TBtu regasified in 2023 |
-| Delay where no FID | 5 years | Planning assumption, tested across 3 to 7 years |
+| Delay where no FID | 5 years | IEA Global LNG Capacity Tracker and Rogers (2017), OIES Energy Insight 4 p. 1. Tested across an asymmetric 4 to 8 years |
 | Operating life | licence end, else 40 years | CER export licence expiry where filed; not a uniform 40-year run |
 | Methane GWP100 / GWP20 | 29.8 / 82.5 | IPCC AR6 Working Group I, fossil methane |
 | Remaining 1.5°C budget (50%) | 170 GtCO2 | Global Carbon Budget 2025, from start of 2026 |
@@ -272,7 +272,7 @@ an error in the lower total. Where a proponent states a different operating life
 instead: Summit Lake PG LNG states 30 years.
 
 Lifetime emissions are also reported as a share of those remaining budgets. The budgets are
-CO2, so the **paper value is the CO2-only lifetime** (6,895.6 MtCO2 at full buildout, 4.1% of
+CO2, so the **paper value is the CO2-only lifetime** (6,918.1 MtCO2 at full buildout, 4.1% of
 the 170 GtCO2 remaining for 1.5°C). That is like for like. The panel carries an explicit
 per-gas split — `co2_mt`, `ch4_derived_co2e_mt` and `ch4_mass_kt` per asset-year, summing to
 `emissions_mtco2e` exactly — built from parameters already on the workbook: upstream CH4 is
@@ -327,13 +327,13 @@ percentage.
 | `inventory_as_reported` | 0.22 | Official Canadian inventory at face value |
 | `measurement_central` | 0.25 | Default. Three measurement studies agree on a 1.5x correction |
 | `measurement_high` | 0.26 | 1.7x, from a British Columbia aircraft survey |
-| `near_term_methane_gwp20` | 0.428 | Methane weighted over 20 years rather than 100 |
+| `near_term_methane_gwp20` | 0.393 | Methane weighted over 20 years rather than 100 |
 | `howarth_high` | 0.55 | United States focused study, high leakage assumptions |
 
 The 20-year warming uplift is applied to the methane portion of upstream emissions only. The
 non-methane portion of the inventory factor is unchanged. The methane portion is multiplied by
 the 1.5 measurement correction and then by the ratio of GWP20 to GWP100 for fossil methane
-(82.5 / 29.8). The result, 0.428, depends on the assumed methane share of 0.30. Applying the
+(82.5 / 29.8). The result, 0.393, depends on the methane share of 0.25. Applying the
 uplift to the whole factor would assume all upstream emissions are methane. Pipeline methane is
 not re-weighted: no pipeline methane share is defined in the workbook.
 
@@ -355,10 +355,12 @@ Factors sheets.
 - The pipeline 0.037–0.133 range is assumed. The central 0.074 is cited; no published
   uncertainty interval for Canadian gas transmission intensity was located.
 - Liquefaction range_high 0.36 is an uncited literature upper bound.
-- `upstream_ch4_share` 0.30 remains an assumption. A derivation from Johnson et al. (2023)
-  brackets it at roughly 18–34%, centring near 25%, so 0.30 sits high but within range. The
-  central upstream factor is insensitive to the choice; the GWP20 scenario and the methane
-  damages line are not.
+- `upstream_ch4_share` is **0.25**, the centre of the 18–34% bracket that Johnson et al. (2023)
+  supports. It is still a judgement within a bracket rather than a single reported figure, so it
+  stays typed as an assumption.
+- The FID-delay band **4 / 5 / 8** is deliberately asymmetric. The cited mid of 5 years is
+  "typically 5 years, *before* unforeseen slippage", and slippage in LNG construction runs one
+  way. A symmetric band would imply a project is as likely to be early as late.
 
 ### Proponent-sourced values
 
@@ -404,16 +406,17 @@ MtCO2e, about 1 to 2 per cent of the lifecycle total. All figures are conservati
 reaches 20,000 cubic metres per well per day. The buildout requires 12,558 to 32,000 new wells, all
 of which are eventually abandoned.
 
-**The methane share of upstream emissions is assumed.** British Columbia does not publish the
-carbon dioxide and methane split separately. The 30 per cent figure is tested across 20 to 40 per
-cent, but it is an assumption rather than a derivation. The GWP20 scenario depends on it.
-Johnson et al. (2023) now brackets it: their British Columbia 2021 upstream methane intensity of
-0.38 per cent of marketed gas, divided by the 1.7 times factor by which their measurement-based
-inventory exceeds the official one, implies a methane share of 25 to 30 per cent depending on the
-methane GWP vintage; an absolute route over the same paper's 144.5 kt/y gives 21 to 25 per cent.
-The bracket spans roughly 18 to 34 per cent and centres near 25. The assumed 0.30 sits high in
-that bracket. It has not been changed, because the evidence brackets rather than pins it and the
-choice moves the GWP20 scenario and the methane damages line.
+**The methane share of upstream emissions is a bracketed judgement, not a reported figure.**
+British Columbia does not publish the carbon dioxide and methane split separately. The share is
+**0.25**, set on 3 September 2026 from Johnson et al. (2023): their British Columbia 2021 upstream
+methane intensity of 0.38 per cent of marketed gas, divided by the 1.7 times factor by which their
+measurement-based inventory exceeds the official one, implies a methane share of 25 to 30 per cent
+depending on the methane GWP vintage; an absolute route over the same paper's 144.5 kt/y gives 21
+to 25 per cent. The bracket spans roughly 18 to 34 per cent and centres near 25, which is the value
+adopted. It replaced an assumed 0.30 that sat high in the bracket without a stated reason. The
+share does **not** move the headline: the stored `measurement_central` upstream factor of 0.25 is
+0.2530 at a share of 0.30 and 0.2475 at 0.25, both rounding to the same 0.25. What it moves is the
+CO2/CH4 split, the SC-CH4 damages line, and the `near_term_methane_gwp20` scenario.
 
 **Two projects rest on weak capacity figures.** Kino Aski LNG's 15 mtpa (formerly Marinvest,
 Baie-Comeau) is from a 17 August 2026 press release; no regulatory process has begun and the
@@ -436,6 +439,16 @@ places it on the bunkering chain and records the disagreement rather than resolv
 
 **Capacity is never summed across chains.** Export and bunkering capacity is liquefaction; import
 capacity is regasification. They measure opposite operations.
+
+**The LNG Canada Phase 1 ramp has the right average and the wrong shape.** The model assumes
+25 / 60 / 85 per cent for years one, two and steady state. Observed throughput now exists: first
+cargo 30 June 2025, Train 2 in production from November 2025, roughly 4.6 Mt exported to
+mid-March 2026, the first month above 1 Mt in April 2026 and 1.2 Mt a month by May 2026. Against
+14 mtpa nameplate that is about 11 per cent of a full year in calendar 2025 against the assumed 25
+per cent, then 86 and 103 per cent of nameplate in April and May 2026 against the assumed 60 per
+cent for year two. The model starts too high and ramps too slowly, and the two errors largely
+offset over the asset's life. Recorded against the parameters rather than corrected, because one
+facility's observed profile is not a basis for the generic ramp applied to every other asset.
 
 **Annual figures come in two forms.** The headline annual is the panel peak (235.6 MtCO2e in
 2037). `life_average_annual_mt` (204.7 MtCO2e/yr) is a life-average across each facility's

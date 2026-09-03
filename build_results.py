@@ -134,7 +134,11 @@ EXPECTED_ADVANCED_EXPORT = 26.0
 #   lifetime 7254.2; peak 238.6 (2037). Discovery was 20 mtpa / 2,043.9 Mt.
 #   Regasification 0.04 -> 0.021 (3 Sep 2026): CAN 18.2 / BUNK 3.2 / FOR 78.6;
 #   lifetime 7215.3; peak 237.3 (2037).
-#   Pipeline 0.10 -> 0.074 (3 Sep 2026): values below. The old 0.10 was assumed
+#   Pipeline 0.10 -> 0.074 (3 Sep 2026): CAN 17.6 / BUNK 3.2 / FOR 79.2;
+#   lifetime 7162.0; peak 235.6 (2037).
+#   upstream_ch4_share 0.30 -> 0.25 (3 Sep 2026): lifetime, peak and the
+#   territorial split are ALL UNCHANGED - the share only moves the CO2/CH4
+#   split and the SC-CH4 damages line. Values below. The old 0.10 was assumed
 #   and about 35% above two independent cited routes (Liu et al. 2021 via the
 #   ERA restatement, 0.0735; CER/NIR 2019 pipeline transport, 0.0744). Pipeline
 #   is CAN-tagged, so cutting it moves weight from CAN to FOR.
@@ -157,30 +161,30 @@ EXPECTED_PEAK_MT = 235.6
 # SHA-256 of Outputs/paper_set_locked.csv, the rounded canonical copy of the
 # paper set. Re-lock it in the same commit as EXPECTED_BUILD_OUT, never alone.
 EXPECTED_PAPER_SET_SHA256 = (
-    "3e325c3aaa40fcb5fa4e027548d5e535a327e2d9ae4d694dd075bb1125b8f949"
+    "fd506c3a1cd8187d546a3a551719834f965d3167c4c55c4d7e0ca6bd0b0bbae6"
 )
 
 EXPECTED_BUILD_OUT = {
     "committed": {
         "lifetime_mt": 1845.8,
-        "lifetime_co2_only_mt": 1775.9,
+        "lifetime_co2_only_mt": 1781.7,
         "peak_year": 2030,
         "peak_mt": 57.6,
-        "damages_cad_bn": 739,
+        "damages_cad_bn": 741,
     },
     "committed_plus_advanced": {
         "lifetime_mt": 3757.5,
-        "lifetime_co2_only_mt": 3615.3,
+        "lifetime_co2_only_mt": 3627.1,
         "peak_year": 2037,
         "peak_mt": 134.0,
-        "damages_cad_bn": 1559,
+        "damages_cad_bn": 1561,
     },
     "full": {
         "lifetime_mt": 7162.0,
-        "lifetime_co2_only_mt": 6895.6,
+        "lifetime_co2_only_mt": 6918.1,
         "peak_year": 2037,
         "peak_mt": 235.6,
-        "damages_cad_bn": 3103,
+        "damages_cad_bn": 3108,
     },
 }
 

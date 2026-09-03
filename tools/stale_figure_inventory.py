@@ -68,16 +68,24 @@ SUPERSEDED = [
     (r"3[,.]?126", "C$3,126bn ECCC 2% damages (pipeline 0.10)", "C$3,103bn", "pipeline 0.10 -> 0.074"),
     (r"206\.3", "206.3 Mt/yr life-average (pipeline 0.10)", "204.7 Mt/yr", "pipeline 0.10 -> 0.074"),
     (r"pipeline (?:transport )?(?:central )?0\.10", "pipeline central 0.10 (assumed)", "0.074 (Liu 2021 / CER 2022)", "moved onto two converging cited routes"),
+    # upstream_ch4_share 0.30 -> 0.25 and FID band 3/5/7 -> 4/5/8, 3 September 2026.
+    (r"6[,.]?895\.6", "6,895.6 Mt CO2-only (ch4 share 0.30)", "6,918.1 Mt", "upstream_ch4_share 0.30 -> 0.25"),
+    (r"8[,.]?942", "8,942 kt CH4 (ch4 share 0.30)", "8,186 kt", "upstream_ch4_share 0.30 -> 0.25"),
+    (r"3[,.]?103", "C$3,103bn ECCC 2% damages (ch4 share 0.30)", "C$3,108bn", "upstream_ch4_share 0.30 -> 0.25"),
+    # Match only the stored-value phrasings, not the "was X" history that the
+    # source cells deliberately carry.
+    (r"upstream 0\.428", "GWP20 scenario upstream 0.428 (share 0.30)", "0.393 (share 0.25)", "upstream_ch4_share 0.30 -> 0.25"),
+    (r"3 to 7 years", "FID delay band tested across 3 to 7 years", "4 to 8 years, asymmetric", "slippage runs one way"),
 ]
 
 CURRENT = {
     "lifetime CO2e": "7,162.0 Mt",
-    "lifetime CO2 only": "6,895.6 Mt (plus 8,942 kt CH4)",
+    "lifetime CO2 only": "6,918.1 Mt (plus 8,186 kt CH4)",
     "peak": "235.6 Mt in 2037",
     "territorial CAN / BUNK / FOR": "17.6 / 3.2 / 79.2 %",
-    "ECCC 2% damages": "C$3,103 bn",
-    "committed": "1,845.8 Mt, C$739 bn",
-    "committed plus advanced": "3,757.5 Mt, C$1,559 bn",
+    "ECCC 2% damages": "C$3,108 bn",
+    "committed": "1,845.8 Mt, C$741 bn",
+    "committed plus advanced": "3,757.5 Mt, C$1,561 bn",
     "export capacity": "80.1 mtpa across nine projects",
 }
 
@@ -95,6 +103,8 @@ ALLOWED = {
     "tools/apply_found_citations.py",
     "tools/update_pipeline_factor.py",
     "tools/record_ch4_share_derivation.py",
+    "tools/update_ch4_share.py",
+    "tools/update_fid_delay_band.py",
     "build_results.py",
     "Outputs/STALE_FIGURE_INVENTORY.md",
     # Dated diagnostics and audits, each carrying a superseded-snapshot banner.
