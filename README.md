@@ -645,10 +645,6 @@ Workbook edits are deliberate and scripted. The model never writes to `Inputs/`;
 scripts that changed an input workbook or the register live in `tools/`, each documenting what it
 changed and why.
 
-`python tools/stale_figure_inventory.py` greps the whole repository for superseded headline values
-and separates live hits from deliberate historical records, writing a maintainer report to
-`Outputs/STALE_FIGURE_INVENTORY.md`. Run it after any re-lock.
-
 The three dated documents in `Outputs/` — the sourcing audit, the Roman-White gap diagnostic
 and the oil comparator audit — each open with a banner that is
 generated, not hand-written: `src/banners.py` renders it from the lock constants, and the run
