@@ -22,32 +22,42 @@ from src.trajectories import (
 
 DPI = 200
 
-# Presentation-template family (Office theme accents and shades).
+# Deck brand palette (sage / forest, gold for emphasis only).
 # Same colour always means the same thing across figures.
+INK = "#1A1A1A"
+MUTED = "#6B7975"
+GRID = "#DDE2DC"
+FOREST = "#344745"
+SAGE = "#8A9B9A"
+FOG = "#C2C9BF"
+MIST = "#DDE2DC"
+LEAF = "#A6B0A1"
+GOLD = "#C89A3C"
+
 C = {
-    "black": "#000000",
-    "navy": "#203864",
-    "blue": "#4472C4",
-    "sky": "#5B9BD5",
-    "pale": "#9DC3E6",
-    "orange": "#ED7D31",
-    "gold": "#FFC000",
-    "green": "#70AD47",
-    "darkgreen": "#548235",
-    "red": "#C00000",
-    "brown": "#833C0C",
-    "grey": "#7F7F7F",
-    "grid": "#D9D9D9",
-    "text": "#595959",
-    "vermillion": "#C00000",
-    "purple": "#7030A0",
-    "yellow": "#FFC000",
+    "black": INK,
+    "navy": FOREST,
+    "blue": FOREST,
+    "sky": SAGE,
+    "pale": FOG,
+    "orange": SAGE,
+    "gold": GOLD,
+    "green": MUTED,
+    "darkgreen": FOREST,
+    "red": MUTED,
+    "brown": SAGE,
+    "grey": MUTED,
+    "grid": GRID,
+    "text": MUTED,
+    "vermillion": SAGE,
+    "purple": LEAF,
+    "yellow": LEAF,
 }
 
 SCENARIO_COLOR = {
-    "committed": C["pale"],
-    "committed_plus_advanced": C["sky"],
-    "full": C["navy"],
+    "committed": FOG,
+    "committed_plus_advanced": SAGE,
+    "full": FOREST,
 }
 SCENARIO_LABEL = {
     "committed": "Committed",
@@ -63,12 +73,12 @@ STAGE_LABEL = {
     "combustion": "Combustion",
 }
 STAGE_COLOR = {
-    "upstream_production": C["green"],
-    "pipeline_transport": C["darkgreen"],
-    "liquefaction": C["orange"],
-    "shipping": C["gold"],
-    "regasification": C["grey"],
-    "combustion": C["red"],
+    "upstream_production": MUTED,
+    "pipeline_transport": FOG,
+    "liquefaction": SAGE,
+    "shipping": LEAF,
+    "regasification": MIST,
+    "combustion": FOREST,
 }
 TERRITORY_LABEL = {
     "CAN": "Canada",
@@ -76,9 +86,9 @@ TERRITORY_LABEL = {
     "FOR": "Importing countries",
 }
 TERRITORY_COLOR = {
-    "CAN": C["blue"],
-    "BUNK": C["grey"],
-    "FOR": C["brown"],
+    "CAN": FOREST,
+    "BUNK": GOLD,
+    "FOR": SAGE,
 }
 LOCKED_STAGE_SHARE_PCT = {
     "combustion": 78.0,
@@ -108,12 +118,15 @@ def _setup_style() -> None:
         "xtick.labelsize": 9,
         "ytick.labelsize": 9,
         "legend.fontsize": 9,
+        "text.color": INK,
+        "axes.labelcolor": INK,
+        "axes.titlecolor": INK,
         "axes.spines.top": False,
         "axes.spines.right": False,
-        "axes.edgecolor": C["text"],
-        "xtick.color": C["text"],
-        "ytick.color": C["text"],
-        "grid.color": C["grid"],
+        "axes.edgecolor": INK,
+        "xtick.color": MUTED,
+        "ytick.color": MUTED,
+        "grid.color": GRID,
         "grid.linewidth": 0.6,
         "figure.facecolor": "white",
         "axes.facecolor": "white",
@@ -122,8 +135,13 @@ def _setup_style() -> None:
 
 
 def _ygrid(ax) -> None:
-    ax.yaxis.grid(True, color=C["grid"], linewidth=0.6)
+    ax.yaxis.grid(True, color=GRID, linewidth=0.6)
     ax.set_axisbelow(True)
+
+
+def _label_on(fill: str) -> str:
+    """White on forest bars; ink on pale fills."""
+    return "#FFFFFF" if fill.upper() == FOREST.upper() else INK
 
 
 def tint_hex(hex_color: str, amount: float = 0.45) -> str:
@@ -208,7 +226,7 @@ def figure_1_stage_breakdown(
             f"{r.lifetime_mtco2e:,.0f} MtCO2e",
             va="center",
             fontsize=9,
-            color=C["black"],
+            color=INK,
         )
     ax.set_xlim(0, max(plot["share_pct"].max() * 1.28, 100))
     out = fig_dir / "fig01_stage_breakdown.png"
@@ -274,7 +292,7 @@ def figure_2_territorial_split(
                 f"{r.share_pct:.1f}%\n{r.lifetime_mtco2e:,.0f} MtCO2e",
                 ha="center",
                 va="center",
-                color="white",
+                color=_label_on(TERRITORY_COLOR[r.code]),
                 fontsize=9,
                 fontweight="bold",
             )
@@ -342,13 +360,17 @@ def figure_3_three_trajectories(
 
     _setup_style()
     fig, ax = plt.subplots(figsize=(9.0, 5.4))
+    markers = {"committed": "o", "committed_plus_advanced": "s", "full": "^"}
     for name in BUILD_OUTS:
         ax.plot(
             df["year"],
             df[name],
             color=SCENARIO_COLOR[name],
             linestyle=LINE_STYLES["solid"],
-            linewidth=2.4 if name == "full" else 2.0,
+            linewidth=3.0,
+            marker=markers[name],
+            markevery=3,
+            markersize=6,
             label=SCENARIO_LABEL[name],
         )
     peak_idx = int(df["full"].idxmax())
@@ -360,8 +382,8 @@ def figure_3_three_trajectories(
         xytext=(peak_year + 6, peak_mt + 8),
         ha="left",
         fontsize=9,
-        color=SCENARIO_COLOR["full"],
-        arrowprops=dict(arrowstyle="-", color=C["grey"], lw=0.8),
+        color=GOLD,
+        arrowprops=dict(arrowstyle="-", color=GOLD, lw=0.8),
     )
     ax.set_xlabel("Year")
     ax.set_ylabel("Annual emissions (MtCO2e/yr)")
@@ -405,7 +427,7 @@ def _pathway_figure(
     ax.plot(
         pathway["year"],
         pathway["canada_pathway_mtco2e_yr"],
-        color=C["black"],
+        color=INK,
         linestyle=LINE_STYLES["solid"],
         linewidth=2.2,
         label="Canada legislated pathway",
@@ -694,7 +716,7 @@ def figure_8_electrification_appendix(
     ax2.plot(
         traj["year"],
         traj["canada_pathway_mtco2e_yr"],
-        color=C["black"],
+        color=INK,
         linestyle=LINE_STYLES["solid"],
         linewidth=1.6,
         label="Canada legislated pathway",
