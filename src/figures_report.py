@@ -11,32 +11,84 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib.lines import Line2D
-
-from src.inputs import DEFAULT_SCENARIO, get_param
+from src.inputs import ALL_STAGES, DEFAULT_SCENARIO
 from src.model import GROUPS, electrification_counterfactual
-from src.scope import headline_sample
+from src.scope import BUILD_OUTS, build_out_project_ids, headline_sample
 from src.trajectories import (
     annual_series,
     canada_pathway_series,
-    cumulative_case_series,
     panel_lifetime_mt,
 )
 
 DPI = 200
 
-# Okabe–Ito colourblind-safe palette
+# Presentation-template family (Office theme accents and shades).
+# Same colour always means the same thing across figures.
 C = {
     "black": "#000000",
-    "orange": "#E69F00",
-    "sky": "#56B4E9",
-    "green": "#009E73",
-    "yellow": "#F0E442",
-    "blue": "#0072B2",
-    "vermillion": "#D55E00",
-    "purple": "#CC79A7",
-    "grey": "#666666",
+    "navy": "#203864",
+    "blue": "#4472C4",
+    "sky": "#5B9BD5",
+    "pale": "#9DC3E6",
+    "orange": "#ED7D31",
+    "gold": "#FFC000",
+    "green": "#70AD47",
+    "darkgreen": "#548235",
+    "red": "#C00000",
+    "brown": "#833C0C",
+    "grey": "#7F7F7F",
+    "grid": "#D9D9D9",
+    "text": "#595959",
+    "vermillion": "#C00000",
+    "purple": "#7030A0",
+    "yellow": "#FFC000",
 }
+
+SCENARIO_COLOR = {
+    "committed": C["pale"],
+    "committed_plus_advanced": C["sky"],
+    "full": C["navy"],
+}
+SCENARIO_LABEL = {
+    "committed": "Committed",
+    "committed_plus_advanced": "Committed plus advanced",
+    "full": "Full build-out",
+}
+STAGE_LABEL = {
+    "upstream_production": "Upstream production",
+    "pipeline_transport": "Pipeline transport",
+    "liquefaction": "Liquefaction",
+    "shipping": "Shipping",
+    "regasification": "Regasification",
+    "combustion": "Combustion",
+}
+STAGE_COLOR = {
+    "upstream_production": C["green"],
+    "pipeline_transport": C["darkgreen"],
+    "liquefaction": C["orange"],
+    "shipping": C["gold"],
+    "regasification": C["grey"],
+    "combustion": C["red"],
+}
+TERRITORY_LABEL = {
+    "CAN": "Canada",
+    "BUNK": "International marine bunkers",
+    "FOR": "Importing countries",
+}
+TERRITORY_COLOR = {
+    "CAN": C["blue"],
+    "BUNK": C["grey"],
+    "FOR": C["brown"],
+}
+LOCKED_STAGE_SHARE_PCT = {
+    "combustion": 78.0,
+    "liquefaction": 8.2,
+    "upstream_production": 7.9,
+    "shipping": 3.2,
+    "pipeline_transport": 2.1,
+    "regasification": 0.6,
+}
+LOCKED_TERRITORY_SHARE_PCT = {"CAN": 18.2, "BUNK": 3.2, "FOR": 78.6}
 
 LINE_STYLES = {
     "solid": "-",
@@ -49,7 +101,7 @@ LINE_STYLES = {
 def _setup_style() -> None:
     plt.rcParams.update({
         "font.family": "sans-serif",
-        "font.sans-serif": ["Segoe UI", "DejaVu Sans", "Arial"],
+        "font.sans-serif": ["Arial", "Liberation Sans", "DejaVu Sans"],
         "font.size": 10,
         "axes.titlesize": 12,
         "axes.labelsize": 10,
@@ -58,10 +110,47 @@ def _setup_style() -> None:
         "legend.fontsize": 9,
         "axes.spines.top": False,
         "axes.spines.right": False,
+        "axes.edgecolor": C["text"],
+        "xtick.color": C["text"],
+        "ytick.color": C["text"],
+        "grid.color": C["grid"],
+        "grid.linewidth": 0.6,
         "figure.facecolor": "white",
         "axes.facecolor": "white",
         "axes.grid": False,
     })
+
+
+def _ygrid(ax) -> None:
+    ax.yaxis.grid(True, color=C["grid"], linewidth=0.6)
+    ax.set_axisbelow(True)
+
+
+def tint_hex(hex_color: str, amount: float = 0.45) -> str:
+    """Mix a hex colour with white. Same hue, lighter tint (NPV bars)."""
+    h = hex_color.lstrip("#")
+    r, g, b = int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    r = round(r + (255 - r) * amount)
+    g = round(g + (255 - g) * amount)
+    b = round(b + (255 - b) * amount)
+    return f"#{r:02X}{g:02X}{b:02X}"
+
+
+def build_out_annual_series(panel: pd.DataFrame, inputs: dict) -> pd.DataFrame:
+    """Calendar-year emissions by build-out, 2025–2069. Data selection only."""
+    ids = build_out_project_ids(inputs)
+    sl = panel.loc[panel["scenario"] == DEFAULT_SCENARIO]
+    years = list(range(2025, 2070))
+    rows = []
+    for year in years:
+        ysl = sl.loc[sl["year"] == year]
+        rec = {"year": int(year)}
+        for name in BUILD_OUTS:
+            rec[name] = float(
+                ysl.loc[ysl["project_id"].isin(ids[name]), "emissions_mtco2e"].sum()
+            )
+        rows.append(rec)
+    return pd.DataFrame(rows)
 
 
 def _caption(fig, text: str) -> None:
@@ -81,73 +170,68 @@ def _write_csv(df: pd.DataFrame, path: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
-# Figure 1 — stage breakdown (life-average annual)
+# Figure 1 — lifetime share by lifecycle stage (manuscript Figure 2(a))
 # ---------------------------------------------------------------------------
 
 def figure_1_stage_breakdown(
     stages: pd.DataFrame,
-    headline_mt: float,
+    lifetime_mt: float,
     fig_dir: Path,
     data_dir: Path,
 ) -> dict:
-    df = stages.copy()
-    df = df.sort_values("annual_mtco2e_yr", ascending=True)
+    df = stages.set_index("stage").loc[list(ALL_STAGES)].reset_index()
     df["share_pct"] = df["share_of_total"] * 100
-    df["value_kind"] = "life_average_annual_mt"
-    df["scenario"] = DEFAULT_SCENARIO
-    _write_csv(
-        df[[
-            "stage",
-            "territorial_destination",
-            "annual_mtco2e_yr",
-            "share_pct",
-            "value_kind",
-            "scenario",
-        ]],
-        data_dir / "fig01_stage_breakdown.csv",
-    )
+    df["lifetime_mtco2e"] = df["share_of_total"] * lifetime_mt
+    df["stage_label"] = df["stage"].map(STAGE_LABEL)
+    export = df[[
+        "stage",
+        "stage_label",
+        "lifetime_mtco2e",
+        "share_pct",
+    ]].copy()
+    _write_csv(export, data_dir / "fig01_stage_breakdown.csv")
 
+    plot = df.iloc[::-1].reset_index(drop=True)
     _setup_style()
     fig, ax = plt.subplots(figsize=(9.0, 5.2))
-    colors = [C["vermillion"], C["blue"], C["orange"], C["sky"], C["green"], C["purple"]]
-    # map by stage after sort
-    bar_colors = colors[: len(df)]
-    y = np.arange(len(df))
-    ax.barh(y, df["annual_mtco2e_yr"], color=bar_colors, height=0.65)
-    ax.set_yticks(y, df["stage"].str.replace("_", " "))
-    ax.set_xlabel("Life-average annual emissions (MtCO₂e/yr)")
-    ax.set_title("Lifecycle emissions by stage")
-    for i, r in enumerate(df.itertuples()):
-        dest = r.territorial_destination or "—"
+    y = np.arange(len(plot))
+    colors = [STAGE_COLOR[s] for s in plot["stage"]]
+    ax.barh(y, plot["share_pct"], color=colors, height=0.65)
+    ax.set_yticks(y, plot["stage_label"])
+    ax.set_xlabel("Share of lifetime emissions (%)")
+    ax.set_title("Full build-out lifetime emissions by lifecycle stage")
+    _ygrid(ax)
+    for i, r in enumerate(plot.itertuples()):
         ax.text(
-            r.annual_mtco2e_yr + headline_mt * 0.01,
+            r.share_pct + 1.2,
             i,
-            f"{r.annual_mtco2e_yr:.1f}  ({r.share_pct:.1f}%)  ·  {dest}",
+            f"{r.lifetime_mtco2e:,.0f} MtCO2e",
             va="center",
-            fontsize=8,
+            fontsize=9,
+            color=C["black"],
         )
-    ax.set_xlim(0, df["annual_mtco2e_yr"].max() * 1.38)
-    _caption(
-        fig,
-        f"Figure 1 · Scenario: {DEFAULT_SCENARIO}. Export-chain headline scope. "
-        f"Values are life_average_annual_mt "
-        f"({headline_mt:.1f} MtCO₂e/yr), not the panel-peak headline. "
-        "Destination tags from the Chains sheet (CAN / BUNK / FOR).",
-    )
+    ax.set_xlim(0, max(plot["share_pct"].max() * 1.28, 100))
     out = fig_dir / "fig01_stage_breakdown.png"
     _save(fig, out)
-    stage_sum = float(df["annual_mtco2e_yr"].sum())
+    share_sum = float(df["share_pct"].sum())
+    lifetime_sum = float(df["lifetime_mtco2e"].sum())
+    rounded = {r.stage: round(r.share_pct, 1) for r in df.itertuples()}
     return {
         "path": out,
         "csv": data_dir / "fig01_stage_breakdown.csv",
-        "key": {r.stage: round(r.annual_mtco2e_yr, 1) for r in df.itertuples()},
-        "stage_sum": stage_sum,
-        "headline": headline_mt,
+        "key": {
+            r.stage_label: f"{r.share_pct:.1f}% ({r.lifetime_mtco2e:,.0f} MtCO2e)"
+            for r in df.itertuples()
+        },
+        "share_sum": share_sum,
+        "lifetime_sum": lifetime_sum,
+        "rounded_shares": rounded,
+        "lifetime_mt": lifetime_mt,
     }
 
 
 # ---------------------------------------------------------------------------
-# Figure 2 — territorial split (life-average annual)
+# Figure 2 — territorial attribution of lifetime emissions (manuscript Figure 2(b))
 # ---------------------------------------------------------------------------
 
 def figure_2_territorial_split(
@@ -155,162 +239,148 @@ def figure_2_territorial_split(
     bunk: float,
     foreign: float,
     headline_mt: float,
+    lifetime_mt: float,
     fig_dir: Path,
     data_dir: Path,
 ) -> dict:
+    annual = {"CAN": can, "BUNK": bunk, "FOR": foreign}
     rows = pd.DataFrame([
         {
-            "category": "Canada territorial",
-            "code": "CAN",
-            "annual_mtco2e_yr": can,
-            "note": "Counted in Canada's inventory",
-        },
-        {
-            "category": "International bunkers",
-            "code": "BUNK",
-            "annual_mtco2e_yr": bunk,
-            "note": "Attributed to no country under UNFCCC accounting",
-        },
-        {
-            "category": "Foreign territorial",
-            "code": "FOR",
-            "annual_mtco2e_yr": foreign,
-            "note": "Counted in destination countries",
-        },
+            "territory": TERRITORY_LABEL[code],
+            "code": code,
+            "share_pct": 100.0 * annual[code] / headline_mt,
+            "lifetime_mtco2e": lifetime_mt * annual[code] / headline_mt,
+        }
+        for code in ("CAN", "BUNK", "FOR")
     ])
-    rows["share_pct"] = rows["annual_mtco2e_yr"] / headline_mt * 100
-    rows["value_kind"] = "life_average_annual_mt"
-    rows["scenario"] = DEFAULT_SCENARIO
     _write_csv(rows, data_dir / "fig02_territorial_split.csv")
 
     _setup_style()
-    fig, ax = plt.subplots(figsize=(8.5, 4.2))
-    colors = [C["blue"], C["orange"], C["vermillion"]]
-    # Single stacked horizontal bar — clearest at three unequal categories
+    fig, ax = plt.subplots(figsize=(9.2, 3.8))
     left = 0.0
-    for i, r in enumerate(rows.itertuples()):
+    for r in rows.itertuples():
         ax.barh(
             0,
-            r.annual_mtco2e_yr,
+            r.share_pct,
             left=left,
             height=0.55,
-            color=colors[i],
-            label=f"{r.category} ({r.code})",
+            color=TERRITORY_COLOR[r.code],
         )
-        mid = left + r.annual_mtco2e_yr / 2
-        if r.annual_mtco2e_yr / headline_mt > 0.08:
+        mid = left + r.share_pct / 2
+        if r.share_pct > 10:
             ax.text(
                 mid,
                 0,
-                f"{r.code}\n{r.annual_mtco2e_yr:.1f}",
+                f"{r.share_pct:.1f}%\n{r.lifetime_mtco2e:,.0f} MtCO2e",
                 ha="center",
                 va="center",
                 color="white",
                 fontsize=9,
                 fontweight="bold",
             )
-        left += r.annual_mtco2e_yr
+        left += r.share_pct
     ax.set_yticks([])
-    ax.set_xlabel("Life-average annual emissions (MtCO₂e/yr)")
-    ax.set_title("Territorial attribution of lifecycle emissions")
-    ax.set_xlim(0, headline_mt * 1.02)
-    # Legend with hatch-free labels; bunkers note in caption + legend entry
+    ax.set_xlabel("Share of lifetime emissions (%)")
+    ax.set_title("Territorial attribution of lifetime emissions")
+    ax.set_xlim(0, 100)
     handles = [
-        plt.Rectangle((0, 0), 1, 1, color=colors[i])
-        for i in range(3)
+        plt.Rectangle((0, 0), 1, 1, color=TERRITORY_COLOR[code])
+        for code in ("CAN", "BUNK", "FOR")
+    ]
+    legend_labels = [
+        f"{r.territory} — {r.share_pct:.1f}% ({r.lifetime_mtco2e:,.0f} MtCO2e)"
+        for r in rows.itertuples()
     ]
     ax.legend(
         handles,
-        [
-            f"Canada (CAN) — {can:.1f}",
-            f"International bunkers (BUNK) — {bunk:.1f}\n(no country under UNFCCC)",
-            f"Foreign (FOR) — {foreign:.1f}",
-        ],
+        legend_labels,
         loc="upper center",
-        bbox_to_anchor=(0.5, -0.18),
-        ncol=3,
+        bbox_to_anchor=(0.5, -0.28),
+        ncol=1,
         frameon=False,
-        fontsize=8,
+        fontsize=9,
     )
-    fig.subplots_adjust(bottom=0.32)
+    fig.subplots_adjust(bottom=0.42)
     fig.text(
         0.5,
         0.02,
-        f"Figure 2 · Scenario: {DEFAULT_SCENARIO}. Export-chain headline scope. "
-        f"Values are life_average_annual_mt "
-        f"({headline_mt:.1f} MtCO₂e/yr), not the panel-peak headline. International bunkers are attributed "
-        "to no country under UNFCCC accounting.",
+        "Marine bunkers are attributed to no country under UNFCCC reporting",
         ha="center",
         va="bottom",
         fontsize=8,
-        color=C["grey"],
+        color=C["text"],
     )
     out = fig_dir / "fig02_territorial_split.png"
     _save(fig, out)
+    rounded = {r.code: round(r.share_pct, 1) for r in rows.itertuples()}
     return {
         "path": out,
         "csv": data_dir / "fig02_territorial_split.csv",
-        "key": {"CAN": round(can, 1), "BUNK": round(bunk, 1), "FOR": round(foreign, 1)},
-        "sum": can + bunk + foreign,
-        "headline": headline_mt,
+        "key": {
+            r.territory: f"{r.share_pct:.1f}% ({r.lifetime_mtco2e:,.0f} MtCO2e)"
+            for r in rows.itertuples()
+        },
+        "share_sum": float(rows["share_pct"].sum()),
+        "lifetime_sum": float(rows["lifetime_mtco2e"].sum()),
+        "rounded_shares": rounded,
+        "lifetime_mt": lifetime_mt,
     }
 
 
 # ---------------------------------------------------------------------------
-# Figure 3 — three cumulative trajectories
+# Figure 3 — annual emissions by build-out scenario (manuscript Figure 1)
 # ---------------------------------------------------------------------------
 
 def figure_3_three_trajectories(
     inputs: dict,
+    panel: pd.DataFrame,
     fig_dir: Path,
     data_dir: Path,
 ) -> dict:
-    df = cumulative_case_series(inputs, DEFAULT_SCENARIO, canada_only=False)
-    df["value_kind"] = "calendar-year annual"
+    df = build_out_annual_series(panel, inputs)
     _write_csv(df, data_dir / "fig03_three_trajectories.csv")
 
     _setup_style()
     fig, ax = plt.subplots(figsize=(9.0, 5.4))
-    series = [
-        ("operating", "Operating only", C["blue"], LINE_STYLES["solid"], "o"),
-        ("plus_under_construction", "Operating + under construction", C["green"], LINE_STYLES["dashed"], "s"),
-        ("plus_proposed", "All calc_groups (+ proposed)", C["vermillion"], LINE_STYLES["dashdot"], "^"),
-    ]
-    for col, label, color, ls, marker in series:
+    for name in BUILD_OUTS:
         ax.plot(
             df["year"],
-            df[col],
-            color=color,
-            linestyle=ls,
-            linewidth=2.0,
-            marker=marker,
-            markevery=3,
-            markersize=5,
-            label=label,
+            df[name],
+            color=SCENARIO_COLOR[name],
+            linestyle=LINE_STYLES["solid"],
+            linewidth=2.4 if name == "full" else 2.0,
+            label=SCENARIO_LABEL[name],
         )
-    ax.set_xlabel("Year")
-    ax.set_ylabel("Annual emissions (MtCO₂e/yr)")
-    ax.set_title("Canada LNG emissions trajectories to 2050")
-    ax.set_xlim(2025, 2050)
-    ax.legend(frameon=False, loc="upper left")
-    plateaus = {col: float(df[col].max()) for col, *_ in series}
-    _caption(
-        fig,
-        f"Figure 3 · Scenario: {DEFAULT_SCENARIO}. Export-chain headline scope. "
-        "Calendar-year annual values "
-        "(not the life-average). Membership from calc_group. "
-        f"Plateaus ≈ {plateaus['operating']:.0f} / "
-        f"{plateaus['plus_under_construction']:.0f} / "
-        f"{plateaus['plus_proposed']:.0f} MtCO₂e/yr.",
+    peak_idx = int(df["full"].idxmax())
+    peak_year = int(df.loc[peak_idx, "year"])
+    peak_mt = float(df.loc[peak_idx, "full"])
+    ax.annotate(
+        f"{peak_mt:.1f} MtCO2e in {peak_year}",
+        xy=(peak_year, peak_mt),
+        xytext=(peak_year + 6, peak_mt + 8),
+        ha="left",
+        fontsize=9,
+        color=SCENARIO_COLOR["full"],
+        arrowprops=dict(arrowstyle="-", color=C["grey"], lw=0.8),
     )
+    ax.set_xlabel("Year")
+    ax.set_ylabel("Annual emissions (MtCO2e/yr)")
+    ax.set_title("Annual emissions by build-out scenario")
+    ax.set_xlim(2025, 2069)
+    ax.set_ylim(bottom=0)
+    _ygrid(ax)
+    ax.legend(frameon=False, loc="upper left")
+    plateaus = {name: float(df[name].max()) for name in BUILD_OUTS}
     out = fig_dir / "fig03_three_trajectories.png"
     _save(fig, out)
     return {
         "path": out,
         "csv": data_dir / "fig03_three_trajectories.csv",
-        "key": {k: round(v, 1) for k, v in plateaus.items()},
+        "key": {SCENARIO_LABEL[k]: round(v, 1) for k, v in plateaus.items()},
         "series": df,
-        "plateau_all": plateaus["plus_proposed"],
+        "plateau_all": plateaus["full"],
+        "peak_year": peak_year,
+        "peak_mt": peak_mt,
     }
 
 
@@ -353,12 +423,14 @@ def _pathway_figure(
             label=label,
         )
     ax.set_xlabel("Year")
-    ax.set_ylabel("Annual emissions (MtCO₂e/yr)")
+    ax.set_ylabel("Annual emissions (MtCO2e/yr)")
     ax.set_title(title)
     ax.set_xlim(2025, 2050)
     ax.set_ylim(bottom=0)
+    _ygrid(ax)
     ax.legend(frameon=False, loc="upper right")
-    _caption(fig, caption)
+    if caption:
+        _caption(fig, caption)
     out = fig_dir / f"{out_name}.png"
     _save(fig, out)
     return out
@@ -386,7 +458,7 @@ def figure_4_pathway_vs_territorial(
     path = _pathway_figure(
         lng_lines=[
             (
-                "Canada-territorial LNG (CAN stages)",
+                "Canada-territorial LNG",
                 lng,
                 C["blue"],
                 LINE_STYLES["dashed"],
@@ -395,12 +467,7 @@ def figure_4_pathway_vs_territorial(
         ],
         pathway=pathway,
         title="Canada's pathway versus territorial LNG emissions",
-        caption=(
-            f"Figure 4 · Scenario: {DEFAULT_SCENARIO}. Calendar-year annual values "
-            "(not the life-average). LNG line is stages tagged CAN only. "
-            "Pathway interpolated from Parameters milestones "
-            "(694 / 607 / 455 / 417 / 0)."
-        ),
+        caption="",
         out_name="fig04_pathway_vs_territorial_lng",
         fig_dir=fig_dir,
         data_dir=data_dir,
@@ -422,9 +489,9 @@ def figure_5_pathway_three_upstream(
 ) -> dict:
     pathway = canada_pathway_series(inputs["params"])
     scenarios = [
-        ("measurement_central", "measurement_central", C["blue"], LINE_STYLES["dashed"], "o"),
-        ("near_term_methane_gwp20", "near_term_methane_gwp20", C["orange"], LINE_STYLES["dashdot"], "s"),
-        ("howarth_high", "howarth_high", C["vermillion"], LINE_STYLES["dotted"], "^"),
+        ("measurement_central", "Central", C["blue"], LINE_STYLES["dashed"], "o"),
+        ("near_term_methane_gwp20", "Near-term methane (GWP20)", C["orange"], LINE_STYLES["dashdot"], "s"),
+        ("howarth_high", "Howarth high", C["red"], LINE_STYLES["dotted"], "^"),
     ]
     csv = pathway.copy()
     lng_lines = []
@@ -440,14 +507,8 @@ def figure_5_pathway_three_upstream(
     path = _pathway_figure(
         lng_lines=lng_lines,
         pathway=pathway,
-        title="Canada's pathway versus territorial LNG — upstream cases",
-        caption=(
-            "Figure 5 · Calendar-year annual values (not the life-average). "
-            "Canada pathway unchanged; LNG (CAN stages) under three upstream scenarios. "
-            f"Territorial plateaus ≈ {plateaus['measurement_central']:.0f} / "
-            f"{plateaus['near_term_methane_gwp20']:.0f} / "
-            f"{plateaus['howarth_high']:.0f} MtCO₂e/yr."
-        ),
+        title="Canada's pathway versus territorial LNG — upstream sensitivities",
+        caption="",
         out_name="fig05_pathway_three_upstream",
         fig_dir=fig_dir,
         data_dir=data_dir,
@@ -489,18 +550,14 @@ def figure_6_pathway_vs_total(
             (
                 "Total LNG (all territories)",
                 lng,
-                C["vermillion"],
+                C["navy"],
                 LINE_STYLES["dashdot"],
                 "^",
             )
         ],
         pathway=pathway,
         title="Canada's pathway versus total LNG emissions",
-        caption=(
-            f"Figure 6 · Scenario: {DEFAULT_SCENARIO}. Calendar-year annual values "
-            "(not the life-average). Total includes CAN, BUNK and FOR stages. "
-            f"Plateau ≈ {float(lng.max()):.0f} MtCO₂e/yr."
-        ),
+        caption="",
         out_name="fig06_pathway_vs_total_lng",
         fig_dir=fig_dir,
         data_dir=data_dir,
@@ -623,8 +680,9 @@ def figure_8_electrification_appendix(
     x = np.arange(len(cases))
     ax1.bar(x, [c[1] for c in cases], color=[c[2] for c in cases], width=0.62)
     ax1.set_xticks(x, [c[0] for c in cases])
-    ax1.set_ylabel("Canada-territorial LNG (MtCO₂e/yr)")
+    ax1.set_ylabel("Canada-territorial LNG (MtCO2e/yr)")
     ax1.set_title("Life-average")
+    _ygrid(ax1)
     ymax = max(c[1] for c in cases)
     ax1.set_ylim(0, ymax * 1.22)
     for i, (label, val, _col) in enumerate(cases):
@@ -668,8 +726,9 @@ def figure_8_electrification_appendix(
     ax2.set_xlim(2025, 2050)
     ax2.set_ylim(bottom=0)
     ax2.set_xlabel("Year")
-    ax2.set_ylabel("Annual emissions (MtCO₂e/yr)")
+    ax2.set_ylabel("Annual emissions (MtCO2e/yr)")
     ax2.set_title("Calendar-year territorial LNG")
+    _ygrid(ax2)
     ax2.legend(frameon=False, loc="upper right", fontsize=8)
 
     fig.suptitle(
@@ -677,24 +736,7 @@ def figure_8_electrification_appendix(
         fontsize=13,
         y=0.98,
     )
-    fig.text(
-        0.5,
-        0.01,
-        (
-            f"Appendix figure · Scenario: {DEFAULT_SCENARIO}. Liquefaction is tagged CAN, "
-            f"so the {gas_i:.2f}→{elec_i:.2f} tCO2e/t switch lands entirely in Canada. "
-            f"Headline case is gas turbine for every terminal. Claimed-electric restores "
-            f"{elec_i:g} only where the register previously recorded electric_committed or "
-            f"electric_planned ({len(cf['claimed_project_ids'])} assets). "
-            "Electrification is not assumed in the main results."
-        ),
-        ha="center",
-        va="bottom",
-        fontsize=8,
-        color=C["grey"],
-        wrap=True,
-    )
-    fig.subplots_adjust(bottom=0.16, top=0.86, wspace=0.28)
+    fig.subplots_adjust(bottom=0.08, top=0.86, wspace=0.28)
     out = fig_dir / "fig08_electrification_canada_territorial.png"
     _save(fig, out)
 
@@ -744,13 +786,16 @@ def build_all_report_figures(
     can = float(sample["canada_territorial"].sum()) / 1e6
     bunk = float(sample["international_bunkers"].sum()) / 1e6
     foreign = float(sample["foreign_territorial"].sum()) / 1e6
+    if panel is None:
+        raise ValueError("build_all_report_figures requires the headline-scope panel.")
+    lifetime_mt = panel_lifetime_mt(panel, DEFAULT_SCENARIO)
 
     results = {}
-    results["fig1"] = figure_1_stage_breakdown(stages, headline, fig_dir, data_dir)
+    results["fig1"] = figure_1_stage_breakdown(stages, lifetime_mt, fig_dir, data_dir)
     results["fig2"] = figure_2_territorial_split(
-        can, bunk, foreign, headline, fig_dir, data_dir
+        can, bunk, foreign, headline, lifetime_mt, fig_dir, data_dir
     )
-    results["fig3"] = figure_3_three_trajectories(inputs, fig_dir, data_dir)
+    results["fig3"] = figure_3_three_trajectories(inputs, panel, fig_dir, data_dir)
     results["fig4"] = figure_4_pathway_vs_territorial(inputs, fig_dir, data_dir)
     results["fig5"] = figure_5_pathway_three_upstream(
         inputs, fig_dir, data_dir, results["fig4"]["lng_series"]
@@ -761,17 +806,25 @@ def build_all_report_figures(
     )
 
     # Validations
-    assert abs(results["fig1"]["stage_sum"] - headline) < 0.05, (
-        results["fig1"]["stage_sum"],
-        headline,
+    assert abs(results["fig1"]["share_sum"] - 100.0) < 0.05, results["fig1"]["share_sum"]
+    assert abs(results["fig1"]["lifetime_sum"] - lifetime_mt) < 0.05, (
+        results["fig1"]["lifetime_sum"],
+        lifetime_mt,
     )
-    print("[validate] fig1 stage totals = headline PASS")
+    for stage, expected in LOCKED_STAGE_SHARE_PCT.items():
+        got = results["fig1"]["rounded_shares"][stage]
+        assert got == expected, (stage, got, expected)
+    print("[validate] fig1 lifetime shares = locked manuscript shares PASS")
 
-    assert abs(results["fig2"]["sum"] - headline) < 0.05, (
-        results["fig2"]["sum"],
-        headline,
+    assert abs(results["fig2"]["share_sum"] - 100.0) < 0.05, results["fig2"]["share_sum"]
+    assert abs(results["fig2"]["lifetime_sum"] - lifetime_mt) < 0.05, (
+        results["fig2"]["lifetime_sum"],
+        lifetime_mt,
     )
-    print("[validate] fig2 territorial sum = headline PASS")
+    for code, expected in LOCKED_TERRITORY_SHARE_PCT.items():
+        got = results["fig2"]["rounded_shares"][code]
+        assert got == expected, (code, got, expected)
+    print("[validate] fig2 territorial shares = locked manuscript shares PASS")
 
     assert abs(results["fig3"]["plateau_all"] - results["fig6"]["plateau"]) < 0.05, (
         results["fig3"]["plateau_all"],

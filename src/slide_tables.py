@@ -10,11 +10,11 @@ import pandas as pd
 from src.inputs import DEFAULT_SCENARIO, INTENSITY_SCENARIOS, get_param
 from src.model import CHAINS, GROUPS, carbon_budget_shares, electrification_counterfactual
 from src.lca_comparison import build_lca_comparison
-from src.scope import headline_sample
+from src.scope import BUILD_OUTS, headline_sample
+from src.figures_report import build_out_annual_series
 from src.trajectories import (
     annual_series,
     canada_pathway_series,
-    cumulative_case_series,
     panel_gas_totals,
     panel_lifetime_mt,
     panel_n_emitting,
@@ -446,30 +446,20 @@ def build_slide_tables(
         )
     tables["12_Elec_by_group"] = pd.DataFrame(elec_g)
 
-    traj = cumulative_case_series(inputs, DEFAULT_SCENARIO, canada_only=False)
+    traj = build_out_annual_series(panel, inputs)
     traj_rows = []
     for y in KEY_YEARS:
         row = traj.loc[traj["year"] == y].iloc[0]
-        traj_rows.append(
-            {
-                "year": int(y),
-                "operating_MtCO2e_yr": _r1(row["operating"]),
-                "plus_under_construction_MtCO2e_yr": _r1(row["plus_under_construction"]),
-                "all_calc_groups_MtCO2e_yr": _r1(row["plus_proposed"]),
-            }
-        )
-    peak = float(traj["plus_proposed"].max())
-    peak_year = int(traj.loc[traj["plus_proposed"].idxmax(), "year"])
-    traj_rows.append(
-        {
-            "year": f"peak ({peak_year})",
-            "operating_MtCO2e_yr": _r1(traj["operating"].max()),
-            "plus_under_construction_MtCO2e_yr": _r1(
-                traj["plus_under_construction"].max()
-            ),
-            "all_calc_groups_MtCO2e_yr": _r1(peak),
-        }
-    )
+        rec = {"year": int(y)}
+        for name in BUILD_OUTS:
+            rec[f"{name}_MtCO2e_yr"] = _r1(row[name])
+        traj_rows.append(rec)
+    peak = float(traj["full"].max())
+    peak_year = int(traj.loc[traj["full"].idxmax(), "year"])
+    rec = {"year": f"peak ({peak_year})"}
+    for name in BUILD_OUTS:
+        rec[f"{name}_MtCO2e_yr"] = _r1(traj[name].max())
+    traj_rows.append(rec)
     tables["13_Trajectories"] = pd.DataFrame(traj_rows)
 
     pathway = canada_pathway_series(inputs["params"])

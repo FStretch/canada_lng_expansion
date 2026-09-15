@@ -34,7 +34,7 @@ import pandas as pd
 
 from src.inputs import DEFAULT_SCENARIO, INTENSITY_SCENARIOS, MissingInputError, get_param
 from src.model import GROUPS, _stage_intensity
-from src.scope import filter_panel
+from src.scope import BUILD_OUTS, build_out_project_ids, filter_panel
 from src.trajectories import (
     _chain_intensity_split,
     build_emissions_panel,
@@ -862,6 +862,7 @@ def compute_loss_damage(
         "headline": headline,
         "by_group": by_group,
         "by_project": by_project_central,
+        "by_project_all": by_project,
         "by_year": by_year_central,
         "burke_grid": burke_grid,
         "eccc_grid": eccc_grid,
@@ -931,36 +932,107 @@ def compute_loss_damage(
     }
 
 
-def write_ld_figure(h_row, path: Path) -> None:
-    """Bar: published central (ECCC 2% calendar year) L&D by calc_group."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    labels = ["Operating", "Under construction", "Proposed"]
-    vals = [
-        float(h_row["operating_cad_billion"]) / 1000.0,
-        float(h_row["under_construction_cad_billion"]) / 1000.0,
-        float(h_row["proposed_cad_billion"]) / 1000.0,
+def fig09_build_out_damages(ld: dict, inputs: dict) -> pd.DataFrame:
+    """Select ECCC calendar and NPV damages per build-out. Data selection only."""
+    from src.figures_report import SCENARIO_LABEL
+
+    ids = build_out_project_ids(inputs)
+    bp = ld["by_project_all"]
+    eccc = bp.loc[
+        (bp["price_family"] == "eccc")
+        & (bp["scenario"] == DEFAULT_SCENARIO)
     ]
-    fig, ax = plt.subplots(figsize=(8.4, 5.2))
-    colours = ["#0072B2", "#56B4E9", "#D55E00"]
-    ax.bar(range(3), vals, 0.55, color=colours)
-    ax.set_xticks(range(3), labels)
-    ax.set_ylabel("Global loss and damage (trillion 2025 CAD)")
-    ax.set_title("Climate loss and damage from Canadian LNG lifecycle emissions")
-    ymax = max(vals) if vals else 1
-    ax.set_ylim(0, ymax * 1.18)
-    for i, v in enumerate(vals):
-        ax.text(i, v + ymax * 0.03, f"{v:.1f}", ha="center", fontsize=10)
-    fig.text(
-        0.5, 0.02,
-        "Central case: ECCC SC-CO2 on CO2 and SC-CH4 on CH4 mass at 2%, applied "
-        "per calendar year of emissions (2025 CAD). ECCC 1.5% and 2.5% are the "
-        "sensitivity range. Burke is an upper-bracket sensitivity, not shown "
-        "here. Global damages.",
-        ha="center", fontsize=8, color="#444",
+    rows = []
+    for name in BUILD_OUTS:
+        sl = eccc.loc[eccc["project_id"].isin(ids[name])]
+
+        def _bn(rate: float, col: str) -> float:
+            return float(sl.loc[sl["discount_rate_pct"] == rate, col].sum()) / 1e9
+
+        rows.append({
+            "build_out": name,
+            "build_out_label": SCENARIO_LABEL[name],
+            "valued_when_caused_2pct_cad_bn": _bn(2.0, "hatton_sum_cad"),
+            "npv_2025_2pct_cad_bn": _bn(2.0, "npv_analysis_year_cad"),
+            "valued_when_caused_1_5pct_cad_bn": _bn(1.5, "hatton_sum_cad"),
+            "valued_when_caused_2_5pct_cad_bn": _bn(2.5, "hatton_sum_cad"),
+        })
+    return pd.DataFrame(rows)
+
+
+def write_ld_figure(ld: dict, inputs: dict, path: Path, csv_path: Path | None = None) -> pd.DataFrame:
+    """Grouped bars: valued-when-caused vs NPV by build-out scenario."""
+    from src.figures_report import (
+        C,
+        SCENARIO_COLOR,
+        _save,
+        _setup_style,
+        _ygrid,
+        tint_hex,
     )
-    fig.subplots_adjust(bottom=0.16, top=0.9)
-    fig.savefig(path, dpi=160, bbox_inches="tight")
-    plt.close(fig)
+
+    df = fig09_build_out_damages(ld, inputs)
+    if csv_path is not None:
+        csv_path.parent.mkdir(parents=True, exist_ok=True)
+        df.to_csv(csv_path, index=False)
+
+    burke = ld["burke_grid"]
+    g0 = burke.loc[burke["growth_rate"] == 0.0]
+    burke_lo_tn = float(
+        g0.loc[g0["discount_rate_pct"] == 5.0, "total_cad_billion"].iloc[0]
+    ) / 1000.0
+    burke_hi_tn = float(
+        g0.loc[g0["discount_rate_pct"] == 1.5, "total_cad_billion"].iloc[0]
+    ) / 1000.0
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    _setup_style()
+    fig, ax = plt.subplots(figsize=(9.2, 5.6))
+    x = range(len(df))
+    width = 0.36
+    calendar = df["valued_when_caused_2pct_cad_bn"].to_numpy()
+    npv = df["npv_2025_2pct_cad_bn"].to_numpy()
+    hi = df["valued_when_caused_1_5pct_cad_bn"].to_numpy()
+    lo = df["valued_when_caused_2_5pct_cad_bn"].to_numpy()
+    colors = [SCENARIO_COLOR[name] for name in df["build_out"]]
+    tints = [tint_hex(c, 0.45) for c in colors]
+    x_cal = [i - width / 2 for i in x]
+    x_npv = [i + width / 2 for i in x]
+    ax.bar(x_cal, calendar, width, color=colors, label="Valued when caused")
+    ax.bar(x_npv, npv, width, color=tints, label="NPV to 2025")
+    yerr = [calendar - lo, hi - calendar]
+    ax.errorbar(
+        x_cal,
+        calendar,
+        yerr=yerr,
+        fmt="none",
+        ecolor=C["black"],
+        elinewidth=1.0,
+        capsize=4,
+        capthick=1.0,
+    )
+    ymax = float(hi.max())
+    ax.set_ylim(0, ymax * 1.22)
+    ax.set_xticks(list(x), list(df["build_out_label"]))
+    ax.set_ylabel("Climate damages (C$ billion, 2025 dollars)")
+    ax.set_title("Climate damages by build-out scenario at official carbon values")
+    _ygrid(ax)
+    for i, (cal, npv_v, hi_v) in enumerate(zip(calendar, npv, hi)):
+        ax.text(x_cal[i], hi_v + ymax * 0.012, f"{cal:,.0f}", ha="center", va="bottom", fontsize=8)
+        ax.text(x_npv[i], npv_v + ymax * 0.012, f"{npv_v:,.0f}", ha="center", va="bottom", fontsize=8)
+    full_i = list(df["build_out"]).index("full")
+    ax.annotate(
+        f"Burke et al.: C${burke_lo_tn:.1f}–{burke_hi_tn:.1f} tn through 2100",
+        xy=(full_i, hi[full_i]),
+        xytext=(full_i, ymax * 1.12),
+        ha="center",
+        fontsize=8,
+        color=C["text"],
+        arrowprops=dict(arrowstyle="-", color=C["grey"], lw=0.8),
+    )
+    ax.legend(frameon=False, loc="upper left")
+    _save(fig, path)
+    return df
 
 
 def _money_cad(billion: float) -> str:

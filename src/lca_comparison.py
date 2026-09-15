@@ -307,25 +307,25 @@ def figure_10_lca_comparison(
         axes[0, 0],
         inc.loc[inc["axis_group"] == "w2r_gwp100"],
         "Well → regasification · GWP100",
-        "tCO₂e per t LNG",
+        "tCO2e per t LNG",
     )
     _range_panel(
         axes[0, 1],
         inc.loc[inc["axis_group"] == "lng_stages_gwp100"],
         "Liquefaction + shipping + regas · GWP100",
-        "tCO₂e per t LNG",
+        "tCO2e per t LNG",
     )
     _range_panel(
         axes[1, 0],
         inc.loc[inc["axis_group"] == "full_gwp100"],
         "Full chain with combustion · GWP100",
-        "tCO₂e per t LNG",
+        "tCO2e per t LNG",
     )
     _range_panel(
         axes[1, 1],
         inc.loc[inc["axis_group"] == "full_gwp20"],
         "Full chain with combustion · GWP20 (not GWP100)",
-        "tCO₂e per t LNG",
+        "tCO2e per t LNG",
     )
 
     handles = [
@@ -337,19 +337,7 @@ def figure_10_lca_comparison(
         ),
     ]
     fig.legend(handles=handles, loc="upper center", ncol=3, frameon=False, bbox_to_anchor=(0.5, 1.02))
-    fig.text(
-        0.5,
-        0.01,
-        "Figure 10 · Bars are published ranges (no invented midpoints). Diamonds are this "
-        "model's intensity or Roman-White's published expected value. Howarth is GWP20 and "
-        "is not ranked against this model's 3.55 t/t GWP100. MacKay, Johnson and Di Lullo "
-        "are excluded (fig10_lca_excluded.csv).",
-        ha="center",
-        va="bottom",
-        fontsize=8,
-        color=C["grey"],
-    )
-    fig.tight_layout(rect=(0, 0.06, 1, 0.96))
+    fig.tight_layout(rect=(0, 0.02, 1, 0.96))
     out = fig_dir / "fig10_lca_comparison.png"
     _save(fig, out)
     return {

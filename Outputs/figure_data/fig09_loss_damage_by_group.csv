@@ -1,4 +1,4 @@
-calc_group,cad_trillion_2025,price_family,discount_rate_pct,aggregation
-operating,0.511739257834198,eccc,2.0,calendar_year
-under_construction,0.23375845851881982,eccc,2.0,calendar_year
-proposed,2.360362439971642,eccc,2.0,calendar_year
+build_out,build_out_label,valued_when_caused_2pct_cad_bn,npv_2025_2pct_cad_bn,valued_when_caused_1_5pct_cad_bn,valued_when_caused_2_5pct_cad_bn
+committed,Committed,745.4977163530178,523.5690152623358,1188.7280221104,489.06654865316943
+committed_plus_advanced,Committed plus advanced,1571.8388387470327,1051.1705681695735,2487.636553496526,1037.9846363602742
+full,Full build-out,3105.8601563246602,1945.1688336501325,4871.564725439729,2067.160237062284

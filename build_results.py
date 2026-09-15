@@ -1932,21 +1932,8 @@ def main() -> None:
         inputs, by_project, stages, FIGURE_DIR, FIGURE_DATA, panel=panel
     )
     fig09 = FIGURE_DIR / "fig09_loss_damage_by_group.png"
-    write_ld_figure(ld["published"], fig09)
     ld_csv = FIGURE_DATA / "fig09_loss_damage_by_group.csv"
-    FIGURE_DATA.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(
-        [
-            {
-                "calc_group": g,
-                "cad_trillion_2025": float(ld["published"][f"{g}_cad_billion"]) / 1000.0,
-                "price_family": "eccc",
-                "discount_rate_pct": ld["eccc_r"],
-                "aggregation": "calendar_year",
-            }
-            for g in GROUPS
-        ]
-    ).to_csv(ld_csv, index=False)
+    write_ld_figure(ld, inputs, fig09, ld_csv)
     ld["headline"].to_csv(FIGURE_DATA / "ld_headline.csv", index=False)
     ld["burke_grid"].to_csv(FIGURE_DATA / "ld_burke_grid.csv", index=False)
     ld["eccc_grid"].to_csv(FIGURE_DATA / "ld_eccc_grid.csv", index=False)
