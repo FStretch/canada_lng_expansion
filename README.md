@@ -12,12 +12,19 @@ construction and proposed. Headline results are the export chain.
 4. `build_results.py` — what is asserted: every published digit is locked there.
 5. `Outputs/SOURCING_AUDIT.md` — the verdict on each number's provenance.
 
+**Status.** A manuscript is in preparation. Results are locked to the 3 September 2026
+paper set (run 17:20 UTC) pending submission.
+
+**Reproduce the locked results.** Python 3.13.0, then `pip install -r requirements.txt`
+and `python build_results.py`.
+
 ---
 
 ## What this produces
 
-**The paper set.** Central case, with the Monte Carlo 5th to 95th percentile as its interval
-(10,000 draws, seed 20260828). Central is the point estimate from the central factor values.
+**The paper set.** Locked 3 September 2026 (run 17:20 UTC). Central case, with the Monte
+Carlo 5th to 95th percentile as its interval (10,000 draws, seed 20260828). Central is the
+point estimate from the central factor values.
 
 | build-out | lifetime CO2e Mt | lifetime CO2-only Mt | peak | ECCC 2% damages C$bn, valued when caused | ECCC 2% damages C$bn, NPV to 2025 |
 |---|---|---|---|---|---|
@@ -73,7 +80,7 @@ These headlines are below the 9,298.1 Mt / 100.1 mtpa figures that included Disc
 early_proposed. Discovery is now cancelled, matching Global Energy Monitor. That is a scope
 change, not a change in the physics of the remaining nine assets. A further 38.9 Mt came off on
 3 September 2026 when regasification moved from an uncited 0.04 to the cited 0.021 of
-Gan et al. (2024), and a further 53.3 Mt when pipeline transport moved from an assumed 0.10 to
+Mukherjee et al. (2025), and a further 53.3 Mt when pipeline transport moved from an assumed 0.10 to
 0.074, the figure two independent cited routes converge on. Then 55.4 Mt came back on when the
 upstream factor was re-derived on that pipeline value: the old 0.22 inventory figure had netted
 the retired 0.10 from the CER anchor, and netting 0.074 instead gives 0.246, a central of 0.277.
@@ -212,7 +219,7 @@ are not correlated.
 | Pipeline transport | 0.074 | Liu et al. (2021) via the ERA/Modern West restatement, 0.0735; cross-checked against CER/ECCC 2019 national pipeline transport, 0.0744. Applied flat, not distance-scaled |
 | Liquefaction | 0.29 | Gas turbine drive, applied to every terminal for its whole operating life. 0.15 is retained as the low bound and applies only if electrification is contracted and delivered |
 | Shipping | 0.12 | Howarth (2024), reconstructed against IMO carrier data. Derived on the British Columbia to north-east Asia route and **scaled per asset by route distance** |
-| Regasification | 0.021 | Gan et al. (2024), *Communications Earth & Environment*, peer-reviewed US LNG lifecycle assessment. Range 0.011–0.0275 from IEA (2025) |
+| Regasification | 0.021 | Mukherjee et al. (2025), *Communications Earth & Environment* 6:16, peer-reviewed US LNG lifecycle assessment. Range 0.011–0.0275 from IEA (2025) |
 | Combustion | 2.75 | Stoichiometric methane (44/16), the right central for de-inerted LNG. Range 2.58–3.00 derived from the IPCC 2006 uncertainty intervals |
 
 **Shipping is scaled by route distance per asset.** The 0.12 central factor is derived on the
@@ -232,7 +239,7 @@ matches the scope 1 and 2 versus scope 3 split.
 
 **Two factors moved onto cited values on 3 September 2026.** Regasification was an uncited 0.04
 attributed to the RMI Oil Climate Index, which states no such figure; it is now **0.021** from
-Gan et al. (2024), with a 0.011–0.0275 range from the IEA's 0.2–0.5 gCO2e/MJ (converted at the
+Mukherjee et al. (2025), with a 0.011–0.0275 range from the IEA's 0.2–0.5 gCO2e/MJ (converted at the
 IEA's own 55 MJ/kg basis). That took 38.9 Mt off the lifetime. The combustion **range** was an
 uncited 2.50–3.00; it is now **2.58–3.00**, derived from the IPCC 2006 Vol. 2 Ch. 1 uncertainty
 intervals on natural gas NCV (Table 1.2) and carbon content (Table 1.3), applied as a relative
@@ -619,6 +626,8 @@ pip install -r requirements.txt
 python build_results.py
 ```
 
+The build sets Matplotlib's Agg backend, so figures write without a display.
+
 Reads both workbooks from `Inputs/`, runs all five scenarios, and writes the results workbook,
 `SLIDE_TABLES.xlsx`, the summary and the figures to `Outputs/`. The inputs are opened read-only
 and the run asserts they are unmodified on completion.
@@ -638,7 +647,7 @@ changed and why.
 
 `python tools/stale_figure_inventory.py` greps the whole repository for superseded headline values
 and separates live hits from deliberate historical records, writing a maintainer report to
-`Outputs/STALE_FIGURE_INVENTORY.md` (git-ignored). Run it after any re-lock.
+`Outputs/STALE_FIGURE_INVENTORY.md`. Run it after any re-lock.
 
 The three dated documents in `Outputs/` — the sourcing audit, the Roman-White gap diagnostic
 and the oil comparator audit — each open with a banner that is
@@ -662,7 +671,8 @@ sensitivity. None of those is an emission factor or a project capacity.
 
 **Infrastructure**
 Global Energy Monitor, Global Gas Infrastructure Tracker: LNG Terminals (September 2025) and Gas
-Pipelines (November 2025); Global Oil and Gas Extraction Tracker (March 2026).
+Pipelines (November 2025); Global Oil and Gas Extraction Tracker (March 2026). Tracker data is
+licensed CC BY 4.0; attribution is required.
 
 **Government and regulatory**
 - *R (Finch) v Surrey County Council* [2024] UKSC 20. https://www.supremecourt.uk/cases/uksc-2022-0064
@@ -673,7 +683,8 @@ Pipelines (November 2025); Global Oil and Gas Extraction Tracker (March 2026).
 Canada Energy Regulator: provincial and territorial energy profiles, export licence applications,
 Canada's Energy Future. Environment and Climate Change Canada: National Inventory Report. Natural
 Resources Canada: Canadian LNG projects. British Columbia Environmental Assessment Office:
-Coastal GasLink and LNG Canada assessments.
+Coastal GasLink and LNG Canada assessments. CER and NRCan figures used in the model are cited
+per cell in `Inputs/Canada_LNG_Asset_Register.xlsx` and `Inputs/Canada_LNG_Data_Inputs.xlsx`.
 
 **Peer-reviewed literature**
 - Davis, S.J., Peters, G.P. and Caldeira, K. (2011). The supply chain of CO2 emissions. *PNAS*

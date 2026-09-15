@@ -6,6 +6,10 @@ import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 
+import matplotlib
+
+matplotlib.use("Agg")
+
 import pandas as pd
 
 from src.inputs import (
