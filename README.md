@@ -118,8 +118,7 @@ src/
   banners.py                        generated lock banners for the dated documents in Outputs/
 build_results.py                    orchestrates a run, asserts every lock, writes the outputs
 tools/                              one-off, documented scripts that edit an input workbook, plus
-                                    stale_figure_inventory.py and refresh_banners.py (re-run after
-                                    any re-lock)
+                                    refresh_banners.py (re-run after any re-lock)
 requirements.txt                    exact pins for the environment the published run used
 CITATION.cff                        citation metadata
 Outputs/
