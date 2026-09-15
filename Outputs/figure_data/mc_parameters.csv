@@ -1,5 +1,5 @@
 parameter,distribution,source,sampled
-upstream_production,"triangular(0.22, 0.25, 0.393)","Scenarios: inventory_as_reported / measurement_central / near_term_methane_gwp20. Howarth 0.55 is a named point, not a draw.",True
+upstream_production,"triangular(0.246, 0.277, 0.44)","Scenarios: inventory_as_reported / measurement_central / near_term_methane_gwp20. Howarth 0.55 is a named point, not a draw.",True
 liquefaction,fixed at Emission Factors central,"Emission Factors liquefaction central, asserted equal to Parameters liquefaction_gas_turbine. Electric 0.12 is a discrete counterfactual, not an uncertainty band.",False
 pipeline_transport,"triangular(0.037, 0.074, 0.133)",Emission Factors range_low / central / range_high,True
 shipping,"triangular(0.05, 0.12, 0.31)",Emission Factors range_low / central / range_high,True
@@ -9,7 +9,7 @@ shipping_route_scale,fixed per asset,"route_distance_nm / route_bc_to_northeast_
 fid_delay_mid,"triangular(4.0, 5.0, 8.0), rounded to int",Parameters fid_delay_low / mid / high; applied to non-FID assets,True
 lifecycle_years_default,"triangular(30.0, 40.0, 50.0), rounded to int","Parameters lifespan_sensitivity_low / default / high. Sampled for: marinvest_baie_comeau, fermeuse_energy_flng, kanata_lng. Licence terms and stated project lives held.",True
 utilisation ramp,"fixed (year_1=0.4, year_2=0.7, steady=0.839, ramp=2)",No published range; IGU 83.9% is a point,False
-upstream_ch4_share,fixed 0.30,Not independent of the 0.22 × 1.5 upstream construction,False
+upstream_ch4_share,fixed 0.25,Not independent of the 0.246 × 1.5 upstream construction,False
 howarth_high,"named point, upstream 0.55, other stages central",Scenarios sheet; excluded from the sampling distribution,False
 monte_carlo_seed,20260828,Parameters sheet,False
 monte_carlo_n_draws,10000,Parameters sheet,False

@@ -271,8 +271,8 @@ def stage_ch4_co2e_intensity(
     already on the workbook:
 
     - `upstream_production`: the scenario factor less the part of the official
-      inventory that is CO2, i.e. `inventory_as_reported x (1 - upstream_ch4_share)`
-      (0.154 at default parameters). Any excess is CH4-derived CO2e. This is
+      inventory that is CO2, i.e. `inventory_as_reported x (1 - upstream_ch4_share)`.
+      Any excess is CH4-derived CO2e. This is
       the construction the upstream factor is built from, so the split is not
       an extra assumption.
     - `shipping`: the 1.44 carrier uplift is entirely measured methane slip,

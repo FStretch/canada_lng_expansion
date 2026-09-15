@@ -13,8 +13,8 @@ re-lock. Values live in SUPERSEDED below; add a row when a lock moves.
     python tools/stale_figure_inventory.py
 
 Hits inside ALLOWED paths are reported as deliberate history (the lock-history
-comment in build_results.py, this script, the baseline record, the change
-report) rather than as stale text to fix.
+comment in build_results.py, this script, the provenance scripts under
+tools/) rather than as stale text to fix.
 """
 
 from __future__ import annotations
@@ -68,7 +68,9 @@ SUPERSEDED = [
     (r"7[,.]?215\.3", "7,215.3 Mt lifetime (pipeline 0.10)", "7,162.0 Mt", "pipeline 0.10 -> 0.074"),
     (r"237\.3", "237.3 Mt peak (pipeline 0.10)", "235.6 Mt in 2037", "pipeline 0.10 -> 0.074"),
     (r"6[,.]?948\.8", "6,948.8 Mt CO2-only (pipeline 0.10)", "6,895.6 Mt", "pipeline 0.10 -> 0.074"),
-    (r"18\.2\s*[/-]\s*3\.2\s*[/-]\s*78\.6", "18.2 / 3.2 / 78.6 territorial", "17.6 / 3.2 / 79.2", "pipeline 0.10 -> 0.074 (pipeline is CAN-tagged)"),
+    # 18.2 / 3.2 / 78.6 (regasification era) was superseded by 17.6 / 3.2 / 79.2
+    # and then became CURRENT again when upstream was re-derived; no pattern
+    # row, because a grep cannot tell the two apart.
     (r"3[,.]?126", "C$3,126bn ECCC 2% damages (pipeline 0.10)", "C$3,103bn", "pipeline 0.10 -> 0.074"),
     (r"206\.3", "206.3 Mt/yr life-average (pipeline 0.10)", "204.7 Mt/yr", "pipeline 0.10 -> 0.074"),
     (r"pipeline (?:transport )?(?:central )?0\.10", "pipeline central 0.10 (assumed)", "0.074 (Liu 2021 / CER 2022)", "moved onto two converging cited routes"),
@@ -80,22 +82,46 @@ SUPERSEDED = [
     # source cells deliberately carry.
     (r"upstream 0\.428", "GWP20 scenario upstream 0.428 (share 0.30)", "0.393 (share 0.25)", "upstream_ch4_share 0.30 -> 0.25"),
     (r"3 to 7 years", "FID delay band tested across 3 to 7 years", "4 to 8 years, asymmetric", "slippage runs one way"),
+    # Upstream re-derived on pipeline 0.074, 3 September 2026: inventory 0.22 -> 0.246, central 0.25 -> 0.277.
+    (r"7[,.]?162\.0", "7,162.0 Mt lifetime (upstream 0.25)", "7,217.4 Mt", "upstream re-derived on pipeline 0.074"),
+    (r"235\.6", "235.6 Mt peak (upstream 0.25)", "237.4 Mt in 2037", "upstream re-derived on pipeline 0.074"),
+    (r"6[,.]?918\.1", "6,918.1 Mt CO2-only (upstream 0.25)", "6,958.0 Mt", "upstream re-derived on pipeline 0.074"),
+    (r"8[,.]?186", "8,186 kt CH4 (upstream 0.25)", "8,702 kt", "upstream re-derived on pipeline 0.074"),
+    (r"17\.6\s*[/-]\s*3\.2\s*[/-]\s*79\.2", "17.6 / 3.2 / 79.2 territorial", "18.2 / 3.2 / 78.6", "upstream re-derived on pipeline 0.074 (upstream is CAN-tagged)"),
+    (r"3[,.]?108", "C$3,108bn ECCC 2% damages (upstream 0.25)", "C$3,129bn", "upstream re-derived on pipeline 0.074"),
+    (r"204\.7", "204.7 Mt/yr life-average (upstream 0.25)", "206.3 Mt/yr", "upstream re-derived on pipeline 0.074"),
+    (r"7[,.]?257\.1", "7,257.1 Mt MC median (upstream 0.25)", "7,324.8 Mt", "upstream re-derived on pipeline 0.074"),
+    (r"1[,.]?845\.8", "1,845.8 Mt committed (upstream 0.25)", "1,860.0 Mt", "upstream re-derived on pipeline 0.074"),
+    (r"3[,.]?757\.5", "3,757.5 Mt committed plus advanced (upstream 0.25)", "3,786.4 Mt", "upstream re-derived on pipeline 0.074"),
+    (r"upstream 0\.22|inventory_as_reported \(0\.22\)|gives 0\.22 tCO2e", "upstream inventory 0.22 (netted the retired pipeline 0.10)", "0.246", "upstream re-derived on pipeline 0.074"),
+    (r"upstream 0\.25|central value of 0\.25|\(central 0\.25\)", "upstream central 0.25", "0.277", "upstream re-derived on pipeline 0.074"),
+    (r"upstream 0\.26", "upstream measurement_high 0.26", "0.289", "upstream re-derived on pipeline 0.074"),
+    (r"upstream 0\.393|0\.393", "GWP20 scenario upstream 0.393 (0.22 base)", "0.440", "upstream re-derived on pipeline 0.074"),
+    (r"0\.755", "0.755 t/t well-to-regasification (upstream 0.25)", "0.782 (0.78)", "upstream re-derived on pipeline 0.074"),
+    # Fermeuse 5.0 -> 4.5 mtpa, liquefaction fuel netted out of the resource derivation, 3 September 2026.
+    (r"7[,.]?217\.4", "7,217.4 Mt lifetime (Fermeuse 5.0)", "7,167.1 Mt", "Fermeuse fuel share netted"),
+    (r"237\.4", "237.4 Mt peak (Fermeuse 5.0)", "235.9 Mt in 2037", "Fermeuse fuel share netted"),
+    (r"6[,.]?958\.0", "6,958.0 Mt CO2-only (Fermeuse 5.0)", "6,909.5 Mt", "Fermeuse fuel share netted"),
+    (r"3[,.]?129", "C$3,129bn ECCC 2% damages (Fermeuse 5.0)", "C$3,106bn", "Fermeuse fuel share netted"),
+    (r"80\.1 mtpa", "80.1 mtpa export capacity (Fermeuse 5.0)", "79.6 mtpa", "Fermeuse fuel share netted"),
+    (r"60\.7 mtpa", "60.7 mtpa proposed export (Fermeuse 5.0)", "60.2 mtpa", "Fermeuse fuel share netted"),
+    (r"Fermeuse[^.]{0,40}5\.0 mtpa|5\.0 mtpa[^.]{0,40}Fermeuse", "Fermeuse 5.0 mtpa (fuel share not netted)", "4.5 mtpa", "Fermeuse fuel share netted"),
 ]
 
 CURRENT = {
-    "lifetime CO2e": "7,162.0 Mt",
-    "lifetime CO2 only": "6,918.1 Mt (plus 8,186 kt CH4)",
-    "peak": "235.6 Mt in 2037",
-    "territorial CAN / BUNK / FOR": "17.6 / 3.2 / 79.2 %",
-    "ECCC 2% damages": "C$3,108 bn",
-    "committed": "1,845.8 Mt, C$741 bn",
-    "committed plus advanced": "3,757.5 Mt, C$1,561 bn",
-    "export capacity": "80.1 mtpa across nine projects",
+    "lifetime CO2e": "7,167.1 Mt",
+    "lifetime CO2 only": "6,909.5 Mt (plus CH4 per RESULTS_SUMMARY)",
+    "peak": "235.9 Mt in 2037",
+    "territorial CAN / BUNK / FOR": "18.2 / 3.2 / 78.6 %",
+    "ECCC 2% damages": "C$3,106 bn",
+    "committed": "1,860.0 Mt, C$745 bn",
+    "committed plus advanced": "3,786.4 Mt, C$1,572 bn",
+    "export capacity": "79.6 mtpa across nine projects",
 }
 
 TEXT_SUFFIXES = {".md", ".py", ".txt", ".cff", ".yml", ".yaml"}
 DATA_SUFFIXES = {".csv"}
-SKIP_DIRS = {".git", "__pycache__", "figures"}
+SKIP_DIRS = {".git", "__pycache__", "figures", "Claude outputs"}  # last: untracked working notes
 # Deliberate records of superseded values, not text to fix.
 ALLOWED = {
     "tools/stale_figure_inventory.py",
@@ -111,7 +137,6 @@ ALLOWED = {
     "tools/update_fid_delay_band.py",
     "build_results.py",
     "Outputs/STALE_FIGURE_INVENTORY.md",
-    "Outputs/CITATIONS_WANTED.md",
 }
 # The dated documents (src/banners.DATED_DOCUMENTS) are exempt in the BODY
 # only: their text legitimately quotes the values it was written against.
@@ -119,7 +144,9 @@ ALLOWED = {
 # because it is the one place that claims to state the present. A whole-file
 # exemption cannot tell those two things apart, and hid stale banners twice.
 BODY_ONLY_EXEMPT = set(DATED_DOCUMENTS)
-ALLOWED_PREFIXES = ("Outputs/BASELINE_", "Outputs/CHANGE_REPORT_")
+# Internal change tracking (BASELINE_*, CHANGE_REPORT_*) was removed from the
+# tree before publication and lives in git history; no prefix exemption remains.
+ALLOWED_PREFIXES = ()
 
 # A file may quote one specific superseded value on purpose without being
 # exempted from every other check. Keyed (path, superseded label).
@@ -132,34 +159,17 @@ ALLOWED_PAIRS = {
     # The emission-factor section explains both 3 September moves.
     ("README.md", "regasification central 0.04 (uncited)"),
     ("README.md", "combustion range low 2.50 (uncited)"),
-    ("Outputs/CITATIONS_WANTED.md", "regasification central 0.04 (uncited)"),
-    ("Outputs/CITATIONS_WANTED.md", "combustion range low 2.50 (uncited)"),
     ("README.md", "pipeline central 0.10 (assumed)"),
-    ("Outputs/CITATIONS_WANTED.md", "pipeline central 0.10 (assumed)"),
     ("src/benchmark_table.py", "pipeline central 0.10 (assumed)"),
-    # PUBLICATION_AUDIT.md section 5 tabulates the stale "current values"
-    # banners on four dated documents, so it must quote each wrong value
-    # beside the right one. Exempted value by value rather than whole-file:
-    # the audit's own finding is that a whole-file exemption cannot tell a
-    # quoted historical value from a claim about the present, and it should
-    # not be the exception to its own rule.
-    ("Outputs/PUBLICATION_AUDIT.md", "9,315.3 Mt lifetime (export scope, flat shipping)"),
-    ("Outputs/PUBLICATION_AUDIT.md", "9,298.1 Mt lifetime (Discovery counted as early_proposed)"),
-    ("Outputs/PUBLICATION_AUDIT.md", "298.2 Mt peak (Discovery in)"),
-    ("Outputs/PUBLICATION_AUDIT.md", "18.1 / 3.2 / 78.7 territorial"),
-    ("Outputs/PUBLICATION_AUDIT.md", "7,254.2 Mt lifetime (regasification 0.04)"),
-    ("Outputs/PUBLICATION_AUDIT.md", "238.6 Mt peak (regasification 0.04)"),
-    ("Outputs/PUBLICATION_AUDIT.md", "C$3,143bn ECCC 2% damages (regasification 0.04)"),
+    # The README states the net of the two 3 September corrections against the
+    # 7,162.0 Mt that preceded them; one deliberate sentence.
+    ("README.md", "7,162.0 Mt lifetime (upstream 0.25)"),
     # The generated banners name the lock each document was written against.
     # Those are historical facts, quoted on purpose, beside the current lock;
     # src/banners.py is where that text lives.
     *[
         (rel, label)
-        for rel in (
-            "Outputs/SOURCING_AUDIT.md",
-            "Outputs/DECK_RECONCILIATION.md",
-            "src/banners.py",
-        )
+        for rel in ("Outputs/SOURCING_AUDIT.md", "src/banners.py")
         for label in (
             "9,298.1 Mt lifetime (Discovery counted as early_proposed)",
             "298.2 Mt peak (Discovery in)",

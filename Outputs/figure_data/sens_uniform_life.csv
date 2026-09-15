@@ -1,7 +1,7 @@
 case,lifespan_override_years,ignore_licence_end,build_out,membership,lifetime_mtco2e,lifetime_co2_only_mt,lifetime_ch4_kt,peak_year,peak_mtco2e_yr,eccc_2pct_damages_cad_bn
-central,,False,committed,committed (operating + under construction),1845.7859254999998,1781.7144216666675,2150.0504642058154,2030,57.589253,740.6037592983496
-central,,False,committed_plus_advanced,committed plus advanced (+ tier advanced_proposed),3757.4970455000007,3627.0656216666666,4376.8934172259505,2037,134.047323,1561.4833303381033
-central,,False,full,full (every headline-scope asset),7162.047228157896,6918.101731359649,8186.090496585422,2037,235.58736423684212,3108.0060473429903
-uniform_40yr_no_licence_stop,40.0,True,committed,committed (operating + under construction),2250.9208139999996,2172.78614,2621.968926174496,2030,57.589253,944.6608755672825
-uniform_40yr_no_licence_stop,40.0,True,committed_plus_advanced,committed plus advanced (+ tier advanced_proposed),4874.280124000001,4705.082573333333,5677.770156599553,2037,134.047323,2132.917677291836
-uniform_40yr_no_licence_stop,40.0,True,full,full (every headline-scope asset),8358.229071657895,8072.761333026316,9579.454316495936,2037,235.58736423684212,3720.724266909511
+central,,False,committed,committed (operating + under construction),1860.0045332000002,1791.9834161166673,2282.587821588368,2030,58.032879199999996,745.4977163530178
+central,,False,committed_plus_advanced,committed plus advanced (+ tier advanced_proposed),3786.4421012,3647.9703841166665,4646.7019155481,2037,135.0799272,1571.8388387470327
+central,,False,full,full (every headline-scope asset),7167.117878157896,6909.484612692982,8645.411592782295,2037,235.94197253684212,3105.8601563246602
+uniform_40yr_no_licence_stop,40.0,True,committed,committed (operating + under construction),2268.2602896,2185.3090946,2783.5971476510067,2030,58.032879199999996,950.9328390662654
+uniform_40yr_no_licence_stop,40.0,True,committed_plus_advanced,committed plus advanced (+ tier advanced_proposed),4911.8280736,4732.200536933333,6027.769686800895,2037,135.0799272,2147.1388284931954
+uniform_40yr_no_licence_stop,40.0,True,full,full (every headline-scope asset),8372.514246557896,8070.799149009648,10124.667702961264,2037,235.94197253684212,3722.723755301245

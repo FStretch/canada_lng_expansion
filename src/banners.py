@@ -1,7 +1,7 @@
 """Generated lock banners for the dated documents under Outputs/.
 
-Four documents record the model at a past state: the sourcing audit, the deck
-reconciliation, the Roman-White gap diagnostic and the oil comparator audit.
+Three documents record the model at a past state: the sourcing audit, the
+Roman-White gap diagnostic and the oil comparator audit.
 Each needs a banner that says what it was written against and what the current
 lock is. Hand-written banners went stale twice — they claimed values as
 "current" one to three re-locks after they had moved, and the stale-figure
@@ -38,27 +38,9 @@ DATED_DOCUMENTS: dict[str, dict[str, str]] = {
             "Discovery LNG returned to cancelled and the GWP20 scenario was "
             "recomputed on the methane portion only. Regasification, the "
             "combustion range, pipeline transport, the methane share and the "
-            "FID band have all moved onto cited values since; see the change "
-            "reports of 3 September 2026. The verdicts below stand; the headline "
+            "FID band have all moved onto cited values since; each move is a "
+            "commit in the git history. The verdicts below stand; the headline "
             "figures they were measured against do not."
-        ),
-    },
-    "Outputs/DECK_RECONCILIATION.md": {
-        "what": (
-            "Reconciliation of the model against an older presentation, "
-            "1 September 2026."
-        ),
-        "written_against": (
-            "the pre-Discovery lock: 9,298.1 Mt lifetime, 298.2 Mt peak, "
-            "C$4,073 bn damages, 100.1 mtpa across ten projects"
-        ),
-        "since": (
-            "Its own findings were then applied (`tools/fix_audit_findings.py`): "
-            "Discovery LNG returned to cancelled and the GWP20 scenario was "
-            "recomputed on the methane portion only. Every re-lock since is in "
-            "the change reports of 3 September 2026. The reconciliation below "
-            "stands as a record of what the deck said; the model figures it is "
-            "compared against have moved."
         ),
     },
     "Outputs/LCA_ROMAN_WHITE_GAP.md": {
@@ -87,8 +69,7 @@ DATED_DOCUMENTS: dict[str, dict[str, str]] = {
         "since": (
             "**The analysis this document audits has been retired.** Figure 7, "
             "`src/report_params.py`, `oil_lifecycle_gt` and the oil comparator "
-            "parameters were removed on 3 September 2026 "
-            "(`Outputs/CHANGE_REPORT_2026-09-03b.md`, section 5) because of the "
+            "parameters were removed on 3 September 2026 (commit 056e999) because of the "
             "findings below: the factor had no citation, no URL and no vintage, "
             "and the bitumen-pipeline bar was an unvalidated first pass. This "
             "file is kept as the working behind that decision, not as a "
@@ -106,7 +87,8 @@ def render_banner(rel_path: str, lock: dict) -> str:
         f"**{lock['lifetime_mt']:,.1f} Mt** lifetime CO2e, "
         f"**{lock['peak_mt']:,.1f} Mt** peak in {lock['peak_year']}, "
         f"**{terr['CAN']:.1f} / {terr['BUNK']:.1f} / {terr['FOR']:.1f}** "
-        f"CAN / BUNK / FOR, **C${lock['damages_cad_bn']:,} bn** ECCC damages, "
+        f"CAN / BUNK / FOR, **C${lock['damages_cad_bn']:,} bn** ECCC 2% damages valued "
+        f"when caused (**C${lock['damages_npv_cad_bn']:,} bn** discounted to 2025), "
         f"**{lock['export_mtpa']:.1f} mtpa** of export capacity"
     )
     if rel_path == "Outputs/LCA_ROMAN_WHITE_GAP.md":

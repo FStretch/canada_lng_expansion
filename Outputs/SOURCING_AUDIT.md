@@ -3,8 +3,8 @@
 <!-- lock-banner:start -->
 > **Dated document.** Sourcing audit of every number in the model, 1 September 2026.
 > Written against the pre-Discovery lock: 9,298.1 Mt lifetime, 298.2 Mt peak, C$4,073 bn damages, 100.1 mtpa across ten projects.
-> Its own findings were then applied (`tools/fix_audit_findings.py`): Discovery LNG returned to cancelled and the GWP20 scenario was recomputed on the methane portion only. Regasification, the combustion range, pipeline transport, the methane share and the FID band have all moved onto cited values since; see the change reports of 3 September 2026. The verdicts below stand; the headline figures they were measured against do not.
-> **Current lock:** **7,162.0 Mt** lifetime CO2e, **235.6 Mt** peak in 2037, **17.6 / 3.2 / 79.2** CAN / BUNK / FOR, **C$3,108 bn** ECCC damages, **80.1 mtpa** of export capacity.
+> Its own findings were then applied (`tools/fix_audit_findings.py`): Discovery LNG returned to cancelled and the GWP20 scenario was recomputed on the methane portion only. Regasification, the combustion range, pipeline transport, the methane share and the FID band have all moved onto cited values since; each move is a commit in the git history. The verdicts below stand; the headline figures they were measured against do not.
+> **Current lock:** **7,167.1 Mt** lifetime CO2e, **235.9 Mt** peak in 2037, **18.2 / 3.2 / 78.6** CAN / BUNK / FOR, **C$3,106 bn** ECCC 2% damages valued when caused (**C$1,945 bn** discounted to 2025), **79.6 mtpa** of export capacity.
 > This banner is generated from the lock in `build_results.py` and asserted on every run; edit nothing between the markers.
 <!-- lock-banner:end -->
 
@@ -12,7 +12,7 @@
 **Scope:** Read-only. No input, output, or code file was modified except this note.  
 **Headline the numbers move:** full-buildout central lifetime **9,298.1 MtCO2e** (calendar panel 2025–2069, export chain, 10 assets). A 1% move is about **93 Mt**. Percentages below are of that lifetime, holding everything else fixed and treating the stage as linear in intensity × throughput × years.
 
-`41.2`, Pembina `0.12`, and “emissions figures pending rerun” are answered in `Outputs/DECK_RECONCILIATION.md`.
+`41.2`, Pembina `0.12`, and “emissions figures pending rerun” were answered in an internal deck reconciliation of 1 September 2026, kept in git history.
 
 Source types are only: `citation`, `url`, `proponent`, `derived`, `assumption`, `none`.  
 Verdicts are only: `sourced`, `derived and traceable`, `assumption, declared`, `assumption, undeclared`, `unsourced`.

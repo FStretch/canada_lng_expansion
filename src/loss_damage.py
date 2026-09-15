@@ -1059,21 +1059,34 @@ def format_ld_markdown(ld: dict) -> list[str]:
     )
     lines.append("")
     lines.append(
-        f"- **Central (ECCC 2%, calendar year), all in-scope:** "
-        f"**{_money_cad(published['total_cad_billion'])}** "
-        f"(operating {_money_cad(published['operating_cad_billion'])}  |  "
+        "**Two aggregations, two questions.** Each year's SC is already the present value, at "
+        "that year, of the future damage stream from a tonne emitted then. Summing the years "
+        "without further discounting values each year's damage **when it is caused**, in "
+        "constant 2025 CAD: that is the loss-and-damage question, and it is how Burke et al. "
+        "(2026) aggregate a multi-year stream. Discounting each year's damage back to 2025 at "
+        "the same 2% answers the cost-benefit question - what the stream is worth today, to set "
+        "against benefits also expressed today - and is how Government of Canada regulatory "
+        "guidance aggregates a multi-year stream. The calendar sum is the central because the "
+        "paper asks the loss-and-damage question; the NPV is the answer to the other question, "
+        "not a sensitivity on this one, and the two are carried together wherever the total "
+        "appears."
+    )
+    lines.append("")
+    lines.append(
+        f"- **Central, all in-scope:** "
+        f"**{_money_cad(published['total_cad_billion'])}** damage valued when caused "
+        f"(ECCC 2%, calendar-year sum; the loss-and-damage figure), which is "
+        f"**{_money_cad(eccc_npv['total_cad_billion'])}** discounted to 2025 at 2% "
+        f"(the cost-benefit figure). Calendar-year sum by group: "
+        f"operating {_money_cad(published['operating_cad_billion'])}  |  "
         f"under construction {_money_cad(published['under_construction_cad_billion'])}  |  "
-        f"proposed {_money_cad(published['proposed_cad_billion'])})"
+        f"proposed {_money_cad(published['proposed_cad_billion'])}; "
+        f"NPV proposed {_money_cad(eccc_npv['proposed_cad_billion'])}."
     )
     lines.append(
         f"- **Central sensitivity (ECCC 1.5%–2.5%, calendar year):** "
         f"{_money_cad(eccc_lo['calendar_year_total_cad_billion'])} "
         f"to {_money_cad(eccc_hi['calendar_year_total_cad_billion'])}"
-    )
-    lines.append(
-        f"- **ECCC 2% NPV to 2025 (sensitivity, not central):** "
-        f"{_money_cad(eccc_npv['total_cad_billion'])} "
-        f"(proposed {_money_cad(eccc_npv['proposed_cad_billion'])})"
     )
     bgrid = ld["burke_grid"]
     burke_g0 = bgrid.loc[bgrid["growth_rate"] == 0.0]

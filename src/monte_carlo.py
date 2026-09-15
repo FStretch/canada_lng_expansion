@@ -646,8 +646,11 @@ def run_monte_carlo(
         },
         {
             "parameter": "upstream_ch4_share",
-            "distribution": "fixed 0.30",
-            "source": "Not independent of the 0.22 × 1.5 upstream construction",
+            "distribution": f"fixed {float(get_param(inputs['params'], 'upstream_ch4_share'))}",
+            "source": (
+                f"Not independent of the {float(inputs['upstream_by_scenario']['inventory_as_reported'])} "
+                "× 1.5 upstream construction"
+            ),
             "sampled": False,
         },
         {

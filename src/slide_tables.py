@@ -350,6 +350,7 @@ def build_slide_tables(
 
         h = ld["headline"].set_index("case")
         damage = float(h.loc["published_central", "total_cad_billion"])
+        damage_npv = float(h.loc["eccc_central_npv_2025", "total_cad_billion"])
         life = _mc_row("lifetime_mtco2e")
         peak = _mc_row("peak_mtco2e_yr")
         dmg = _mc_row("central_damage_cad_billion")
@@ -380,7 +381,16 @@ def build_slide_tables(
                     "mc_p05": round(float(dmg["p05"]), 0),
                     "mc_p95": round(float(dmg["p95"]), 0),
                     "unit": "CAD bn 2025",
-                    "note": "Calendar-year ECCC 2%.",
+                    "note": "Calendar-year ECCC 2%: damage valued when caused (loss-and-damage figure).",
+                },
+                {
+                    "quantity": "ECCC 2% damage, NPV to 2025",
+                    "central_case": round(damage_npv, 0),
+                    "mc_median": None,
+                    "mc_p05": None,
+                    "mc_p95": None,
+                    "unit": "CAD bn 2025",
+                    "note": "Same stream discounted to 2025 at 2% (cost-benefit figure). Carried with the central, not a sensitivity on it.",
                 },
             ]
         )
@@ -560,10 +570,16 @@ def build_slide_tables(
         tables["17_Loss_damage"] = pd.DataFrame(
             [
                 (
-                    "Central, ECCC 2% calendar year",
+                    "Central, ECCC 2% calendar year (damage valued when caused)",
                     round(float(published["total_cad_billion"]) / 1000, 2),
                     "trillion 2025 CAD",
-                    "CO2 x SC-CO2 + CH4 mass x SC-CH4, per calendar year",
+                    "CO2 x SC-CO2 + CH4 mass x SC-CH4, per calendar year; the loss-and-damage figure",
+                ),
+                (
+                    "Central, ECCC 2% NPV to 2025 (cost-benefit framing)",
+                    round(float(ld["headline"].set_index("case").loc["eccc_central_npv_2025", "total_cad_billion"]) / 1000, 2),
+                    "trillion 2025 CAD",
+                    "Same stream discounted to 2025 at 2%; carried with the central, not a sensitivity on it",
                 ),
                 (
                     "Methane share of CO2e total",

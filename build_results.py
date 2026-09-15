@@ -117,10 +117,10 @@ BEFORE = {
 EXPECTED_EXPORT_BY_CALC = {
     "operating": 14.0,
     "under_construction": 5.4,
-    "proposed": 60.7,
+    "proposed": 60.2,
 }
-EXPECTED_EXPORT_TOTAL = 80.1
-EXPECTED_EARLY_EXPORT = 34.7
+EXPECTED_EXPORT_TOTAL = 79.6
+EXPECTED_EARLY_EXPORT = 34.2
 EXPECTED_ADVANCED_EXPORT = 26.0
 # Life-average territorial shares, one decimal. Tied to the Data Inputs README
 # and the repo README so those documents cannot drift from the model.
@@ -134,16 +134,25 @@ EXPECTED_ADVANCED_EXPORT = 26.0
 #   lifetime 7215.3; peak 237.3 (2037).
 #   Pipeline 0.10 -> 0.074 (3 Sep 2026): CAN 17.6 / BUNK 3.2 / FOR 79.2;
 #   lifetime 7162.0; peak 235.6 (2037).
+#   Upstream re-derived on pipeline 0.074 (3 Sep 2026): inventory 0.22 -> 0.246,
+#   central 0.25 -> 0.277. CAN 18.2 / BUNK 3.2 / FOR 78.6; lifetime 7217.4;
+#   peak 237.4 (2037); damages 3,129 bn. The 0.22 had netted the retired
+#   pipeline 0.10 from the CER anchor; 0.320 - 0.074 is 0.246.
+#   Fermeuse 5.0 -> 4.5 mtpa (3 Sep 2026), liquefaction fuel netted out of the
+#   resource derivation: export 80.1 -> 79.6 mtpa; lifetime 7167.1; peak 235.9
+#   (2037); damages 3,106 bn; split unchanged at one decimal.
+#   Damages NPV to 2025 added to the lock (3 Sep 2026): 524 / 1,051 / 1,945 bn
+#   beside the calendar-year 745 / 1,572 / 3,106. No emissions value moved.
 #   upstream_ch4_share 0.30 -> 0.25 (3 Sep 2026): lifetime, peak and the
 #   territorial split are ALL UNCHANGED - the share only moves the CO2/CH4
 #   split and the SC-CH4 damages line. Values below. The old 0.10 was assumed
 #   and about 35% above two independent cited routes (Liu et al. 2021 via the
 #   ERA restatement, 0.0735; CER/NIR 2019 pipeline transport, 0.0744). Pipeline
 #   is CAN-tagged, so cutting it moves weight from CAN to FOR.
-EXPECTED_TERRITORIAL_SHARE_PCT = {"CAN": 17.6, "BUNK": 3.2, "FOR": 79.2}
-EXPECTED_LIFETIME_MT = 7162.0
+EXPECTED_TERRITORIAL_SHARE_PCT = {"CAN": 18.2, "BUNK": 3.2, "FOR": 78.6}
+EXPECTED_LIFETIME_MT = 7167.1
 EXPECTED_PEAK_YEAR = 2037
-EXPECTED_PEAK_MT = 235.6
+EXPECTED_PEAK_MT = 235.9
 
 # The paper set, locked 3 September 2026 (Discovery cancelled; GWP20 methane-
 # only; Monte Carlo triangles read from the workbooks; regasification and the
@@ -159,35 +168,38 @@ EXPECTED_PEAK_MT = 235.6
 # SHA-256 of Outputs/paper_set_locked.csv, the rounded canonical copy of the
 # paper set. Re-lock it in the same commit as EXPECTED_BUILD_OUT, never alone.
 EXPECTED_PAPER_SET_SHA256 = (
-    "fd506c3a1cd8187d546a3a551719834f965d3167c4c55c4d7e0ca6bd0b0bbae6"
+    "94f7042ab86e6aa87091b26fdac35ebc0af7b5ad28dc05c9a5f6f135de8a69c3"
 )
 
 # Figure 10's model well-to-regasification intensity, GWP100, two decimals.
 # Locked 3 September 2026 so the Roman-White gap document's generated banner
 # rests on an asserted value, not a figure key nobody checks.
-EXPECTED_WELL_TO_REGAS_T_PER_T = 0.76
+EXPECTED_WELL_TO_REGAS_T_PER_T = 0.78
 
 EXPECTED_BUILD_OUT = {
     "committed": {
-        "lifetime_mt": 1845.8,
-        "lifetime_co2_only_mt": 1781.7,
+        "lifetime_mt": 1860.0,
+        "lifetime_co2_only_mt": 1792.0,
         "peak_year": 2030,
-        "peak_mt": 57.6,
-        "damages_cad_bn": 741,
+        "peak_mt": 58.0,
+        "damages_cad_bn": 745,
+        "damages_npv_cad_bn": 524,
     },
     "committed_plus_advanced": {
-        "lifetime_mt": 3757.5,
-        "lifetime_co2_only_mt": 3627.1,
+        "lifetime_mt": 3786.4,
+        "lifetime_co2_only_mt": 3648.0,
         "peak_year": 2037,
-        "peak_mt": 134.0,
-        "damages_cad_bn": 1561,
+        "peak_mt": 135.1,
+        "damages_cad_bn": 1572,
+        "damages_npv_cad_bn": 1051,
     },
     "full": {
-        "lifetime_mt": 7162.0,
-        "lifetime_co2_only_mt": 6918.1,
+        "lifetime_mt": 7167.1,
+        "lifetime_co2_only_mt": 6909.5,
         "peak_year": 2037,
-        "peak_mt": 235.6,
-        "damages_cad_bn": 3108,
+        "peak_mt": 235.9,
+        "damages_cad_bn": 3106,
+        "damages_npv_cad_bn": 1945,
     },
 }
 
@@ -202,6 +214,7 @@ def current_lock() -> dict:
         "peak_year": EXPECTED_PEAK_YEAR,
         "territorial_pct": dict(EXPECTED_TERRITORIAL_SHARE_PCT),
         "damages_cad_bn": EXPECTED_BUILD_OUT["full"]["damages_cad_bn"],
+        "damages_npv_cad_bn": EXPECTED_BUILD_OUT["full"]["damages_npv_cad_bn"],
         "export_mtpa": EXPECTED_EXPORT_TOTAL,
         "well_to_regas_t_per_t": EXPECTED_WELL_TO_REGAS_T_PER_T,
     }
@@ -261,6 +274,7 @@ PAPER_SET_LOCKED_COLUMNS = (
     ("eccc_2pct_damages_cad_bn", 0),
     ("eccc_2pct_damages_cad_bn_p05", 0),
     ("eccc_2pct_damages_cad_bn_p95", 0),
+    ("eccc_2pct_damages_npv_2025_cad_bn", 0),
     ("canada_territorial_pct", 1),
     ("international_bunkers_pct", 1),
     ("foreign_territorial_pct", 1),
@@ -321,6 +335,9 @@ def paper_set_table(
         damages_bn = float(
             eccc.loc[eccc["project_id"].isin(members), "hatton_sum_cad"].sum()
         ) / 1e9
+        damages_npv_bn = float(
+            eccc.loc[eccc["project_id"].isin(members), "npv_analysis_year_cad"].sum()
+        ) / 1e9
         sl = sample.loc[sample["project_id"].isin(members)]
         terr_total = float(sl["annual_total"].sum())
         budgets = carbon_budget_shares(
@@ -352,6 +369,7 @@ def paper_set_table(
             "eccc_2pct_damages_cad_bn_p05": dmg_lo,
             "eccc_2pct_damages_cad_bn_p95": dmg_hi,
             "eccc_2pct_damages_cad_bn_mc_median": dmg_med,
+            "eccc_2pct_damages_npv_2025_cad_bn": damages_npv_bn,
             "canada_territorial_pct": (
                 100.0 * float(sl["canada_territorial"].sum()) / terr_total
                 if terr_total else float("nan")
@@ -444,15 +462,22 @@ def write_review_summary(
             "case** — the point estimate from the central factor values — with "
             "the Monte Carlo **5th to 95th percentile** as its interval. The "
             "Monte Carlo median is stated once, in its own column, and is not "
-            "the reported figure."
+            "the reported figure. Damages are carried as two figures that answer "
+            "two questions: the **calendar-year sum** values each year's damage "
+            "when it is caused (the loss-and-damage figure, the central), and the "
+            "**NPV to 2025** at the same 2% is what the stream is worth today "
+            "(the cost-benefit figure, the aggregation Government of Canada "
+            "regulatory guidance uses). Neither is a sensitivity on the other; "
+            "see section 11."
         )
         lines.append("")
         lines.append(
             "| build-out | lifetime CO2e Mt | lifetime CO2-only Mt | "
-            "peak | ECCC 2% damages CAD bn | MC median (lifetime / peak / "
+            "peak | ECCC 2% damages CAD bn, valued when caused | "
+            "ECCC 2% damages CAD bn, NPV to 2025 | MC median (lifetime / peak / "
             "damages)\u00b9 |"
         )
-        lines.append("|---|---|---|---|---|---|")
+        lines.append("|---|---|---|---|---|---|---|")
         for _, r in paper_set.iterrows():
             lines.append(
                 f"| {r['build_out']} | "
@@ -468,6 +493,7 @@ def write_review_summary(
                 f"**{r['eccc_2pct_damages_cad_bn']:,.0f}** "
                 f"[{r['eccc_2pct_damages_cad_bn_p05']:,.0f}, "
                 f"{r['eccc_2pct_damages_cad_bn_p95']:,.0f}] | "
+                f"**{r['eccc_2pct_damages_npv_2025_cad_bn']:,.0f}** | "
                 f"{r['lifetime_mtco2e_mc_median']:,.1f} / "
                 f"{r['peak_mtco2e_yr_mc_median']:,.1f} / "
                 f"{r['eccc_2pct_damages_cad_bn_mc_median']:,.0f} |"
@@ -494,6 +520,20 @@ def write_review_summary(
             + ". Interval basis: "
             + str(paper_set.iloc[0]["interval_basis"])
             + "."
+        )
+        lines.append("")
+        lines.append(
+            "**How the headline is reported.** The headline is the three-point "
+            "ladder above — committed, committed plus advanced, full slate — with "
+            "the tier label on each figure. The single full-slate number is not "
+            "fronted alone: about three quarters of it has no final investment "
+            "decision, and the ladder is what makes each clause separately "
+            "defensible. The Monte Carlo interval on each row is **factor "
+            "uncertainty conditional on that build-out** at modelled utilisation "
+            "and licence-term lives. It is not the uncertainty on what Canada's "
+            "expansion will emit; that uncertainty is the spread across the "
+            "build-outs, from the committed row to the full row, which is about "
+            "five times wider than the full-row interval."
         )
         lines.append("")
         lines.append("### Territorial split and carbon-budget shares")
@@ -774,6 +814,10 @@ def write_review_summary(
 
     # 5a CO2 / CH4 split
     if gas_split is not None:
+        _up = inputs["upstream_by_scenario"]
+        _share = float(get_param(inputs["params"], "upstream_ch4_share"))
+        _co2_floor = float(_up["inventory_as_reported"]) * (1.0 - _share)
+        _ch4_central = float(_up[DEFAULT_SCENARIO]) - _co2_floor
         lines.append("## 5a. Carbon dioxide and methane split")
         lines.append("")
         lines.append(
@@ -783,8 +827,8 @@ def write_review_summary(
             "The split uses only parameters already on the workbook. "
             "**Upstream:** CH4-derived CO2e per tonne LNG is the scenario "
             "upstream factor less the CO2 part of the official inventory "
-            "(`inventory_as_reported x (1 - upstream_ch4_share)` = 0.154), i.e. "
-            "0.096 tCO2e/t at central. **Shipping:** the 1.44 carrier uplift is "
+            f"(`inventory_as_reported x (1 - upstream_ch4_share)` = {_co2_floor:.4f}), i.e. "
+            f"{_ch4_central:.4f} tCO2e/t at central. **Shipping:** the 1.44 carrier uplift is "
             "entirely measured methane slip, so `1 - 1/1.44` = 0.306 of the "
             "shipping CO2e is CH4-derived (0.037 tCO2e/t). **Pipeline "
             "transport, liquefaction, regasification and combustion are treated "
@@ -822,7 +866,7 @@ def write_review_summary(
             f"{gwp20_rec['scenario_upstream_factor']:.3f} and every other stage "
             f"central. The workbook now re-weights only the methane portion of "
             f"upstream: non-methane inventory stays at "
-            f"{gwp20_rec['inventory_upstream_factor']:.2f} × (1 − "
+            f"{gwp20_rec['inventory_upstream_factor']:.3f} × (1 − "
             f"upstream_ch4_share), and the methane portion is multiplied by 1.5 "
             f"then by gwp20/gwp100 (82.5/29.8). Rebuilding from the Task 1 CH4 "
             f"mass (`co2_mt + ch4_mass_kt/1000 x gwp20_ch4`, "
@@ -838,7 +882,8 @@ def write_review_summary(
             "The CH4-mass route's implied methane-only GWP20 upstream factor is "
             f"{gwp20_rec['mass_route_upstream_factor']:.3f}, against the workbook's "
             f"{gwp20_rec['scenario_upstream_factor']:.3f}. They differ because the "
-            "workbook starts from the inventory factor and an assumed 30% methane "
+            "workbook starts from the inventory factor and the "
+            f"{float(get_param(inputs['params'], 'upstream_ch4_share')):.2f} methane "
             "share, while the mass route starts from the central-case CH4 mass "
             "(inventory CO2 plus the 1.5× methane correction already in "
             "`measurement_central`). **No pipeline methane portion is defined "
@@ -897,7 +942,8 @@ def write_review_summary(
         headline_sample(by_project, "inventory_as_reported")["annual_total"].sum()
     ) / 1e6
     lines.append(
-        f"- **Upstream factor** (central 0.25): inventory_as_reported (0.22) → "
+        f"- **Upstream factor** (central {float(inputs['upstream_by_scenario'][DEFAULT_SCENARIO]):.3f}): "
+        f"inventory_as_reported ({float(inputs['upstream_by_scenario']['inventory_as_reported']):.3f}) → "
         f"{inventory:.1f} Mt/yr ({inventory-base_annual:+.1f}); "
         f"howarth_high (0.55) → {howarth:.1f} Mt/yr ({howarth-base_annual:+.1f})."
     )
@@ -953,7 +999,8 @@ def write_review_summary(
         f"every terminal): electrification is not assumed "
         f"(`liquefaction_electrification_assumed`="
         f"{get_param(params, 'liquefaction_electrification_assumed')}). "
-        f"0.12 is retained as range_low and applies only if electrification is "
+        f"{float(inputs['factors'].loc['liquefaction', 'range_low']):.2f} is "
+        f"retained as range_low and applies only if electrification is "
         f"contracted and delivered. Previous drive classifications are in "
         f"`liquefaction_drive_note`."
     )
@@ -1082,14 +1129,17 @@ def write_review_summary(
         "not re-derived in code."
     )
     lines.append(
-        "- Loss and damage central case is ECCC SC-CO2 at 2%, applied per "
-        "calendar year to the full GWP100 CO2e total "
-        "(`central_price_family=eccc`). That overstates methane (CH4-derived "
-        "CO2e is charged at SC-CO2 rather than SC-CH4). Burke is an "
-        "upper-bracket sensitivity (g = 0). Damages after 2100, sea-level "
-        "rise, extremes and mortality outside GDP are omitted. The "
-        "Conference Board denominator is Table 1 GDP in 2020 CAD, inflated "
-        "to 2025 CAD."
+        "- Loss and damage central case is ECCC SC-CO2 and SC-CH4 at 2%, "
+        "priced per gas on the panel's CO2 / CH4 split and summed per "
+        "calendar year (`central_price_family=eccc`, "
+        "`central_aggregation=calendar_year`): damage valued when it is "
+        "caused, the loss-and-damage figure. The NPV of the same stream to "
+        "2025 at 2% is the cost-benefit figure and is carried beside it in "
+        "the paper set; neither is a sensitivity on the other (section 11). "
+        "Burke is an upper-bracket sensitivity (g = 0) with no SC-CH4. "
+        "Damages after 2100, sea-level rise, extremes and mortality outside "
+        "GDP are omitted. The Conference Board denominator is Table 1 GDP in "
+        "2020 CAD, inflated to 2025 CAD."
     )
     lines.append("")
 
@@ -1377,7 +1427,7 @@ def main() -> None:
         f"(total {export_total:.1f} mtpa) PASS"
     )
 
-    # Proposed export: 26 advanced + 34.7 early (Kino Aski 15 mtpa)
+    # Proposed export: 26 advanced + 34.2 early (Kino Aski 15, Kanata 12, Fermeuse 4.5, Summit Lake 2.7)
     prop_exp = sample.loc[
         (sample["chain"] == "export") & (sample["calc_group"] == "proposed")
     ]
@@ -1645,6 +1695,7 @@ def main() -> None:
         got = {
             "lifetime_mt": round(float(r["lifetime_mtco2e"]), 1),
             "lifetime_co2_only_mt": round(float(r["lifetime_co2_only_mt"]), 1),
+            "damages_npv_cad_bn": int(round(float(r["eccc_2pct_damages_npv_2025_cad_bn"]))),
             "peak_year": int(r["peak_year"]),
             "peak_mt": round(float(r["peak_mtco2e_yr"]), 1),
             "damages_cad_bn": round(float(r["eccc_2pct_damages_cad_bn"])),

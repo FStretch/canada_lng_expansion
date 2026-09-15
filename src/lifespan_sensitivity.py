@@ -152,7 +152,8 @@ def format_uniform_life_markdown(sens: dict) -> list[str]:
     lines.append("")
     lines.append(
         "| build-out | case | lifetime CO2e Mt | lifetime CO2-only Mt | "
-        "peak Mt (year) | ECCC 2% damages CAD bn |"
+        "peak Mt (year) | ECCC 2% damages CAD bn, calendar-year sum (valued when "
+        "caused; the NPV-to-2025 figure is carried in the paper set) |"
     )
     lines.append("|---|---|---|---|---|---|")
     for build_out in cases["build_out"].unique():
