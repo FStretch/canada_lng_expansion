@@ -149,18 +149,18 @@ def build_benchmark_table(inputs: dict) -> pd.DataFrame:
         "external_central": 0.021,
         "external_high": _g_per_mj_to_t_per_t(0.5),
         "external_as_published": (
-            "Gan et al. 0.021 tCO2e/t; IEA 0.2-0.5 gCO2e/MJ of gas regasified"
+            "Mukherjee et al. 0.021 tCO2e/t; IEA 0.2-0.5 gCO2e/MJ of gas regasified"
         ),
         "external_source": (
-            "Gan et al. (2024), Communications Earth & Environment, doi "
+            "Mukherjee et al. (2025), Communications Earth & Environment 6:16, doi "
             f"10.1038/s43247-024-01988-2. Range: {IEA}, p. 16. {IEA_URL}"
         ),
         "external_boundary": (
-            "Gan: US LNG lifecycle assessment, regasification stage. IEA: "
+            "Mukherjee: US LNG lifecycle assessment, regasification stage. IEA: "
             "global average across 220 regasification terminals, mostly "
             "open-rack vaporisers."
         ),
-        "like_for_like": "Yes. Same stage, and the Gan central sits inside the IEA band.",
+        "like_for_like": "Yes. Same stage, and the Mukherjee central sits inside the IEA band.",
         "direction": "ADOPTED as the central, 3 September 2026",
         "note": (
             "The retired 0.04 was uncited and sat above the top of the IEA "

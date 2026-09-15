@@ -350,7 +350,7 @@ Every external comparison the model holds, in one place. Each row carries **both
 | Liquefaction | **0.290** | 0.330 | IEA (2025) | Close | ours LOWER than the world average |
 | Shipping | **0.120** | 0.181 [0.138, 0.193] | IEA (2025) | NO | ours LOWER, on a LONGER voyage |
 | Pipeline transport | **0.074** | 0.074 [0.073, 0.074] | Liu et al. (2021) | Partly | ADOPTED as the central, 3 September 2026 |
-| Regasification | **0.021** | 0.021 [0.011, 0.028] | Gan et al. (2024) | Yes | ADOPTED as the central, 3 September 2026 |
+| Regasification | **0.021** | 0.021 [0.011, 0.028] | Mukherjee et al. (2025) | Yes | ADOPTED as the central, 3 September 2026 |
 | Well to regasification (no combustion) | **0.782** | 1.190 [0.940, 1.510] | Roman-White et al. (2021) | NO on geography | ours LOWER, and expected to be |
 | LNG stages only (liquefaction + shipping + regasification) | **0.431** | 0.62–1.71 | Balcombe et al. (2016) | Boundary yes, vintage no | ours LOWER than the bottom of the range |
 

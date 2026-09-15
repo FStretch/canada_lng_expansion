@@ -4,7 +4,7 @@ One-off. The model never writes Inputs/; this script does, once.
 
 1. Combustion range 2.50 / 3.00 -> 2.58 / 3.00, derived from the IPCC 2006
    uncertainty ranges and cited to them. Central 2.75 unchanged.
-2. Regasification central 0.04 -> 0.021 (Gan et al. 2024), range 0.02 / 0.06 ->
+2. Regasification central 0.04 -> 0.021 (Mukherjee et al. 2025), range 0.02 / 0.06 ->
    0.011 / 0.0275 (IEA 2025). The row was entirely uncited; it is now fully
    cited. This moves the headline.
 3. liquefaction range_low and Parameters liquefaction_electric 0.12 -> 0.15,
@@ -36,7 +36,7 @@ IEA_URL = (
     "https://iea.blob.core.windows.net/assets/df9b1bed-4e16-4db8-bec5-a5fa117a9130/"
     "AssessingemissionsfromLNGsupplyandabatementoptions.pdf"
 )
-GAN_URL = "https://doi.org/10.1038/s43247-024-01988-2"
+MUKHERJEE_URL = "https://doi.org/10.1038/s43247-024-01988-2"
 PEMBINA_URL = (
     "https://www.pembina.org/reports/squaring-the-circle-state-of-lng-2023.pdf"
 )
@@ -62,12 +62,12 @@ COMBUSTION_RANGE_SOURCES = (
 )
 
 REGAS_BASIS = (
-    "0.021 tCO2e per t LNG. Gan et al. (2024), Communications Earth & "
-    "Environment, " + GAN_URL + " : peer-reviewed US LNG lifecycle assessment "
-    "placing regasification at 0.021 tCO2e/t. Adopted 3 September 2026, "
-    "replacing an uncited 0.04 that sat above the top of the IEA range below. "
-    "The previous 0.04 was labelled RMI Oil Climate Index; no OCI+ table or "
-    "page states 0.04 t/t."
+    "0.021 tCO2e per t LNG. Mukherjee et al. (2025), Communications Earth & "
+    "Environment 6:16, " + MUKHERJEE_URL + " : peer-reviewed US LNG lifecycle "
+    "assessment placing regasification at 0.021 tCO2e/t. Adopted 3 September "
+    "2026, replacing an uncited 0.04 that sat above the top of the IEA range "
+    "below. The previous 0.04 was labelled RMI Oil Climate Index; no OCI+ "
+    "table or page states 0.04 t/t."
 )
 REGAS_RANGE_SOURCES = (
     "IEA (2025), Assessing Emissions from LNG Supply and Abatement Options, "
@@ -76,7 +76,7 @@ REGAS_RANGE_SOURCES = (
     "Converted at the report's own stated basis of 55 MJ per kg of methane "
     "(footnote 2, page 7): 0.2 g/MJ = 0.011 and 0.5 g/MJ = 0.0275 tCO2e per "
     "tonne. IEA takes 1 t methane as 30 t CO2 on a 100-year GWP, against this "
-    "model's 29.8. The Gan et al. central of 0.021 sits inside this range."
+    "model's 29.8. The Mukherjee et al. central of 0.021 sits inside this range."
 )
 REGAS_KEY_UNCERTAINTY = (
     "Smallest stage, about 0.6 per cent of the lifecycle total after the move "

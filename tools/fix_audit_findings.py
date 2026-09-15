@@ -143,14 +143,14 @@ def patch_data_inputs() -> None:
                 basis_for_central=(
                     "Assumed 0.04 tCO2e per t LNG. Previously labelled RMI Oil "
                     "Climate Index; no OCI+ table or page states 0.04 t/t. "
-                    "A peer-reviewed US LNG LCA (Gan et al. 2024, "
+                    "A peer-reviewed US LNG LCA (Mukherjee et al. 2025, "
                     "Communications Earth & Environment) places regasification at "
                     "0.021 tCO2e/t, which sits at this row's range_low. The central "
                     "0.04 is a judgement in the middle of the 0.02-0.06 assumed range."
                 ),
                 range_sources=(
                     "Range is an assumed band. Corroboration at the low end: "
-                    "Gan et al. 2024 https://doi.org/10.1038/s43247-024-01988-2 "
+                    "Mukherjee et al. 2025 https://doi.org/10.1038/s43247-024-01988-2 "
                     "(0.021 tCO2e/t). RMI OCI+ (https://ociplus.rmi.org/total-emissions) "
                     "does not publish a 0.04 t/t LNG regasification factor."
                 ),

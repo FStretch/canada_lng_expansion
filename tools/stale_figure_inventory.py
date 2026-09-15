@@ -62,7 +62,7 @@ SUPERSEDED = [
     (r"18\.1\s*[/-]\s*3\.2\s*[/-]\s*78\.8", "18.1 / 3.2 / 78.8 territorial", "18.2 / 3.2 / 78.6", "regasification 0.04 -> 0.021 (regas is FOR-tagged)"),
     (r"\b3[,.]?143\b", "C$3,143bn ECCC 2% damages (regasification 0.04)", "C$3,126bn", "regasification 0.04 -> 0.021"),
     (r"\b207\.4\b", "207.4 Mt/yr life-average (regasification 0.04)", "206.3 Mt/yr", "regasification 0.04 -> 0.021"),
-    (r"regasification 0\.04|regas 0\.04", "regasification central 0.04 (uncited)", "0.021 (Gan et al. 2024)", "moved onto a cited value"),
+    (r"regasification 0\.04|regas 0\.04", "regasification central 0.04 (uncited)", "0.021 (Mukherjee et al. 2025)", "moved onto a cited value"),
     (r"combustion (?:range )?2\.50|2\.50\s*/\s*3\.00", "combustion range low 2.50 (uncited)", "2.58 (IPCC 2006 uncertainty band)", "moved onto a cited derivation"),
     # Pipeline moved onto two converging cited routes, 3 September 2026.
     (r"7[,.]?215\.3", "7,215.3 Mt lifetime (pipeline 0.10)", "7,162.0 Mt", "pipeline 0.10 -> 0.074"),
